@@ -1,6 +1,3 @@
-// Force rebuild - testing env vars
-import { NextResponse } from "next/server";
-
 import { NextResponse } from "next/server";
 import { ensureUserId } from "@/lib/user";
 import { encryptText } from "@/lib/crypto";
