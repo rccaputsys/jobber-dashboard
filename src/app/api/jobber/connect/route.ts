@@ -15,6 +15,11 @@ export async function GET() {
   const url = new URL(process.env.JOBBER_OAUTH_AUTHORIZE_URL!);
   url.searchParams.set("client_id", process.env.JOBBER_CLIENT_ID!);
   url.searchParams.set("redirect_uri", process.env.JOBBER_REDIRECT_URI!);
+
+console.log("=== DEBUG: JOBBER_REDIRECT_URI ===", process.env.JOBBER_REDIRECT_URI);
+console.log("=== DEBUG: Full OAuth URL ===", url.toString());
+
+
   url.searchParams.set("response_type", "code");
   url.searchParams.set("state", state);
 
