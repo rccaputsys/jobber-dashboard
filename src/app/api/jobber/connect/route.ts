@@ -3,6 +3,11 @@ import { ensureUserId } from "@/lib/user";
 import { encryptText } from "@/lib/crypto";
 
 export async function GET() {
+console.log("====== ENVIRONMENT CHECK ======");
+  console.log("JOBBER_REDIRECT_URI:", process.env.JOBBER_REDIRECT_URI);
+  console.log("VERCEL_ENV:", process.env.VERCEL_ENV);
+  console.log("================================");
+  
   // Ensure we have a user id cookie
   await ensureUserId();
 
