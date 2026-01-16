@@ -733,7 +733,7 @@ export default async function DashboardPage({
   };
 
   const trialEnds = conn?.trial_ends_at ? new Date(conn.trial_ends_at).getTime() : 0;
-  const trialActive = trialEnds > Date.now();
+  const trialActive = true;
   const upgradeHref = `/billing/upgrade?connection_id=${connectionId}`;
 
   // Shared table column widths so both tables align perfectly
