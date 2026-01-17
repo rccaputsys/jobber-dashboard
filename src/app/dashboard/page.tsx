@@ -7,6 +7,28 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 type Granularity = "day" | "week" | "month" | "quarter";
 type ChartType = "line" | "bar";
 
+// Helper to generate CSV download link
+function generateCSV(data: any[], filename: string): string {
+  if (!data.length) return "";
+  
+  const headers = Object.keys(data[0]);
+  const csvContent = [
+    headers.join(","),
+    ...data.map((row) =>
+      headers
+        .map((header) => {
+          const value = row[header] ?? "";
+          const escaped = String(value).replace(/"/g, '""');
+          return escaped.includes(",") ? `"${escaped}"` : escaped;
+        })
+        .join(",")
+    ),
+  ].join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv" });
+  return URL.createObjectURL(blob);
+}
+
 function safeDate(v: any): Date | null {
   if (!v) return null;
   const d = new Date(v);
@@ -96,6 +118,13 @@ function moneyFactory(currency: string, locale = "en-US") {
     });
     return (cents: number) => fmt.format((Number(cents || 0) as number) / 100);
   }
+}
+
+// For chart Y-axis: no cents, rounded to nearest $100
+function moneyForChart(cents: number): string {
+  const dollars = Math.round((Number(cents || 0) as number) / 100);
+  const rounded = Math.round(dollars / 100) * 100;
+  return `$${rounded.toLocaleString()}`;
 }
 
 function severityFromScore(score: number): "critical" | "warning" | "good" {
@@ -237,6 +266,65 @@ const ui = {
   kpiValue: { marginTop: 8, fontSize: 28, fontWeight: 1000, letterSpacing: -0.7 } as React.CSSProperties,
   kpiMeta: { marginTop: 8, fontSize: 12, color: theme.sub, lineHeight: 1.35 } as React.CSSProperties,
 
+  recommendationBanner: {
+    marginTop: 14,
+    borderRadius: 14,
+    border: `1px solid rgba(245,158,11,0.25)`,
+    background: "linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(245,158,11,0.03) 100%)",
+    padding: "14px 18px",
+    boxShadow: "0 8px 24px rgba(245,158,11,0.08)",
+  } as React.CSSProperties,
+
+  recommendationTitle: {
+    fontSize: 13,
+    fontWeight: 1000,
+    color: "#f59e0b",
+    marginBottom: 10,
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    letterSpacing: -0.2,
+  } as React.CSSProperties,
+
+  recommendationItem: {
+    padding: "8px 12px 8px 10px",
+    borderRadius: 8,
+    background: "rgba(0,0,0,0.15)",
+    marginBottom: 6,
+    fontSize: 13,
+    lineHeight: 1.5,
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 8,
+    border: "1px solid rgba(255,255,255,0.05)",
+  } as React.CSSProperties,
+  
+  recommendationIcon: {
+    fontSize: 14,
+    marginTop: 1,
+    flexShrink: 0,
+  } as React.CSSProperties,
+  
+  recommendationText: {
+    flex: 1,
+  } as React.CSSProperties,
+
+  kpiGroup: {
+    border: `1px solid ${theme.border2}`,
+    borderRadius: 16,
+    padding: 16,
+    background: "rgba(255,255,255,0.03)",
+  } as React.CSSProperties,
+
+  kpiGroupTitle: {
+    fontSize: 13,
+    fontWeight: 1000,
+    color: theme.mut,
+    marginBottom: 14,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  } as React.CSSProperties,
+
   btnPrimary: {
     display: "inline-flex",
     alignItems: "center",
@@ -313,35 +401,28 @@ const ui = {
   td: { padding: "12px 10px", borderBottom: "1px solid rgba(255,255,255,0.07)", verticalAlign: "top" } as React.CSSProperties,
 };
 
-function InfoIcon(props: { text: string }) {
-  return (
-    <span style={ui.info} title={props.text} aria-label={props.text}>
-      i
-    </span>
-  );
-}
-
 /* ------------------------------ Mini Charts ------------------------------ */
 function SparkLine(props: {
   title: string;
   subtitle: string;
   points: { xLabel: string; value: number; tooltip: string }[];
   formatY: (v: number) => string;
-  tooltip: string;
   chartType: ChartType;
 }) {
   const vbW = 360;
   const vbH = 150;
 
   const padL = 52;
-  const padR = 18;
-  const padT = 18;
+  const padR = 28; // Increased from 18 to prevent right-side cutoff
+  const padT = 24; // Increased from 18 to prevent cutoff at top
   const padB = 36;
 
   const vals = props.points.map((p) => p.value);
   const min = vals.length ? Math.min(...vals) : 0;
   const max = vals.length ? Math.max(...vals) : 1;
-  const span = Math.max(1e-9, max - min);
+  // Add 10% buffer at top to prevent cutoff
+  const maxWithBuffer = max * 1.1;
+  const span = Math.max(1e-9, maxWithBuffer - min);
 
   const xStep = (vbW - padL - padR) / Math.max(1, props.points.length - 1);
   const yOf = (v: number) => {
@@ -361,13 +442,16 @@ function SparkLine(props: {
   const clipId = `clip-${Math.random().toString(16).slice(2)}`;
 
   const barW = Math.max(2, (vbW - padL - padR) / Math.max(1, props.points.length) - 6);
+  
+  // Smart label display - skip labels if too crowded
+  const labelSkip = props.points.length > 20 ? 4 : props.points.length > 12 ? 3 : 2;
 
   return (
     <div style={{ ...ui.card, height: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 1000, letterSpacing: -0.2 }}>
-            {props.title} <InfoIcon text={props.tooltip} />
+          <div style={{ fontWeight: 1000, letterSpacing: -0.2 }}>
+            {props.title}
           </div>
           <div style={{ marginTop: 3, fontSize: 12, color: theme.mut }}>{props.subtitle}</div>
         </div>
@@ -425,7 +509,7 @@ function SparkLine(props: {
         </g>
 
         {props.points.map((p, i) => {
-          if (i % 2 === 1) return null;
+          if (i % labelSkip !== 0) return null;
           return (
             <text key={`x-${i}`} x={xOf(i)} y={vbH - 12} fill="rgba(234,241,255,0.40)" fontSize="10" textAnchor="middle">
               {p.xLabel}
@@ -490,12 +574,15 @@ export default async function DashboardPage({
   // Connection summary
   const { data: conn } = await supabaseAdmin
     .from("jobber_connections")
-    .select("last_sync_at,trial_started_at,trial_ends_at,billing_status,currency_code")
+    .select("last_sync_at,trial_started_at,trial_ends_at,billing_status,currency_code,company_name,company_logo_url")
     .eq("id", connectionId)
     .maybeSingle();
 
   const currencyCode = (conn?.currency_code || "USD").toUpperCase();
   const money = moneyFactory(currencyCode);
+  
+  const companyName = conn?.company_name || "Your Company";
+  const companyLogoUrl = conn?.company_logo_url || null;
 
   const lastSyncPretty = conn?.last_sync_at ? new Date(conn.last_sync_at).toLocaleString() : "Not synced yet";
   const lastSyncAge = conn?.last_sync_at ? Math.max(0, daysBetweenUTC(todayUTC, startOfDayUTC(new Date(conn.last_sync_at)))) : null;
@@ -513,21 +600,23 @@ export default async function DashboardPage({
     .eq("connection_id", connectionId);
   const quotes = (quotesData ?? []) as any[];
 
-  // AR buckets
+  // AR buckets - Total AR includes ALL unpaid invoices
   const nowMs = Date.now();
-  let b0_7 = 0, b8_14 = 0, b15_30 = 0, b30p = 0;
+  let b0_7 = 0, b8_14 = 0, b15p = 0, totalAR = 0;
   for (const inv of invoices) {
+    const amt = Number(inv.total_amount_cents ?? inv.total_cents ?? inv.total_amount ?? 0);
+    totalAR += amt; // Count all invoices in total AR
+    
     const due = safeDate(inv.due_at ?? inv.dueDate ?? inv.due_date);
     if (!due) continue;
     const days = (nowMs - due.getTime()) / 86400000;
-    const amt = Number(inv.total_amount_cents ?? inv.total_cents ?? inv.total_amount ?? 0);
-    if (days <= 7) b0_7 += amt;
-    else if (days <= 14) b8_14 += amt;
-    else if (days <= 30) b15_30 += amt;
-    else b30p += amt;
+    
+    // Only categorize overdue amounts
+    if (days > 0 && days <= 7) b0_7 += amt;
+    else if (days > 7 && days <= 14) b8_14 += amt;
+    else if (days > 14) b15p += amt;
   }
-  const totalAR = b0_7 + b8_14 + b15_30 + b30p;
-  const riskPct = totalAR > 0 ? (b15_30 + b30p) / totalAR : 0;
+  const riskPct = totalAR > 0 ? b15p / totalAR : 0;
   const arScore = clamp(riskPct * 120, 0, 100);
   const arSev = severityFromScore(arScore);
 
@@ -574,34 +663,9 @@ export default async function DashboardPage({
     return sum + (Number(j.job_revenue_cents ?? 0) - Number(j.job_cost_cents ?? 0));
   }, 0);
 
-  const revPerJob = completedCount ? Math.round(revSum / completedCount) : 0;
   const marginPerJob = completedCount ? Math.round(profitSum / completedCount) : 0;
 
-  const jobsWithProfit = jobs.filter((j) => j.job_profit_cents !== null && j.job_profit_cents !== undefined).length;
-  const profitCoverageAll = jobs.length ? jobsWithProfit / jobs.length : 0;
-  const jobsWithProfitInRange = completedInRange.filter((j) => j.job_profit_cents !== null && j.job_profit_cents !== undefined).length;
-  const profitCoverageRange = completedCount ? jobsWithProfitInRange / completedCount : 0;
-
-  // Make this actionable: convert coverage into an “insight”
-  const coverageLabel =
-    jobs.length === 0
-      ? { label: "No jobs yet", sev: "good" as const }
-      : profitCoverageAll >= 0.8
-      ? { label: "Strong coverage", sev: "good" as const }
-      : profitCoverageAll >= 0.4
-      ? { label: "Partial coverage", sev: "warning" as const }
-      : { label: "Low coverage", sev: "critical" as const };
-
-  const coverageWhatToDo =
-    jobs.length === 0
-      ? "Once you have jobs, this will track margin per job over time."
-      : profitCoverageAll >= 0.8
-      ? "Your margin signals are reliable. Use Margin/Job trends to spot price or labor drift."
-      : profitCoverageAll >= 0.4
-      ? "Margins are usable but incomplete. Treat the trend directionally."
-      : "Margin trends may be misleading until more jobs have costs/profit synced.";
-
-  // Quote leak (range-bound on sent_at)
+  // Quote leak (range-bound on sent_at) - EXCLUDE archived and draft quotes
   const leakCandidates = quotes
     .filter((q) => q.sent_at)
     .filter((q) => {
@@ -610,8 +674,10 @@ export default async function DashboardPage({
       return dt.getTime() >= start.getTime() && dt.getTime() < endExclusive.getTime();
     })
     .filter((q) => {
-      const st = String(q.quote_status ?? "").trim();
-      if (!st) return true;
+      const st = String(q.quote_status ?? "").toLowerCase().trim();
+      // Exclude archived, draft, and won/converted quotes
+      if (!st) return true; // Include if status is missing
+      if (st === "archived" || st === "draft") return false;
       return !statusLooksWon(st);
     });
 
@@ -619,6 +685,29 @@ export default async function DashboardPage({
   const leakDollars = leakCandidates.reduce((sum, q) => sum + Number(q.quote_total_cents ?? 0), 0);
   const qScore = clamp(leakCount * 8, 0, 100);
   const qSev = severityFromScore(qScore);
+
+  // Quotes with changes requested
+  const changesRequestedQuotes = quotes.filter((q) => {
+    const st = String(q.quote_status ?? "").toLowerCase().trim();
+    return st === "changes_requested";
+  });
+  const changesRequestedCount = changesRequestedQuotes.length;
+
+  // Aged AR (15+ days overdue)
+  const agedARInvoices = invoices
+    .filter((inv) => {
+      const due = safeDate(inv.due_at);
+      if (!due) return false;
+      const daysOverdue = Math.max(0, Math.round((Date.now() - due.getTime()) / 86400000));
+      return daysOverdue >= 15;
+    })
+    .map((inv) => ({
+      invoice_number: inv.invoice_number || "—",
+      amount_cents: inv.total_amount_cents || 0,
+      days_overdue: Math.max(0, Math.round((Date.now() - (safeDate(inv.due_at)?.getTime() || Date.now())) / 86400000)),
+      due_date: inv.due_at,
+      jobber_url: inv.jobber_url || "#",
+    }));
 
   // Unscheduled list (table)
   const { data: unsched } = await supabaseAdmin
@@ -654,17 +743,19 @@ export default async function DashboardPage({
 
   const leakByBucket = bucketStarts.map((bs) => {
     const be = nextBucketUTC(bs, g);
+    const endTs = be.getTime();
     let sum = 0;
+    // Cumulative: count all quotes sent before this bucket end that are still leaking
     for (const q of leakCandidates) {
       const dt = safeDate(q.sent_at);
       if (!dt) continue;
       const t = dt.getTime();
-      if (t >= bs.getTime() && t < be.getTime()) sum += Number(q.quote_total_cents ?? 0);
+      if (t < endTs) sum += Number(q.quote_total_cents ?? 0);
     }
     return sum;
   });
 
-  const ar30ByBucket = bucketStarts.map((bs) => {
+  const ar15ByBucket = bucketStarts.map((bs) => {
     const be = nextBucketUTC(bs, g);
     const endTs = be.getTime();
     let sum = 0;
@@ -672,7 +763,7 @@ export default async function DashboardPage({
       const due = safeDate(inv.due_at ?? inv.dueDate ?? inv.due_date);
       if (!due) continue;
       const daysLate = (endTs - due.getTime()) / 86400000;
-      if (daysLate > 30) sum += Number(inv.total_amount_cents ?? inv.total_cents ?? inv.total_amount ?? 0);
+      if (daysLate > 15) sum += Number(inv.total_amount_cents ?? inv.total_cents ?? inv.total_amount ?? 0);
     }
     return sum;
   });
@@ -688,47 +779,21 @@ export default async function DashboardPage({
     return cnt;
   });
 
-  const marginPerJobByBucket = bucketStarts.map((bs) => {
-    const be = nextBucketUTC(bs, g).getTime();
-    const inBucket = jobs.filter((j) => {
-      const raw = completedDateKeys.map((k) => j[k]).find((v) => v);
-      const dt = safeDate(raw);
-      if (!dt) return false;
-      const t = dt.getTime();
-      return t >= bs.getTime() && t < be;
-    });
-
-    if (!inBucket.length) return 0;
-
-    const profit = inBucket.reduce((sum, j) => {
-      const p = j.job_profit_cents;
-      if (p !== null && p !== undefined) return sum + Number(p);
-      return sum + (Number(j.job_revenue_cents ?? 0) - Number(j.job_cost_cents ?? 0));
-    }, 0);
-
-    return Math.round(profit / inBucket.length);
-  });
-
   const points = {
     leak: bucketStarts.map((bs, i) => {
       const label = labelForBucket(bs, g);
       const v = leakByBucket[i];
-      return { xLabel: label, value: v, tooltip: `${label}: ${money(v)} leaked quotes` };
+      return { xLabel: label, value: v, tooltip: `${label}: ${money(v)} total leaked quotes` };
     }),
-    ar30: bucketStarts.map((bs, i) => {
+    ar15: bucketStarts.map((bs, i) => {
       const label = labelForBucket(bs, g);
-      const v = ar30ByBucket[i];
-      return { xLabel: label, value: v, tooltip: `${label}: ${money(v)} AR 30+ balance` };
+      const v = ar15ByBucket[i];
+      return { xLabel: label, value: v, tooltip: `${label}: ${money(v)} AR 15+ balance` };
     }),
     unsched: bucketStarts.map((bs, i) => {
       const label = labelForBucket(bs, g);
       const v = unschedByBucket[i];
       return { xLabel: label, value: v, tooltip: `${label}: ${v} unscheduled jobs` };
-    }),
-    margin: bucketStarts.map((bs, i) => {
-      const label = labelForBucket(bs, g);
-      const v = marginPerJobByBucket[i];
-      return { xLabel: label, value: v, tooltip: `${label}: ${money(v)} margin/job` };
     }),
   };
 
@@ -744,6 +809,82 @@ export default async function DashboardPage({
     amount: "140px",
     open: "190px",
   };
+
+  // Generate recommendations based on metrics
+  type Recommendation = { icon: string; text: string; };
+  const recommendations: Recommendation[] = [];
+  
+  // AR 15+ recommendation
+  if (b15p > 0 && totalAR > 0) {
+    const pct15 = b15p / totalAR;
+    const agedCount = agedARInvoices.length;
+    if (pct15 > 0.15) {
+      recommendations.push({
+        icon: "🔴",
+        text: `${money(b15p)} overdue 15+ days (${agedCount} invoices). Priority: Call top 3 oldest accounts today.`
+      });
+    } else if (pct15 > 0.08) {
+      recommendations.push({
+        icon: "⚠️",
+        text: `${money(b15p)} aging past 15 days (${agedCount} invoices). Send payment reminders this week.`
+      });
+    }
+  }
+
+  // Capacity recommendation
+  if (daysBookedAhead < 5) {
+    recommendations.push({
+      icon: "🔴",
+      text: `Only ${daysBookedAhead} days scheduled ahead. Book ${Math.min(5, unscheduledCount)} jobs from backlog by Friday.`
+    });
+  } else if (daysBookedAhead < 7) {
+    recommendations.push({
+      icon: "📅",
+      text: `${daysBookedAhead} days booked (target: 7-14). Schedule ${Math.min(3, unscheduledCount)} more jobs this week.`
+    });
+  } else if (daysBookedAhead > 21) {
+    recommendations.push({
+      icon: "⚠️",
+      text: `${daysBookedAhead} days ahead (overbooked). Push lower-margin work or add crew capacity.`
+    });
+  }
+
+  // Quote leak recommendation
+  if (leakCount > 5) {
+    const winRate = 0.25; // Conservative 25%
+    const potentialWin = Math.round(leakDollars * winRate);
+    recommendations.push({
+      icon: "💰",
+      text: `${leakCount} quotes pending (${money(leakDollars)} total). Follow up on top 5 - potential ${money(potentialWin)} recovery.`
+    });
+  }
+
+  // Changes requested recommendation
+  if (changesRequestedCount > 0) {
+    recommendations.push({
+      icon: "✏️",
+      text: `${changesRequestedCount} quote${changesRequestedCount > 1 ? 's' : ''} waiting for revisions. Hot leads - respond within 24hrs.`
+    });
+  }
+
+  // Margin recommendation
+  if (completedCount >= 5 && marginPerJob > 0) {
+    const marginPct = profitSum / revSum;
+    if (marginPct < 0.20) {
+      recommendations.push({
+        icon: "📊",
+        text: `Margins at ${pct(marginPct)} (target: 25%+). Review pricing or reduce material/labor costs.`
+      });
+    }
+  }
+
+  // Unscheduled jobs recommendation
+  if (unscheduledCount > 15 && daysBookedAhead < 10) {
+    recommendations.push({
+      icon: "📋",
+      text: `${unscheduledCount} jobs unscheduled. Fill calendar gaps to maintain steady cash flow.`
+    });
+  }
 
   return (
     <main style={ui.page}>
@@ -761,9 +902,13 @@ export default async function DashboardPage({
       <div style={ui.container}>
         <div style={ui.header}>
           <div style={ui.brand}>
-            <div style={ui.logo} />
+            {companyLogoUrl ? (
+              <img src={companyLogoUrl} alt={companyName} style={{ ...ui.logo, objectFit: 'contain', background: 'transparent', border: 'none' }} />
+            ) : (
+              <div style={ui.logo} />
+            )}
             <div>
-              <div style={ui.h1}>Jobber Insights</div>
+              <div style={ui.h1}>{companyName} Command Center</div>
               <div style={ui.hSub}>
                 Last sync: <strong style={{ color: theme.text }}>{lastSyncPretty}</strong>
                 {lastSyncAge !== null ? <span style={{ color: theme.mut }}> • {lastSyncAge} day(s) ago</span> : null}
@@ -789,9 +934,20 @@ export default async function DashboardPage({
           </div>
         </div>
 
-        <div style={{ marginTop: 14 }}>
-          <Controls />
-        </div>
+        {/* RECOMMENDATIONS */}
+        {recommendations.length > 0 && (
+          <div style={ui.recommendationBanner}>
+            <div style={ui.recommendationTitle}>
+              💡 This Week's Focus
+            </div>
+            {recommendations.map((rec, i) => (
+              <div key={i} style={ui.recommendationItem}>
+                <span style={ui.recommendationIcon}>{rec.icon}</span>
+                <span style={ui.recommendationText}>{rec.text}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* KPIs */}
         <div style={ui.panel}>
@@ -799,84 +955,69 @@ export default async function DashboardPage({
             <div>
               <div style={ui.sectionTitle}>Overview KPIs</div>
               <div style={ui.sectionSub}>
-                High-signal KPIs tied to cash, conversion, and profitability (range applies to completion + quote leak).
+                Current status as of today. High-signal metrics for cash, capacity, and sales.
               </div>
             </div>
-            <span style={ui.badge("rgba(124,92,255,0.16)")}>
-              Range: {toISODateOnlyUTC(start)} → {toISODateOnlyUTC(end)}
-            </span>
           </div>
 
-          <div style={ui.grid}>
-            <div className="span3" style={{ ...ui.kpiCard, gridColumn: "span 3" }}>
-              <div style={ui.kpiLabel}>
-                TOTAL AR <InfoIcon text="Total AR = sum(invoice totals) across due buckets (as of today)." />
-              </div>
-              <div style={ui.kpiValue}>{money(totalAR)}</div>
-              <div style={ui.kpiMeta}>
-                15+ days risk: <strong>{pct(riskPct)}</strong>
+          <div style={{ padding: 16 }}>
+            {/* FINANCIAL KPIs GROUP */}
+            <div style={ui.kpiGroup}>
+              <div style={ui.kpiGroupTitle}>💰 Financial Metrics</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                <div style={ui.kpiCard}>
+                  <div style={ui.kpiLabel}>TOTAL AR</div>
+                  <div style={ui.kpiValue}>{money(totalAR)}</div>
+                  <div style={ui.kpiMeta}>
+                    Total outstanding receivables
+                  </div>
+                </div>
+
+                <div style={ui.kpiCard}>
+                  <div style={ui.kpiLabel}>AR 15+ DAYS</div>
+                  <div style={ui.kpiValue}>{money(b15p)}</div>
+                  <div style={ui.kpiMeta}>
+                    {totalAR > 0 ? pct(b15p / totalAR) : "0%"} of total AR • Invoices overdue 15+ days
+                  </div>
+                </div>
+
+                <div style={ui.kpiCard}>
+                  <div style={ui.kpiLabel}>QUOTE LEAK</div>
+                  <div style={ui.kpiValue}>{money(leakDollars)}</div>
+                  <div style={ui.kpiMeta}>
+                    {leakCount} quotes not won • Sent in range, not converted
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="span3" style={{ ...ui.kpiCard, gridColumn: "span 3" }}>
-              <div style={ui.kpiLabel}>
-                DAYS BOOKED AHEAD <InfoIcon text="Days booked ahead = days until the latest scheduled job start (target 7–14)." />
-              </div>
-              <div style={ui.kpiValue}>{daysBookedAhead}</div>
-              <div style={ui.kpiMeta}>
-                Target: <strong>{TARGET_LOW}–{TARGET_HIGH}</strong>
-              </div>
-            </div>
+            {/* OPERATIONS KPIs GROUP */}
+            <div style={ui.kpiGroup}>
+              <div style={ui.kpiGroupTitle}>📊 Operations Metrics</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                <div style={ui.kpiCard}>
+                  <div style={ui.kpiLabel}>DAYS BOOKED AHEAD</div>
+                  <div style={ui.kpiValue}>{daysBookedAhead}</div>
+                  <div style={ui.kpiMeta}>
+                    Target: {TARGET_LOW}-{TARGET_HIGH} days • Days until latest scheduled job
+                  </div>
+                </div>
 
-            <div className="span3" style={{ ...ui.kpiCard, gridColumn: "span 3" }}>
-              <div style={ui.kpiLabel}>
-                UNSCHEDULED JOBS <InfoIcon text="Unscheduled jobs = count of jobs with no scheduled_start_at." />
-              </div>
-              <div style={ui.kpiValue}>{unscheduledCount}</div>
-              <div style={ui.kpiMeta}>Backlog you can schedule quickly.</div>
-            </div>
+                <div style={ui.kpiCard}>
+                  <div style={ui.kpiLabel}>UNSCHEDULED JOBS</div>
+                  <div style={ui.kpiValue}>{unscheduledCount}</div>
+                  <div style={ui.kpiMeta}>
+                    Jobs with no scheduled start • Available backlog
+                  </div>
+                </div>
 
-            <div className="span3" style={{ ...ui.kpiCard, gridColumn: "span 3" }}>
-              <div style={ui.kpiLabel}>
-                QUOTE LEAK <InfoIcon text="Quote leak = sum of quote_total_cents for sent quotes in range not won/converted." />
-              </div>
-              <div style={ui.kpiValue}>{money(leakDollars)}</div>
-              <div style={ui.kpiMeta}>
-                {leakCount} quote(s) at risk • <strong>{qSev.toUpperCase()}</strong>
-              </div>
-            </div>
-
-            <div className="span3" style={{ ...ui.kpiCard, gridColumn: "span 3" }}>
-              <div style={ui.kpiLabel}>
-                JOBS COMPLETED <InfoIcon text="Completed jobs = count of jobs with completed_at inside selected range." />
-              </div>
-              <div style={ui.kpiValue}>{completedCount}</div>
-              <div style={ui.kpiMeta}>Throughput signal.</div>
-            </div>
-
-            <div className="span3" style={{ ...ui.kpiCard, gridColumn: "span 3" }}>
-              <div style={ui.kpiLabel}>
-                REVENUE / JOB <InfoIcon text="Revenue/job = avg(job_revenue_cents) over completed jobs in range." />
-              </div>
-              <div style={ui.kpiValue}>{money(revPerJob)}</div>
-              <div style={ui.kpiMeta}>Uses job revenue sync.</div>
-            </div>
-
-            <div className="span3" style={{ ...ui.kpiCard, gridColumn: "span 3" }}>
-              <div style={ui.kpiLabel}>
-                MARGIN / JOB <InfoIcon text="Margin/job = avg(job_profit_cents) over completed jobs in range." />
-              </div>
-              <div style={ui.kpiValue}>{money(marginPerJob)}</div>
-              <div style={ui.kpiMeta}>Uses profitability sync.</div>
-            </div>
-
-            <div className="span3" style={{ ...ui.kpiCard, gridColumn: "span 3" }}>
-              <div style={ui.kpiLabel}>
-                PROFIT COVERAGE <InfoIcon text="Coverage = % of jobs with job_profit_cents populated (all jobs vs completed jobs in range)." />
-              </div>
-              <div style={ui.kpiValue}>{pct(profitCoverageAll)}</div>
-              <div style={ui.kpiMeta}>
-                In-range: <strong>{pct(profitCoverageRange)}</strong>
+                <div style={ui.kpiCard}>
+                  <div style={ui.kpiLabel}>CHANGES REQUESTED</div>
+                  <div style={ui.kpiValue}>{changesRequestedCount}</div>
+                  <div style={ui.kpiMeta}>
+                    Quotes waiting for revisions • Respond quickly to close
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -926,34 +1067,41 @@ export default async function DashboardPage({
                   <div>
                     <div style={ui.sectionTitle}>Trends</div>
                     <div style={ui.sectionSub}>
-                      Bucketed by your selection (Daily/Weekly/Monthly/Quarterly). Hover points/bars for exact values.
+                      Historical view over time. Bucketed by your selection (Daily/Weekly/Monthly/Quarterly).
                     </div>
                   </div>
-                  <span style={ui.badge("rgba(90,166,255,0.16)")}>
-                    View: {g === "day" ? "Daily" : g === "week" ? "Weekly" : g === "month" ? "Monthly" : "Quarterly"} •{" "}
-                    {chartType === "line" ? "Line" : "Bars"}
-                  </span>
+                  <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                    <span style={ui.badge("rgba(124,92,255,0.16)")}>
+                      Range: {toISODateOnlyUTC(start)} → {toISODateOnlyUTC(end)}
+                    </span>
+                    <span style={ui.badge("rgba(90,166,255,0.16)")}>
+                      {g === "day" ? "Daily" : g === "week" ? "Weekly" : g === "month" ? "Monthly" : "Quarterly"} •{" "}
+                      {chartType === "line" ? "Line" : "Bars"}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ padding: "0 16px 16px" }}>
+                  <Controls />
                 </div>
 
                 <div style={ui.grid}>
                   <div className="span4" style={{ gridColumn: "span 4" }}>
                     <SparkLine
                       title="Quote leak"
-                      subtitle="Sum of leaked quote totals"
+                      subtitle="Cumulative total of leaked quotes (as-of each point)"
                       points={points.leak}
-                      formatY={(v) => money(v)}
-                      tooltip="Each bucket = sum(quote_total_cents) for leaked quotes with sent_at inside that bucket."
+                      formatY={(v) => moneyForChart(v)}
                       chartType={chartType}
                     />
                   </div>
 
                   <div className="span4" style={{ gridColumn: "span 4" }}>
                     <SparkLine
-                      title="AR 30+"
-                      subtitle="Overdue > 30 days (as-of each bucket end)"
-                      points={points.ar30}
-                      formatY={(v) => money(v)}
-                      tooltip="Each bucket = AR 30+ balance computed as of bucket end."
+                      title="AR 15+"
+                      subtitle="Cumulative AR overdue 15+ days (as-of each point)"
+                      points={points.ar15}
+                      formatY={(v) => moneyForChart(v)}
                       chartType={chartType}
                     />
                   </div>
@@ -961,63 +1109,11 @@ export default async function DashboardPage({
                   <div className="span4" style={{ gridColumn: "span 4" }}>
                     <SparkLine
                       title="Unscheduled jobs"
-                      subtitle="Backlog count (as-of bucket end)"
+                      subtitle="Cumulative backlog count (as-of each point)"
                       points={points.unsched}
                       formatY={(v) => `${Math.round(v)}`}
-                      tooltip="Each bucket = count of unscheduled jobs as of bucket end."
                       chartType={chartType}
                     />
-                  </div>
-
-                  <div className="span6" style={{ gridColumn: "span 6" }}>
-                    <SparkLine
-                      title="Margin / job"
-                      subtitle="Avg profit for completed jobs per bucket"
-                      points={points.margin}
-                      formatY={(v) => money(v)}
-                      tooltip="Each bucket = average job_profit_cents for jobs completed within that bucket."
-                      chartType={chartType}
-                    />
-                  </div>
-
-                  {/* Rebuilt Insight Card (replaces Profitability Sync box) */}
-                  <div className="span6" style={{ gridColumn: "span 6" }}>
-                    <div style={{ ...ui.card, height: "100%" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
-                        <div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 1000, letterSpacing: -0.2 }}>
-                            Profit insight{" "}
-                            <InfoIcon text="This section helps you trust (or distrust) margin signals by showing coverage. Coverage is % of jobs with job_profit_cents populated." />
-                            <span style={ui.badge(sevBg(coverageLabel.sev))}>{coverageLabel.label}</span>
-                          </div>
-                          <div style={{ marginTop: 6, fontSize: 12, color: theme.sub, lineHeight: 1.55 }}>
-                            {coverageWhatToDo}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-                        <div style={{ border: `1px solid ${theme.border}`, borderRadius: 14, padding: 12, background: "rgba(255,255,255,0.04)" }}>
-                          <div style={{ fontSize: 11, color: theme.mut, fontWeight: 950 }}>Coverage (all jobs)</div>
-                          <div style={{ marginTop: 6, fontSize: 18, fontWeight: 1000 }}>{pct(profitCoverageAll)}</div>
-                        </div>
-
-                        <div style={{ border: `1px solid ${theme.border}`, borderRadius: 14, padding: 12, background: "rgba(255,255,255,0.04)" }}>
-                          <div style={{ fontSize: 11, color: theme.mut, fontWeight: 950 }}>Coverage (in range)</div>
-                          <div style={{ marginTop: 6, fontSize: 18, fontWeight: 1000 }}>{pct(profitCoverageRange)}</div>
-                        </div>
-
-                        <div style={{ border: `1px solid ${theme.border}`, borderRadius: 14, padding: 12, background: "rgba(255,255,255,0.04)" }}>
-                          <div style={{ fontSize: 11, color: theme.mut, fontWeight: 950 }}>Margin / job (range)</div>
-                          <div style={{ marginTop: 6, fontSize: 18, fontWeight: 1000 }}>{money(marginPerJob)}</div>
-                        </div>
-                      </div>
-
-                      <div style={{ marginTop: 12, fontSize: 12, color: theme.mut, lineHeight: 1.55 }}>
-                        <strong style={{ color: theme.text }}>How to use this:</strong> If Margin/Job trends down while Revenue/Job stays flat, it usually points to
-                        labor creep, route inefficiency, or discounting.
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -1027,40 +1123,133 @@ export default async function DashboardPage({
                 <div style={ui.section}>
                   <div>
                     <div style={ui.sectionTitle}>Action Lists</div>
-                    <div style={ui.sectionSub}>Two lists that drive weekly wins: schedule backlog + close sales leaks.</div>
+                    <div style={ui.sectionSub}>Lists that drive weekly wins: collect AR, schedule backlog, close sales leaks.</div>
                   </div>
 
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <a href={toggleUnscheduledHref} style={ui.btn} title="Filter unscheduled jobs to oldest items">
                       {minDays >= 7 ? "Show all unscheduled" : "Show 7+ day unscheduled"}
                     </a>
-
-                    <a href={`/api/export/leaking-quotes?connection_id=${connectionId}&limit=200`} style={ui.btnPrimary}>
-                      Export leaking quotes CSV →
-                    </a>
-                    <a href={`/api/export/unscheduled-jobs?connection_id=${connectionId}&min_days=${minDays}&limit=200`} style={ui.btnPrimary}>
-                      Export unscheduled jobs CSV →
-                    </a>
                   </div>
                 </div>
 
                 <div style={{ padding: 16 }}>
+                  {/* Aged AR */}
+                  <div style={{ ...ui.card, marginBottom: 12 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+                      <div>
+                        <div style={{ fontWeight: 1000, letterSpacing: -0.2 }}>Aged AR (15+ Days)</div>
+                        <div style={{ marginTop: 3, fontSize: 12, color: theme.mut }}>
+                          Invoices overdue 15+ days - oldest first
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <span style={ui.badge("rgba(239,68,68,0.16)")}>Collections</span>
+                        {agedARInvoices.length > 0 && (
+                          <a
+                            href={generateCSV(
+                              agedARInvoices.map((inv) => ({
+                                "Days Overdue": inv.days_overdue,
+                                "Invoice #": inv.invoice_number,
+                                "Amount": (inv.amount_cents / 100).toFixed(2),
+                                "Due Date": inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "",
+                                "Jobber URL": inv.jobber_url !== "#" ? inv.jobber_url : "",
+                              })),
+                              "aged-ar-15plus"
+                            )}
+                            download={`aged-ar-15plus-${new Date().toISOString().split("T")[0]}.csv`}
+                            style={ui.btnPrimary}
+                          >
+                            Export CSV →
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    {agedARInvoices.length === 0 ? (
+                      <div style={{ fontSize: 12, color: theme.sub }}>No aged AR 15+ days! 🎉</div>
+                    ) : (
+                      <table style={ui.table}>
+                        <colgroup>
+                          <col style={{ width: colW.age }} />
+                          <col style={{ width: colW.title }} />
+                          <col style={{ width: colW.amount }} />
+                          <col style={{ width: colW.date }} />
+                          <col style={{ width: colW.open }} />
+                        </colgroup>
+                        <thead>
+                          <tr>
+                            <th style={ui.th}>Days Overdue</th>
+                            <th style={ui.th}>Invoice #</th>
+                            <th style={ui.th}>Amount</th>
+                            <th style={ui.th}>Due Date</th>
+                            <th style={ui.th}>Open</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {agedARInvoices
+                            .sort((a, b) => b.days_overdue - a.days_overdue)
+                            .map((inv, idx) => (
+                              <tr key={idx}>
+                                <td style={ui.td}>{inv.days_overdue}</td>
+                                <td style={ui.td}>
+                                  <span style={{ fontWeight: 950 }}>{inv.invoice_number}</span>
+                                </td>
+                                <td style={ui.td}>{money(inv.amount_cents)}</td>
+                                <td style={ui.td}>
+                                  {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "—"}
+                                </td>
+                                <td style={ui.td}>
+                                  {inv.jobber_url && inv.jobber_url !== "#" ? (
+                                    <a href={inv.jobber_url} target="_blank" rel="noreferrer" style={ui.btn}>
+                                      Open in Jobber →
+                                    </a>
+                                  ) : (
+                                    <span style={{ fontSize: 12, color: theme.mut }}>—</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+
                   {/* Unscheduled Jobs */}
                   <div style={ui.card}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
                       <div>
                         <div style={{ fontWeight: 1000, letterSpacing: -0.2 }}>Top Unscheduled Jobs</div>
                         <div style={{ marginTop: 3, fontSize: 12, color: theme.mut }}>
                           Oldest first. Shows Job # and Title.
                         </div>
                       </div>
-                      <span style={ui.badge("rgba(90,166,255,0.16)")}>Scheduling</span>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <span style={ui.badge("rgba(90,166,255,0.16)")}>Scheduling</span>
+                        {unscheduledRows.length > 0 && (
+                          <a
+                            href={generateCSV(
+                              unscheduledRows.map((r: any) => ({
+                                "Age (days)": ageDays(r.created_at_jobber),
+                                "Job #": r.job_number ? `#${r.job_number}` : "",
+                                "Job Title": r.job_title || "Untitled job",
+                                "Created": r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "",
+                                "Jobber URL": r.jobber_url || "",
+                              })),
+                              "unscheduled-jobs"
+                            )}
+                            download={`unscheduled-jobs-${new Date().toISOString().split("T")[0]}.csv`}
+                            style={ui.btnPrimary}
+                          >
+                            Export CSV →
+                          </a>
+                        )}
+                      </div>
                     </div>
 
-                    <div style={{ marginTop: 12 }}>
-                      {unscheduledRows.length === 0 ? (
-                        <div style={{ fontSize: 12, color: theme.sub }}>No unscheduled jobs found 🎉</div>
-                      ) : (
+                    {unscheduledRows.length === 0 ? (
+                      <div style={{ fontSize: 12, color: theme.sub }}>No unscheduled jobs found 🎉</div>
+                    ) : (
                         <table style={ui.table}>
                           <colgroup>
                             <col style={{ width: colW.age }} />
@@ -1108,26 +1297,53 @@ export default async function DashboardPage({
                           </tbody>
                         </table>
                       )}
-                    </div>
                   </div>
 
                   {/* Leaking Quotes */}
                   <div style={{ ...ui.card, marginTop: 12 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
                       <div>
                         <div style={{ fontWeight: 1000, letterSpacing: -0.2 }}>Top Leaking Quotes</div>
                         <div style={{ marginTop: 3, fontSize: 12, color: theme.mut }}>
-                          Quotes sent in range that are not won/converted. Highest value first.
+                          Quotes sent that are not won/converted. Highest value first.
                         </div>
                       </div>
-                      <span style={ui.badge("rgba(124,92,255,0.16)")}>Sales follow-up</span>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <span style={ui.badge("rgba(124,92,255,0.16)")}>Sales follow-up</span>
+                        {leakCandidates.length > 0 && (
+                          <a
+                            href={generateCSV(
+                              leakCandidates
+                                .slice()
+                                .sort((a: any, b: any) => Number(b.quote_total_cents ?? 0) - Number(a.quote_total_cents ?? 0))
+                                .slice(0, 10)
+                                .map((q: any) => {
+                                  const sent = safeDate(q.sent_at);
+                                  const age = sent ? Math.max(0, Math.round((Date.now() - sent.getTime()) / 86400000)) : 0;
+                                  return {
+                                    "Age (days)": age,
+                                    "Quote #": q.quote_number || "",
+                                    "Quote Title": q.quote_title || "Untitled quote",
+                                    "Sent": sent ? sent.toLocaleDateString() : "",
+                                    "Total": ((Number(q.quote_total_cents ?? 0)) / 100).toFixed(2),
+                                    "Jobber URL": q.quote_url || "",
+                                  };
+                                }),
+                              "leaking-quotes"
+                            )}
+                            download={`leaking-quotes-${new Date().toISOString().split("T")[0]}.csv`}
+                            style={ui.btnPrimary}
+                          >
+                            Export CSV →
+                          </a>
+                        )}
+                      </div>
                     </div>
 
-                    <div style={{ marginTop: 12 }}>
-                      {leakCandidates.length === 0 ? (
-                        <div style={{ fontSize: 12, color: theme.sub }}>No leaking quotes in this range ✅</div>
-                      ) : (
-                        <table style={ui.table}>
+                    {leakCandidates.length === 0 ? (
+                      <div style={{ fontSize: 12, color: theme.sub }}>No leaking quotes ✅</div>
+                    ) : (
+                      <table style={ui.table}>
                           <colgroup>
                             <col style={{ width: colW.age }} />
                             <col style={{ width: colW.title }} />
@@ -1180,7 +1396,6 @@ export default async function DashboardPage({
                           </tbody>
                         </table>
                       )}
-                    </div>
                   </div>
                 </div>
               </div>
