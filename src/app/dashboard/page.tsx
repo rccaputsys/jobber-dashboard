@@ -409,12 +409,13 @@ const ui = {
   table: { width: "100%", borderCollapse: "collapse", fontSize: 13, tableLayout: "fixed" } as React.CSSProperties,
   th: {
     textAlign: "left",
-    padding: "12px 10px",
+    padding: "8px 10px",
     color: theme.mut,
-    fontWeight: 1000,
+    fontWeight: 700,
     borderBottom: "1px solid rgba(255,255,255,0.10)",
-    fontSize: 12,
-    letterSpacing: 0.2,
+    fontSize: 11,
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
     userSelect: "none",
     whiteSpace: "nowrap",
   } as React.CSSProperties,
@@ -726,16 +727,17 @@ export default async function DashboardPage({
     })
     .map((inv) => ({
       invoice_number: inv.invoice_number || "—",
+      client_name: inv.client_name || "Unknown client",
       amount_cents: inv.total_amount_cents || 0,
       days_overdue: Math.max(0, Math.round((Date.now() - (safeDate(inv.due_at)?.getTime() || Date.now())) / 86400000)),
       due_date: inv.due_at,
-      jobber_url: inv.jobber_url || "#",
+      jobber_url: inv.jobber_url || null,
     }));
 
   // Unscheduled list (table)
   const { data: unsched } = await supabaseAdmin
     .from("fact_jobs")
-    .select("job_number,job_title,created_at_jobber,jobber_url")
+    .select("job_number,job_title,created_at_jobber,jobber_url,total_amount_cents")
     .eq("connection_id", connectionId)
     .is("scheduled_start_at", null)
     .order("created_at_jobber", { ascending: true })
@@ -1469,11 +1471,12 @@ export default async function DashboardPage({
                           <a
                             href={generateCSV(
                               agedARInvoices.map((inv) => ({
-                                "Days Overdue": inv.days_overdue,
+                                "Age (days)": inv.days_overdue,
                                 "Invoice #": inv.invoice_number,
-                                "Amount": (inv.amount_cents / 100).toFixed(2),
+                                "Client": inv.client_name,
                                 "Due Date": inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "",
-                                "Jobber URL": inv.jobber_url !== "#" ? inv.jobber_url : "",
+                                "Amount": (inv.amount_cents / 100).toFixed(2),
+                                "Jobber URL": inv.jobber_url || "",
                               })),
                               "aged-ar-15plus"
                             )}
@@ -1493,16 +1496,16 @@ export default async function DashboardPage({
                         <colgroup>
                           <col style={{ width: colW.age }} />
                           <col style={{ width: colW.title }} />
-                          <col style={{ width: colW.amount }} />
                           <col style={{ width: colW.date }} />
+                          <col style={{ width: colW.amount }} />
                           <col style={{ width: colW.open }} />
                         </colgroup>
                         <thead>
                           <tr>
-                            <th style={ui.th}>Days Overdue</th>
-                            <th style={ui.th}>Invoice #</th>
-                            <th style={ui.th}>Amount</th>
+                            <th style={ui.th}>Age</th>
+                            <th style={ui.th}>Invoice # + Client</th>
                             <th style={ui.th}>Due Date</th>
+                            <th style={ui.th}>Amount</th>
                             <th style={ui.th}>Open</th>
                           </tr>
                         </thead>
@@ -1511,16 +1514,19 @@ export default async function DashboardPage({
                             .sort((a, b) => b.days_overdue - a.days_overdue)
                             .map((inv, idx) => (
                               <tr key={idx}>
-                                <td style={ui.td}>{inv.days_overdue}</td>
+                                <td style={ui.td}>{inv.days_overdue}d</td>
                                 <td style={ui.td}>
-                                  <span style={{ fontWeight: 950 }}>{inv.invoice_number}</span>
+                                  <div style={{ fontWeight: 950 }}>
+                                    <span style={{ color: theme.sub }}>#{inv.invoice_number}</span>{" "}
+                                    <span style={{ color: theme.text }}>• {inv.client_name}</span>
+                                  </div>
                                 </td>
-                                <td style={ui.td}>{money(inv.amount_cents)}</td>
                                 <td style={ui.td}>
                                   {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "—"}
                                 </td>
+                                <td style={ui.td}>{money(inv.amount_cents)}</td>
                                 <td style={ui.td}>
-                                  {inv.jobber_url && inv.jobber_url !== "#" ? (
+                                  {inv.jobber_url ? (
                                     <a href={inv.jobber_url} target="_blank" rel="noreferrer" style={ui.btn}>
                                       Open in Jobber →
                                     </a>
@@ -1557,6 +1563,7 @@ export default async function DashboardPage({
                                 "Job #": r.job_number ? `#${r.job_number}` : "",
                                 "Job Title": r.job_title || "Untitled job",
                                 "Created": r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "",
+                                "Amount": r.total_amount_cents ? (r.total_amount_cents / 100).toFixed(2) : "",
                                 "Jobber URL": r.jobber_url || "",
                               })),
                               "unscheduled-jobs"
@@ -1578,13 +1585,15 @@ export default async function DashboardPage({
                             <col style={{ width: colW.age }} />
                             <col style={{ width: colW.title }} />
                             <col style={{ width: colW.date }} />
+                            <col style={{ width: colW.amount }} />
                             <col style={{ width: colW.open }} />
                           </colgroup>
                           <thead>
                             <tr>
-                              <th style={ui.th}>Age (days)</th>
+                              <th style={ui.th}>Age</th>
                               <th style={ui.th}>Job # + Title</th>
                               <th style={ui.th}>Created</th>
+                              <th style={ui.th}>Amount</th>
                               <th style={ui.th}>Open</th>
                             </tr>
                           </thead>
@@ -1595,7 +1604,7 @@ export default async function DashboardPage({
                               const title = r.job_title ? r.job_title : "Untitled job";
                               return (
                                 <tr key={`${jobNum}-${idx}`}>
-                                  <td style={ui.td}>{age}</td>
+                                  <td style={ui.td}>{age}d</td>
                                   <td style={ui.td}>
                                     <div style={{ fontWeight: 950 }}>
                                       <span style={{ color: theme.sub }}>{jobNum}</span>{" "}
@@ -1604,6 +1613,9 @@ export default async function DashboardPage({
                                   </td>
                                   <td style={ui.td}>
                                     {r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "—"}
+                                  </td>
+                                  <td style={ui.td}>
+                                    {r.total_amount_cents ? money(r.total_amount_cents) : "—"}
                                   </td>
                                   <td style={ui.td}>
                                     {r.jobber_url ? (
@@ -1676,10 +1688,10 @@ export default async function DashboardPage({
                           </colgroup>
                           <thead>
                             <tr>
-                              <th style={ui.th}>Age (days)</th>
+                              <th style={ui.th}>Age</th>
                               <th style={ui.th}>Quote # + Title</th>
                               <th style={ui.th}>Sent</th>
-                              <th style={ui.th}>Total</th>
+                              <th style={ui.th}>Amount</th>
                               <th style={ui.th}>Open</th>
                             </tr>
                           </thead>
@@ -1695,7 +1707,7 @@ export default async function DashboardPage({
                                 const title = q.quote_title ? q.quote_title : "Untitled quote";
                                 return (
                                   <tr key={`${quoteNum}-${idx}`}>
-                                    <td style={ui.td}>{age}</td>
+                                    <td style={ui.td}>{age}d</td>
                                     <td style={ui.td}>
                                       <div style={{ fontWeight: 950 }}>
                                         <span style={{ color: theme.sub }}>{quoteNum}</span>{" "}
