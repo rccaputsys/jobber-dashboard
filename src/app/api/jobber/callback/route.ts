@@ -74,14 +74,14 @@ async function jobberGraphQL<T>(
 export async function GET(req: Request) {
   await ensureUserId();
   const userId = await getUserId();
-  if (!userId) return NextResponse.redirect(new URL("/?err=no_user", req.url));
+  if (!userId) return NextResponse.redirect(new URL("/jobber?err=no_user", req.url));
 
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
 
   if (!code || !state) {
-    return NextResponse.redirect(new URL("/?err=missing_code_state", req.url));
+    return NextResponse.redirect(new URL("/jobber?err=missing_code_state", req.url));
   }
 
   await decryptText(state);

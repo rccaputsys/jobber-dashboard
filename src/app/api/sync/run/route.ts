@@ -209,5 +209,5 @@ export async function GET(req: Request) {
 
   if (hbErr) throw new Error(`jobber_connections update failed: ${hbErr.message}`);
 
-  return NextResponse.redirect(new URL(`/dashboard?connection_id=${connectionId}`, req.url));
+  return NextResponse.redirect(new URL(`/jobber/dashboard?connection_id=${connectionId}`, req.url));
 }
