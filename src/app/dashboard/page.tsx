@@ -429,6 +429,7 @@ function SparkLine(props: {
   points: { xLabel: string; value: number; tooltip: string }[];
   formatY: (v: number) => string;
   chartType: ChartType;
+  color?: string;
 }) {
   const vbW = 360;
   const vbH = 150;
@@ -437,6 +438,10 @@ function SparkLine(props: {
   const padR = 28; // Increased from 18 to prevent right-side cutoff
   const padT = 24; // Increased from 18 to prevent cutoff at top
   const padB = 36;
+
+  // Chart colors - default to blue if not specified
+  const chartColor = props.color || "#5aa6ff";
+  const glowColor = props.color ? `${props.color}28` : "rgba(90,166,255,0.16)"; // 28 = 16% opacity in hex
 
   const vals = props.points.map((p) => p.value);
   const min = vals.length ? Math.min(...vals) : 0;
@@ -478,7 +483,7 @@ function SparkLine(props: {
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 11, color: theme.mut, fontWeight: 950 }}>Max</div>
-          <div style={{ fontWeight: 1000 }}>{props.formatY(yTop)}</div>
+          <div style={{ fontWeight: 1000, color: chartColor }}>{props.formatY(yTop)}</div>
         </div>
       </div>
 
@@ -500,11 +505,11 @@ function SparkLine(props: {
         <g clipPath={`url(#${clipId})`}>
           {props.chartType === "line" ? (
             <>
-              <path d={d} fill="none" stroke="rgba(90,166,255,0.16)" strokeWidth="10" strokeLinecap="round" />
-              <path d={d} fill="none" stroke="rgba(234,241,255,0.92)" strokeWidth="2.4" strokeLinecap="round" />
+              <path d={d} fill="none" stroke={glowColor} strokeWidth="10" strokeLinecap="round" />
+              <path d={d} fill="none" stroke={chartColor} strokeWidth="2.4" strokeLinecap="round" />
               {props.points.map((p, i) => (
                 <g key={i}>
-                  <circle cx={xOf(i)} cy={yOf(p.value)} r={3.4} fill="rgba(234,241,255,0.95)">
+                  <circle cx={xOf(i)} cy={yOf(p.value)} r={3.4} fill={chartColor}>
                     <title>{p.tooltip}</title>
                   </circle>
                   <circle cx={xOf(i)} cy={yOf(p.value)} r={10} fill="transparent">
@@ -520,7 +525,7 @@ function SparkLine(props: {
                 const y = yOf(p.value);
                 const h = vbH - padB - y;
                 return (
-                  <rect key={i} x={x} y={y} width={barW} height={Math.max(1, h)} rx={6} fill="rgba(234,241,255,0.80)">
+                  <rect key={i} x={x} y={y} width={barW} height={Math.max(1, h)} rx={6} fill={chartColor}>
                     <title>{p.tooltip}</title>
                   </rect>
                 );
@@ -1353,7 +1358,9 @@ export default async function DashboardPage({
 
                 <div style={ui.kpiCard}>
                   <div style={ui.kpiLabel}>AR 15+ DAYS</div>
-                  <div style={ui.kpiValue}>{money(b15p)}</div>
+                  <div style={{ ...ui.kpiValue, color: b15p > 0 ? (riskPct >= 15 ? "#ef4444" : "#f59e0b") : "#10b981" }}>
+                    {money(b15p)}
+                  </div>
                   <div style={ui.kpiMeta}>
                     {totalAR > 0 ? pct(b15p / totalAR) : "0%"} of total AR • Invoices overdue 15+ days
                   </div>
@@ -1361,7 +1368,9 @@ export default async function DashboardPage({
 
                 <div style={ui.kpiCard}>
                   <div style={ui.kpiLabel}>QUOTE LEAK</div>
-                  <div style={ui.kpiValue}>{money(leakDollars)}</div>
+                  <div style={{ ...ui.kpiValue, color: leakDollars > 0 ? "#ef4444" : "#10b981" }}>
+                    {money(leakDollars)}
+                  </div>
                   <div style={ui.kpiMeta}>
                     {leakCount} quotes not won • Sent in range, not converted
                   </div>
@@ -1375,7 +1384,14 @@ export default async function DashboardPage({
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
                 <div style={ui.kpiCard}>
                   <div style={ui.kpiLabel}>DAYS BOOKED AHEAD</div>
-                  <div style={ui.kpiValue}>{daysBookedAhead}</div>
+                  <div style={{ 
+                    ...ui.kpiValue, 
+                    color: daysBookedAhead < TARGET_LOW ? "#ef4444" : 
+                           daysBookedAhead > 21 ? "#ef4444" :
+                           daysBookedAhead > TARGET_HIGH ? "#f59e0b" : "#10b981" 
+                  }}>
+                    {daysBookedAhead}
+                  </div>
                   <div style={ui.kpiMeta}>
                     Target: {TARGET_LOW}-{TARGET_HIGH} days • Days until latest scheduled job
                   </div>
@@ -1383,7 +1399,13 @@ export default async function DashboardPage({
 
                 <div style={ui.kpiCard}>
                   <div style={ui.kpiLabel}>UNSCHEDULED JOBS</div>
-                  <div style={ui.kpiValue}>{unscheduledCount}</div>
+                  <div style={{ 
+                    ...ui.kpiValue, 
+                    color: unscheduledCount > 10 ? "#ef4444" : 
+                           unscheduledCount > 5 ? "#f59e0b" : "#10b981" 
+                  }}>
+                    {unscheduledCount}
+                  </div>
                   <div style={ui.kpiMeta}>
                     Jobs with no scheduled start • Available backlog
                   </div>
@@ -1391,7 +1413,13 @@ export default async function DashboardPage({
 
                 <div style={ui.kpiCard}>
                   <div style={ui.kpiLabel}>CHANGES REQUESTED</div>
-                  <div style={ui.kpiValue}>{changesRequestedCount}</div>
+                  <div style={{ 
+                    ...ui.kpiValue, 
+                    color: changesRequestedCount > 5 ? "#ef4444" : 
+                           changesRequestedCount > 2 ? "#f59e0b" : "#10b981" 
+                  }}>
+                    {changesRequestedCount}
+                  </div>
                   <div style={ui.kpiMeta}>
                     Quotes waiting for revisions • Respond quickly to close
                   </div>
@@ -1471,6 +1499,7 @@ export default async function DashboardPage({
                       points={points.leak}
                       formatY={(v) => moneyForChart(v)}
                       chartType={chartType}
+                      color="#ef4444"
                     />
                   </div>
 
@@ -1481,6 +1510,7 @@ export default async function DashboardPage({
                       points={points.ar15}
                       formatY={(v) => moneyForChart(v)}
                       chartType={chartType}
+                      color="#f59e0b"
                     />
                   </div>
 
@@ -1491,6 +1521,7 @@ export default async function DashboardPage({
                       points={points.unsched}
                       formatY={(v) => `${Math.round(v)}`}
                       chartType={chartType}
+                      color="#5aa6ff"
                     />
                   </div>
                 </div>
