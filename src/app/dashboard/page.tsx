@@ -1193,6 +1193,56 @@ export default async function DashboardPage({
             .span4 { grid-column: span 12 !important; }
             .span6 { grid-column: span 12 !important; }
           }
+          
+          /* ==========================================
+             MOBILE - ACTION LIST TABLES
+             ========================================== */
+          @media (max-width: 768px) {
+            /* Make tables horizontally scrollable */
+            table {
+              display: block;
+              overflow-x: auto;
+              -webkit-overflow-scrolling: touch;
+              white-space: nowrap;
+            }
+            
+            /* Ensure minimum column widths on mobile */
+            th, td {
+              min-width: 70px !important;
+              padding: 8px 6px !important;
+              font-size: 12px !important;
+            }
+            
+            /* Title column needs more space */
+            th:nth-child(2), td:nth-child(2) {
+              min-width: 140px !important;
+              white-space: normal !important;
+            }
+            
+            /* Shrink the Open button column */
+            th:last-child, td:last-child {
+              min-width: 90px !important;
+            }
+            
+            /* Smaller buttons on mobile */
+            td a {
+              padding: 6px 10px !important;
+              font-size: 11px !important;
+            }
+          }
+          
+          @media (max-width: 480px) {
+            /* Even smaller on phones */
+            th, td {
+              padding: 6px 4px !important;
+              font-size: 11px !important;
+            }
+            
+            /* Hide less important columns on very small screens */
+            th:nth-child(3), td:nth-child(3) {
+              display: none !important;
+            }
+          }
         `}</style>
 
       <div style={ui.container}>
@@ -1492,17 +1542,18 @@ export default async function DashboardPage({
                     {agedARInvoices.length === 0 ? (
                       <div style={{ fontSize: 12, color: theme.sub }}>No aged AR 15+ days! 🎉</div>
                     ) : (
-                      <table style={ui.table}>
-                        <colgroup>
-                          <col style={{ width: colW.age }} />
-                          <col style={{ width: colW.title }} />
-                          <col style={{ width: colW.date }} />
-                          <col style={{ width: colW.amount }} />
-                          <col style={{ width: colW.open }} />
-                        </colgroup>
-                        <thead>
-                          <tr>
-                            <th style={ui.th}>Age</th>
+                      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                        <table style={ui.table}>
+                          <colgroup>
+                            <col style={{ width: colW.age }} />
+                            <col style={{ width: colW.title }} />
+                            <col style={{ width: colW.date }} />
+                            <col style={{ width: colW.amount }} />
+                            <col style={{ width: colW.open }} />
+                          </colgroup>
+                          <thead>
+                            <tr>
+                              <th style={ui.th}>Age</th>
                             <th style={ui.th}>Invoice # + Client</th>
                             <th style={ui.th}>Due Date</th>
                             <th style={ui.th}>Amount</th>
@@ -1540,6 +1591,7 @@ export default async function DashboardPage({
                             ))}
                         </tbody>
                       </table>
+                      </div>
                     )}
                   </div>
 
@@ -1582,6 +1634,7 @@ export default async function DashboardPage({
                     {unscheduledRows.length === 0 ? (
                       <div style={{ fontSize: 12, color: theme.sub }}>No unscheduled jobs found 🎉</div>
                     ) : (
+                      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
                         <table style={ui.table}>
                           <colgroup>
                             <col style={{ width: colW.age }} />
@@ -1633,7 +1686,8 @@ export default async function DashboardPage({
                             })}
                           </tbody>
                         </table>
-                      )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Leaking Quotes */}
@@ -1680,7 +1734,8 @@ export default async function DashboardPage({
                     {leakCandidates.length === 0 ? (
                       <div style={{ fontSize: 12, color: theme.sub }}>No leaking quotes ✅</div>
                     ) : (
-                      <table style={ui.table}>
+                      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                        <table style={ui.table}>
                           <colgroup>
                             <col style={{ width: colW.age }} />
                             <col style={{ width: colW.title }} />
@@ -1732,7 +1787,8 @@ export default async function DashboardPage({
                               })}
                           </tbody>
                         </table>
-                      )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
