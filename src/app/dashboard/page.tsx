@@ -1254,7 +1254,7 @@ export default async function DashboardPage({
         <div style={ui.header}>
           <div style={ui.brand}>
             <div>
-              <div style={ui.h1}>{companyName} Command Center</div>
+              <div style={ui.h1}>{companyName} | OwnerView</div>
               <div style={ui.hSub}>
                 Last sync: <strong style={{ color: theme.text }}>{lastSyncPretty}</strong>
                 <span style={{ color: theme.mut }}> • {currencyCode}</span>

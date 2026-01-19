@@ -126,7 +126,7 @@ export default function Home() {
             }}
           >
             <div>
-              <div style={{ fontSize: 18, fontWeight: 800 }}>Your Company Command Center</div>
+              <div style={{ fontSize: 18, fontWeight: 800 }}>OwnerView Dashboard</div>
               <div style={{ fontSize: 12, color: "rgba(234,241,255,0.5)" }}>Last sync: 2 hours ago • USD</div>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -778,7 +778,7 @@ export default function Home() {
             fontSize: 13,
           }}
         >
-          <p>© 2025 Command Center for Jobber. All rights reserved.</p>
+          <p>© 2025 OwnerView. All rights reserved.</p>
           <p style={{ marginTop: 8 }}>
             <a href="/privacy" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none", marginRight: 16 }}>
               Privacy Policy
