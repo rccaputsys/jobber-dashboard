@@ -2,7 +2,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getValidAccessToken } from "@/lib/jobberAuth";
-import { jobberGraphQL } from "@/lib/jobberGraphQL";
 
 type JobNode = {
   id: string;
@@ -55,6 +54,32 @@ function dollarsToCents(n: number | null | undefined): number {
   return Math.round(n * 100);
 }
 
+// Custom GraphQL function that handles partial errors
+async function jobberGraphQLWithPartialErrors<T>(
+  accessToken: string,
+  query: string
+): Promise<{ data: T | null; errors: unknown[] }> {
+  const version = process.env.JOBBER_GRAPHQL_VERSION!;
+  
+  const res = await fetch(process.env.JOBBER_GRAPHQL_URL!, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+      "X-JOBBER-GRAPHQL-VERSION": version,
+    },
+    body: JSON.stringify({ query }),
+  });
+
+  const json = await res.json();
+  
+  // Return both data and errors - don't throw on partial errors
+  return {
+    data: json.data as T | null,
+    errors: json.errors || [],
+  };
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const connectionId = searchParams.get("connection_id");
@@ -64,8 +89,8 @@ export async function GET(req: Request) {
 
   const token = await getValidAccessToken(connectionId);
 
-  // Jobs - added total for job amount
-  const jobData = await jobberGraphQL<{ jobs: { nodes: JobNode[] } }>(
+  // Jobs
+  const jobResult = await jobberGraphQLWithPartialErrors<{ jobs: { nodes: (JobNode | null)[] } }>(
     token,
     `query {
       jobs(first: 100) {
@@ -85,8 +110,8 @@ export async function GET(req: Request) {
     }`
   );
 
-  // Invoices - added client { name } and subject
-  const invoiceData = await jobberGraphQL<{ invoices: { nodes: InvoiceNode[] } }>(
+  // Invoices
+  const invoiceResult = await jobberGraphQLWithPartialErrors<{ invoices: { nodes: (InvoiceNode | null)[] } }>(
     token,
     `query {
       invoices(first: 100) {
@@ -108,7 +133,7 @@ export async function GET(req: Request) {
   );
 
   // Quotes
-  const quoteData = await jobberGraphQL<{ quotes: { nodes: QuoteNode[] } }>(
+  const quoteResult = await jobberGraphQLWithPartialErrors<{ quotes: { nodes: (QuoteNode | null)[] } }>(
     token,
     `query {
       quotes(first: 200) {
@@ -127,8 +152,19 @@ export async function GET(req: Request) {
     }`
   );
 
-  // Upsert Jobs - added total_amount_cents
-  for (const j of jobData.jobs.nodes ?? []) {
+  // Filter out null nodes (hidden due to permissions)
+  const jobs = (jobResult.data?.jobs?.nodes ?? []).filter((j): j is JobNode => j !== null);
+  const invoices = (invoiceResult.data?.invoices?.nodes ?? []).filter((i): i is InvoiceNode => i !== null);
+  const quotes = (quoteResult.data?.quotes?.nodes ?? []).filter((q): q is QuoteNode => q !== null);
+
+  // Log any permission errors (optional)
+  const allErrors = [...jobResult.errors, ...invoiceResult.errors, ...quoteResult.errors];
+  if (allErrors.length > 0) {
+    console.warn("Jobber API partial errors (some items hidden due to permissions):", allErrors.length);
+  }
+
+  // Upsert Jobs
+  for (const j of jobs) {
     const { error } = await supabaseAdmin
       .from("fact_jobs")
       .upsert(
@@ -150,8 +186,8 @@ export async function GET(req: Request) {
     if (error) throw new Error(`fact_jobs upsert failed: ${error.message}`);
   }
 
-  // Upsert Invoices - added client_name and subject
-  for (const inv of invoiceData.invoices.nodes ?? []) {
+  // Upsert Invoices
+  for (const inv of invoices) {
     const { error } = await supabaseAdmin
       .from("fact_invoices")
       .upsert(
@@ -173,7 +209,7 @@ export async function GET(req: Request) {
   }
 
   // Upsert Quotes
-  for (const q of quoteData.quotes.nodes ?? []) {
+  for (const q of quotes) {
     const totalCents = dollarsToCents(q.amounts?.total ?? 0);
 
     const { error } = await supabaseAdmin
@@ -202,8 +238,8 @@ export async function GET(req: Request) {
     .from("jobber_connections")
     .update({
       last_sync_at: new Date().toISOString(),
-      last_sync_invoices: (invoiceData.invoices.nodes ?? []).length,
-      last_sync_quotes: (quoteData.quotes.nodes ?? []).length,
+      last_sync_invoices: invoices.length,
+      last_sync_quotes: quotes.length,
     })
     .eq("id", connectionId);
 
