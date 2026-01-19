@@ -727,7 +727,7 @@ export default async function DashboardPage({
     })
     .map((inv) => ({
       invoice_number: inv.invoice_number || "—",
-      client_name: inv.client_name || "Unknown client",
+      client_name: inv.client_name || "",
       amount_cents: inv.total_amount_cents || 0,
       days_overdue: Math.max(0, Math.round((Date.now() - (safeDate(inv.due_at)?.getTime() || Date.now())) / 86400000)),
       due_date: inv.due_at,
@@ -1473,7 +1473,7 @@ export default async function DashboardPage({
                               agedARInvoices.map((inv) => ({
                                 "Age (days)": inv.days_overdue,
                                 "Invoice #": inv.invoice_number,
-                                "Client": inv.client_name,
+                                "Client": inv.client_name || "",
                                 "Due Date": inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "",
                                 "Amount": (inv.amount_cents / 100).toFixed(2),
                                 "Jobber URL": inv.jobber_url || "",
@@ -1517,8 +1517,10 @@ export default async function DashboardPage({
                                 <td style={ui.td}>{inv.days_overdue}d</td>
                                 <td style={ui.td}>
                                   <div style={{ fontWeight: 950 }}>
-                                    <span style={{ color: theme.sub }}>#{inv.invoice_number}</span>{" "}
-                                    <span style={{ color: theme.text }}>• {inv.client_name}</span>
+                                    <span style={{ color: theme.sub }}>#{inv.invoice_number}</span>
+                                    {inv.client_name && (
+                                      <span style={{ color: theme.text }}> • {inv.client_name}</span>
+                                    )}
                                   </div>
                                 </td>
                                 <td style={ui.td}>

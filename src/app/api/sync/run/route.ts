@@ -14,6 +14,11 @@ type JobNode = {
   jobNumber?: number | null;
   jobberWebUri?: string | null;
   title?: string | null;
+  total?: number | null;
+};
+
+type InvoiceClient = {
+  name?: string | null;
 };
 
 type InvoiceNode = {
@@ -22,11 +27,14 @@ type InvoiceNode = {
   createdAt?: string | null;
   dueDate?: string | null;
   updatedAt?: string | null;
-  total?: number | null; // float
+  total?: number | null;
+  jobberWebUri?: string | null;
+  client?: InvoiceClient | null;
+  subject?: string | null;
 };
 
 type QuoteAmounts = {
-  total?: number | null; // float (Jobber frequently uses Float totals)
+  total?: number | null;
 };
 
 type QuoteNode = {
@@ -56,7 +64,7 @@ export async function GET(req: Request) {
 
   const token = await getValidAccessToken(connectionId);
 
-  // Jobs
+  // Jobs - added total for job amount
   const jobData = await jobberGraphQL<{ jobs: { nodes: JobNode[] } }>(
     token,
     `query {
@@ -71,12 +79,13 @@ export async function GET(req: Request) {
           jobNumber
           jobberWebUri
           title
+          total
         }
       }
     }`
   );
 
-  // Invoices
+  // Invoices - added client { name } and subject
   const invoiceData = await jobberGraphQL<{ invoices: { nodes: InvoiceNode[] } }>(
     token,
     `query {
@@ -88,12 +97,17 @@ export async function GET(req: Request) {
           dueDate
           updatedAt
           total
+          jobberWebUri
+          subject
+          client {
+            name
+          }
         }
       }
     }`
   );
 
-  // Quotes (REAL fields: quoteStatus, jobberWebUri, amounts, title)
+  // Quotes
   const quoteData = await jobberGraphQL<{ quotes: { nodes: QuoteNode[] } }>(
     token,
     `query {
@@ -113,7 +127,7 @@ export async function GET(req: Request) {
     }`
   );
 
-  // Upsert Jobs
+  // Upsert Jobs - added total_amount_cents
   for (const j of jobData.jobs.nodes ?? []) {
     const { error } = await supabaseAdmin
       .from("fact_jobs")
@@ -129,13 +143,14 @@ export async function GET(req: Request) {
           scheduled_end_at: j.endAt ?? null,
           created_at_jobber: j.createdAt ?? null,
           updated_at_jobber: j.updatedAt ?? null,
+          total_amount_cents: dollarsToCents(j.total),
         },
         { onConflict: "connection_id,jobber_job_id" }
       );
     if (error) throw new Error(`fact_jobs upsert failed: ${error.message}`);
   }
 
-  // Upsert Invoices
+  // Upsert Invoices - added client_name and subject
   for (const inv of invoiceData.invoices.nodes ?? []) {
     const { error } = await supabaseAdmin
       .from("fact_invoices")
@@ -148,13 +163,16 @@ export async function GET(req: Request) {
           due_at: inv.dueDate ?? null,
           updated_at_jobber: inv.updatedAt ?? null,
           total_amount_cents: dollarsToCents(inv.total),
+          jobber_url: inv.jobberWebUri ?? null,
+          client_name: inv.client?.name ?? null,
+          subject: inv.subject ?? null,
         },
         { onConflict: "connection_id,jobber_invoice_id" }
       );
     if (error) throw new Error(`fact_invoices upsert failed: ${error.message}`);
   }
 
-  // Upsert Quotes (REAL quote leak inputs)
+  // Upsert Quotes
   for (const q of quoteData.quotes.nodes ?? []) {
     const totalCents = dollarsToCents(q.amounts?.total ?? 0);
 
