@@ -731,7 +731,7 @@ export default async function DashboardPage({
       amount_cents: inv.total_amount_cents || 0,
       days_overdue: Math.max(0, Math.round((Date.now() - (safeDate(inv.due_at)?.getTime() || Date.now())) / 86400000)),
       due_date: inv.due_at,
-      jobber_url: inv.jobber_url || null,
+      jobber_url: inv.jobber_url || (inv.jobber_invoice_id ? `https://secure.getjobber.com/invoices/${inv.jobber_invoice_id}` : null),
     }));
 
   // Unscheduled list (table)
