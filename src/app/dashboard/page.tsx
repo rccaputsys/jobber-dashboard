@@ -2,6 +2,8 @@
 import React from "react";
 import { Controls } from "./controls";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { SyncButton } from "./SyncButton";
+import { ThemeToggle } from "./ThemeToggle";
 
 /* --------------------------------- helpers --------------------------------- */
 type Granularity = "day" | "week" | "month" | "quarter";
@@ -60,6 +62,24 @@ function addDaysUTC(d: Date, days: number) {
 }
 function startOfDayUTC(d: Date) {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0));
+}
+function formatSyncTime(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffHr = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffHr / 24);
+  
+  // Use coarse-grained time to avoid hydration mismatches
+  if (diffHr < 1) return "Less than 1 hour ago";
+  if (diffHr < 24) return `${diffHr} hour${diffHr === 1 ? "" : "s"} ago`;
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) {
+    const weeks = Math.floor(diffDays / 7);
+    return `${weeks} week${weeks === 1 ? "" : "s"} ago`;
+  }
+  // For older dates, just show the date
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 function startOfWeekUTC(d: Date) {
   const x = startOfDayUTC(d);
@@ -398,7 +418,7 @@ const ui = {
     userSelect: "none",
     whiteSpace: "nowrap",
   } as React.CSSProperties,
-  td: { padding: "12px 10px", borderBottom: "1px solid rgba(255,255,255,0.07)", verticalAlign: "top" } as React.CSSProperties,
+  td: { padding: "8px 10px", borderBottom: "1px solid rgba(255,255,255,0.07)", verticalAlign: "middle" } as React.CSSProperties,
 };
 
 /* ------------------------------ Mini Charts ------------------------------ */
@@ -574,17 +594,16 @@ export default async function DashboardPage({
   // Connection summary
   const { data: conn } = await supabaseAdmin
     .from("jobber_connections")
-    .select("last_sync_at,trial_started_at,trial_ends_at,billing_status,currency_code,company_name,company_logo_url")
+    .select("last_sync_at,trial_started_at,trial_ends_at,billing_status,currency_code,company_name,jobber_account_name")
     .eq("id", connectionId)
     .maybeSingle();
 
   const currencyCode = (conn?.currency_code || "USD").toUpperCase();
   const money = moneyFactory(currencyCode);
   
-  const companyName = conn?.company_name || "Your Company";
-  const companyLogoUrl = conn?.company_logo_url || null;
+  const companyName = conn?.jobber_account_name || conn?.company_name || "Your Company";
 
-  const lastSyncPretty = conn?.last_sync_at ? new Date(conn.last_sync_at).toLocaleString() : "Not synced yet";
+  const lastSyncPretty = conn?.last_sync_at ? formatSyncTime(new Date(conn.last_sync_at)) : "Not synced yet";
   const lastSyncAge = conn?.last_sync_at ? Math.max(0, daysBetweenUTC(todayUTC, startOfDayUTC(new Date(conn.last_sync_at)))) : null;
 
   // Fetch facts
@@ -635,10 +654,14 @@ export default async function DashboardPage({
   const TARGET_HIGH = 14;
   const underbooked = daysBookedAhead < TARGET_LOW;
   const balanced = daysBookedAhead >= TARGET_LOW && daysBookedAhead <= TARGET_HIGH;
+  const overbookedMild = daysBookedAhead > TARGET_HIGH && daysBookedAhead <= 21;
   const overbookedHard = daysBookedAhead > 21;
 
   const capScore = clamp(
-    (underbooked ? (TARGET_LOW - daysBookedAhead) * 14 : 0) + (overbookedHard ? 55 : 0) + clamp(unscheduledCount * 4, 0, 30),
+    (underbooked ? (TARGET_LOW - daysBookedAhead) * 14 : 0) + 
+    (overbookedMild ? 60 : 0) +  // Warning level (yellow) - increased from 50
+    (overbookedHard ? 90 : 0) +   // Critical level (red) - increased from 85
+    clamp(unscheduledCount * 4, 0, 30),
     0,
     100
   );
@@ -889,41 +912,344 @@ export default async function DashboardPage({
   return (
     <main style={ui.page}>
       <style>{`
-        a:hover { filter: brightness(1.06); }
-        tr:hover td { background: rgba(255,255,255,0.030); }
-        tbody tr:nth-child(2n) td { background: rgba(255,255,255,0.012); }
-        @media (max-width: 980px) {
-          .span3 { grid-column: span 12 !important; }
-          .span4 { grid-column: span 12 !important; }
-          .span6 { grid-column: span 12 !important; }
-        }
-      `}</style>
+          /* ========================================
+             DARK THEME (Default)
+             ======================================== */
+          html[data-theme="dark"] {
+            --bg0: #060811;
+            --bg1: #0A1222;
+            --card: rgba(255,255,255,0.060);
+            --border: rgba(255,255,255,0.10);
+            --text: #EAF1FF;
+            --sub: rgba(234,241,255,0.74);
+            --mut: rgba(234,241,255,0.58);
+          }
+          
+          /* ========================================
+             LIGHT THEME - Professional & Clean
+             ======================================== */
+          html[data-theme="light"] {
+            --bg0: #f0f4f8;
+            --bg1: #ffffff;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text: #1a202c;
+            --sub: #374151;
+            --mut: #4b5563;
+          }
+          
+          /* ==========================================
+             LIGHT MODE - GLOBAL OVERRIDES
+             ========================================== */
+          
+          /* Page Background */
+          html[data-theme="light"],
+          html[data-theme="light"] body,
+          html[data-theme="light"] main {
+            background: #f0f4f8 !important;
+            color: #1a202c !important;
+          }
+          
+          /* ALL Text Elements - Force Dark Text */
+          html[data-theme="light"] * {
+            color: inherit;
+          }
+          
+          html[data-theme="light"] div,
+          html[data-theme="light"] span,
+          html[data-theme="light"] p,
+          html[data-theme="light"] h1,
+          html[data-theme="light"] h2,
+          html[data-theme="light"] h3,
+          html[data-theme="light"] h4,
+          html[data-theme="light"] h5,
+          html[data-theme="light"] h6,
+          html[data-theme="light"] label,
+          html[data-theme="light"] strong,
+          html[data-theme="light"] b {
+            color: #1a202c !important;
+          }
+          
+          /* Secondary/Muted Text - DARKER for readability */
+          html[data-theme="light"] [style*="color: rgba(234"],
+          html[data-theme="light"] [style*="color:rgba(234"],
+          html[data-theme="light"] [style*="color: #EAF1FF"],
+          html[data-theme="light"] [style*="color:#EAF1FF"],
+          html[data-theme="light"] [style*="color: rgb(234"],
+          html[data-theme="light"] [style*="opacity: 0.74"],
+          html[data-theme="light"] [style*="opacity: 0.58"],
+          html[data-theme="light"] [style*="opacity: 0.38"],
+          html[data-theme="light"] [style*="opacity:0.74"],
+          html[data-theme="light"] [style*="opacity:0.58"],
+          html[data-theme="light"] [style*="opacity:0.38"] {
+            color: #4b5563 !important;
+            opacity: 1 !important;
+          }
+          
+          /* Cards and Panels - More defined borders */
+          html[data-theme="light"] [style*="background: rgba(255,255,255"],
+          html[data-theme="light"] [style*="background:rgba(255,255,255"],
+          html[data-theme="light"] [style*="background: rgba(255, 255, 255"] {
+            background: #ffffff !important;
+            border: 1px solid #d1d5db !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04) !important;
+          }
+          
+          /* Header Gradient */
+          html[data-theme="light"] [style*="linear-gradient(180deg"] {
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+            border: 1px solid #d1d5db !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+          }
+          
+          /* ==========================================
+             LIGHT MODE - TABLES (Tighter Rows)
+             ========================================== */
+          html[data-theme="light"] table {
+            background: #ffffff !important;
+          }
+          
+          html[data-theme="light"] th {
+            color: #374151 !important;
+            background: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+            padding: 8px 10px !important;
+          }
+          
+          html[data-theme="light"] td {
+            color: #1f2937 !important;
+            border-color: #e5e7eb !important;
+            background: #ffffff !important;
+            padding: 8px 10px !important;
+          }
+          
+          /* Table content - ALL text dark in light mode */
+          html[data-theme="light"] td span,
+          html[data-theme="light"] td div,
+          html[data-theme="light"] td strong,
+          html[data-theme="light"] td a {
+            color: #1f2937 !important;
+          }
+          
+          /* Links in tables stay indigo */
+          html[data-theme="light"] td a[href] {
+            color: #4338ca !important;
+          }
+          
+          html[data-theme="light"] tr:hover td {
+            background: #f3f4f6 !important;
+          }
+          
+          html[data-theme="light"] tbody tr:nth-child(2n) td {
+            background: #f9fafb !important;
+          }
+          
+          /* ==========================================
+             LIGHT MODE - CHARTS & SVG - FIXED
+             ========================================== */
+          
+          /* Chart text labels - darker */
+          html[data-theme="light"] svg text,
+          html[data-theme="light"] svg tspan {
+            fill: #1f2937 !important;
+            color: #1f2937 !important;
+          }
+          
+          /* Chart grid lines - more visible */
+          html[data-theme="light"] svg line {
+            stroke: #d1d5db !important;
+            stroke-width: 1px !important;
+          }
+          
+          /* Chart axis lines */
+          html[data-theme="light"] svg path.domain,
+          html[data-theme="light"] svg .domain {
+            stroke: #6b7280 !important;
+          }
+          
+          /* Chart data lines - THICK and VISIBLE */
+          html[data-theme="light"] svg path[stroke="#5a67d8"],
+          html[data-theme="light"] svg path[stroke="#667eea"],
+          html[data-theme="light"] svg path[stroke="rgb(90, 103, 216)"],
+          html[data-theme="light"] svg path[fill="none"],
+          html[data-theme="light"] svg polyline {
+            stroke: #4338ca !important;
+            stroke-width: 3px !important;
+          }
+          
+          /* Chart bars - keep colorful */
+          html[data-theme="light"] svg rect[fill]:not([fill="none"]):not([fill="transparent"]) {
+            fill: #4c51bf !important;
+          }
+          
+          /* Chart area fills */
+          html[data-theme="light"] svg path[fill*="rgba"] {
+            fill: rgba(67, 56, 202, 0.12) !important;
+          }
+          
+          /* Chart dots/points - SMALLER */
+          html[data-theme="light"] svg circle {
+            fill: #4338ca !important;
+            stroke: #ffffff !important;
+            stroke-width: 2px !important;
+            r: 4 !important;
+          }
+          
+          /* ==========================================
+             LIGHT MODE - BUTTONS & LINKS
+             ========================================== */
+          html[data-theme="light"] a {
+            color: #4338ca !important;
+          }
+          
+          html[data-theme="light"] a:hover {
+            color: #3730a3 !important;
+          }
+          
+          html[data-theme="light"] button {
+            color: #1f2937 !important;
+          }
+          
+          /* Primary buttons - keep purple */
+          html[data-theme="light"] [style*="background: #5a67d8"],
+          html[data-theme="light"] [style*="background:#5a67d8"],
+          html[data-theme="light"] [style*="background: rgb(90, 103, 216)"] {
+            background: #4c51bf !important;
+            color: #ffffff !important;
+          }
+          
+          /* ==========================================
+             LIGHT MODE - PILLS & STATUS INDICATORS
+             ========================================== */
+          
+          /* Status pill backgrounds - slightly stronger */
+          html[data-theme="light"] [style*="rgba(239,68,68,0.2"],
+          html[data-theme="light"] [style*="rgba(239, 68, 68, 0.2"] {
+            background: rgba(239,68,68,0.15) !important;
+          }
+          
+          html[data-theme="light"] [style*="rgba(245,158,11,0.2"],
+          html[data-theme="light"] [style*="rgba(245, 158, 11, 0.2"] {
+            background: rgba(245,158,11,0.15) !important;
+          }
+          
+          html[data-theme="light"] [style*="rgba(16,185,129,0.2"],
+          html[data-theme="light"] [style*="rgba(16, 185, 129, 0.2"] {
+            background: rgba(16,185,129,0.15) !important;
+          }
+          
+          /* ==========================================
+             LIGHT MODE - INPUTS & FORMS
+             ========================================== */
+          html[data-theme="light"] input,
+          html[data-theme="light"] select,
+          html[data-theme="light"] textarea {
+            background: #ffffff !important;
+            color: #1f2937 !important;
+            border-color: #d1d5db !important;
+          }
+          
+          html[data-theme="light"] input:focus,
+          html[data-theme="light"] select:focus {
+            border-color: #4c51bf !important;
+            box-shadow: 0 0 0 3px rgba(76, 81, 191, 0.1) !important;
+          }
+          
+          /* ==========================================
+             LIGHT MODE - RECOMMENDATION BANNER
+             ========================================== */
+          html[data-theme="light"] [style*="rgba(245,158,11,0.08)"],
+          html[data-theme="light"] [style*="linear-gradient(135deg, rgba(245,158,11"] {
+            background: linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(245,158,11,0.05) 100%) !important;
+            border-color: rgba(245,158,11,0.4) !important;
+          }
+          
+          /* ==========================================
+             LIGHT MODE - SCROLLBAR
+             ========================================== */
+          html[data-theme="light"] ::-webkit-scrollbar {
+            background: #f0f4f8;
+            width: 8px;
+          }
+          
+          html[data-theme="light"] ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 4px;
+          }
+          
+          html[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+          }
+          
+          /* ==========================================
+             GENERAL STYLES (BOTH THEMES)
+             ========================================== */
+          a:hover { filter: brightness(1.06); }
+          
+          @media (max-width: 980px) {
+            .span3 { grid-column: span 12 !important; }
+            .span4 { grid-column: span 12 !important; }
+            .span6 { grid-column: span 12 !important; }
+          }
+        `}</style>
 
       <div style={ui.container}>
         <div style={ui.header}>
           <div style={ui.brand}>
-            {companyLogoUrl ? (
-              <img src={companyLogoUrl} alt={companyName} style={{ ...ui.logo, objectFit: 'contain', background: 'transparent', border: 'none' }} />
-            ) : (
-              <div style={ui.logo} />
-            )}
             <div>
               <div style={ui.h1}>{companyName} Command Center</div>
               <div style={ui.hSub}>
                 Last sync: <strong style={{ color: theme.text }}>{lastSyncPretty}</strong>
-                {lastSyncAge !== null ? <span style={{ color: theme.mut }}> • {lastSyncAge} day(s) ago</span> : null}
-                <span style={{ color: theme.mut }}> • Currency {currencyCode}</span>
+                <span style={{ color: theme.mut }}> • {currencyCode}</span>
               </div>
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <span style={ui.pill} title="Share of AR that is 15+ days overdue.">
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+            {/* SYNC BUTTON */}
+            <SyncButton connectionId={connectionId} />
+            
+            {/* THEME TOGGLE */}
+            <ThemeToggle />
+            
+            {/* AR RISK PILL - More visible */}
+            <span style={{
+              padding: "8px 14px",
+              borderRadius: 10,
+              fontSize: 13,
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              color: theme.text,
+              background: arSev === "critical" ? "rgba(239,68,68,0.25)" : 
+                         arSev === "warning" ? "rgba(245,158,11,0.25)" : 
+                         "rgba(16,185,129,0.25)",
+              border: `2px solid ${arSev === "critical" ? "#ef4444" : 
+                                  arSev === "warning" ? "#f59e0b" : "#10b981"}`,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+            }} title="Share of AR that is 15+ days overdue.">
               <span style={ui.dot(sevBg(arSev))} />
               AR Risk <strong style={{ color: theme.text }}>{pct(riskPct)}</strong>
             </span>
 
-            <span style={ui.pill} title="Capacity uses days booked ahead plus unscheduled job volume.">
+            {/* CAPACITY PILL - More visible */}
+            <span style={{
+              padding: "8px 14px",
+              borderRadius: 10,
+              fontSize: 13,
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              color: theme.text,
+              background: capSev === "critical" ? "rgba(239,68,68,0.25)" : 
+                         capSev === "warning" ? "rgba(245,158,11,0.25)" : 
+                         "rgba(16,185,129,0.25)",
+              border: `2px solid ${capSev === "critical" ? "#ef4444" : 
+                                  capSev === "warning" ? "#f59e0b" : "#10b981"}`,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+            }} title="Capacity uses days booked ahead plus unscheduled job volume.">
               <span style={ui.dot(sevBg(capSev))} />
               Capacity <strong style={{ color: theme.text }}>{capState}</strong>
             </span>
@@ -1125,12 +1451,6 @@ export default async function DashboardPage({
                     <div style={ui.sectionTitle}>Action Lists</div>
                     <div style={ui.sectionSub}>Lists that drive weekly wins: collect AR, schedule backlog, close sales leaks.</div>
                   </div>
-
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <a href={toggleUnscheduledHref} style={ui.btn} title="Filter unscheduled jobs to oldest items">
-                      {minDays >= 7 ? "Show all unscheduled" : "Show 7+ day unscheduled"}
-                    </a>
-                  </div>
                 </div>
 
                 <div style={{ padding: 16 }}>
@@ -1226,6 +1546,9 @@ export default async function DashboardPage({
                       </div>
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <span style={ui.badge("rgba(90,166,255,0.16)")}>Scheduling</span>
+                        <a href={toggleUnscheduledHref} style={ui.btn} title="Filter unscheduled jobs">
+                          {minDays >= 7 ? "Show all" : "Show 7+ days only"}
+                        </a>
                         {unscheduledRows.length > 0 && (
                           <a
                             href={generateCSV(
