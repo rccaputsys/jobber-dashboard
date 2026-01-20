@@ -1,10 +1,10 @@
 // src/app/signup/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
-export default function SignupPage() {
+function SignupForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const connectionId = searchParams.get("connection_id");
@@ -43,53 +43,61 @@ export default function SignupPage() {
   }
 
   return (
+    <div style={styles.card}>
+      <h1 style={styles.title}>Create your account</h1>
+      <p style={styles.subtitle}>
+        Set up your login to access your OwnerView dashboard
+      </p>
+
+      <form onSubmit={handleSubmit} style={styles.form}>
+        <div>
+          <label style={styles.label}>Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            style={styles.input}
+            placeholder="you@company.com"
+          />
+        </div>
+
+        <div>
+          <label style={styles.label}>Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+            style={styles.input}
+            placeholder="At least 8 characters"
+          />
+        </div>
+
+        {error && <div style={styles.error}>{error}</div>}
+
+        <button type="submit" disabled={loading} style={styles.button}>
+          {loading ? "Creating account..." : "Create account"}
+        </button>
+      </form>
+
+      <p style={styles.footer}>
+        Already have an account?{" "}
+        <a href="/login" style={styles.link}>
+          Log in
+        </a>
+      </p>
+    </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
     <main style={styles.page}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>Create your account</h1>
-        <p style={styles.subtitle}>
-          Set up your login to access your OwnerView dashboard
-        </p>
-
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div>
-            <label style={styles.label}>Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              style={styles.input}
-              placeholder="you@company.com"
-            />
-          </div>
-
-          <div>
-            <label style={styles.label}>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              style={styles.input}
-              placeholder="At least 8 characters"
-            />
-          </div>
-
-          {error && <div style={styles.error}>{error}</div>}
-
-          <button type="submit" disabled={loading} style={styles.button}>
-            {loading ? "Creating account..." : "Create account"}
-          </button>
-        </form>
-
-        <p style={styles.footer}>
-          Already have an account?{" "}
-          <a href="/login" style={styles.link}>
-            Log in
-          </a>
-        </p>
-      </div>
+      <Suspense fallback={<div style={styles.card}>Loading...</div>}>
+        <SignupForm />
+      </Suspense>
     </main>
   );
 }
