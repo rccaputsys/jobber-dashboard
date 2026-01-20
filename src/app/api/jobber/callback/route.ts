@@ -1,7 +1,6 @@
 // src/app/api/jobber/callback/route.ts
 import { NextResponse } from "next/server";
 import { decryptText, encryptText } from "@/lib/crypto";
-import { getUserId, ensureUserId } from "@/lib/user";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 async function tokenExchange(code: string) {
@@ -29,8 +28,6 @@ async function tokenExchange(code: string) {
       `Token exchange failed: ${res.status} keys=${Object.keys(json ?? {}).join(",")}`
     );
   }
-
-  console.log("Jobber token response keys:", Object.keys(json ?? {}));
 
   return json as {
     access_token?: string;
@@ -72,10 +69,6 @@ async function jobberGraphQL<T>(
 }
 
 export async function GET(req: Request) {
-  await ensureUserId();
-  const userId = await getUserId();
-  if (!userId) return NextResponse.redirect(new URL("/jobber?err=no_user", req.url));
-
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
@@ -120,37 +113,64 @@ export async function GET(req: Request) {
     `query { account { id name } }`
   );
 
-  const { data: conn, error: connErr } = await supabaseAdmin
+  // Check if this Jobber account already has a connection
+  const { data: existingConn } = await supabaseAdmin
     .from("jobber_connections")
-    .upsert(
-      {
-        user_id: userId,
+    .select("id, user_id")
+    .eq("jobber_account_id", acct.account.id)
+    .maybeSingle();
+
+  let connectionId: string;
+
+  if (existingConn) {
+    // Update existing connection
+    connectionId = existingConn.id;
+    await supabaseAdmin
+      .from("jobber_connections")
+      .update({ jobber_account_name: acct.account.name })
+      .eq("id", connectionId);
+  } else {
+    // Create new connection (without user_id - will be set after signup)
+    const { data: conn, error: connErr } = await supabaseAdmin
+      .from("jobber_connections")
+      .insert({
         jobber_account_id: acct.account.id,
         jobber_account_name: acct.account.name,
-      },
-      { onConflict: "user_id,jobber_account_id" }
-    )
-    .select("id")
-    .single();
+      })
+      .select("id")
+      .single();
 
-  if (connErr || !conn?.id) {
-    throw new Error(connErr?.message || "Failed to upsert connection");
+    if (connErr || !conn?.id) {
+      throw new Error(connErr?.message || "Failed to create connection");
+    }
+    connectionId = conn.id;
   }
 
   const encAccess = await encryptText(token.access_token);
   const encRefresh = await encryptText(token.refresh_token);
 
-  const { error: tokErr } = await supabaseAdmin.from("jobber_tokens").insert({
-    connection_id: conn.id,
-    access_token: encAccess,
-    refresh_token: encRefresh,
-    expires_at: expiresAt,
-  });
+  // Upsert token
+  const { error: tokErr } = await supabaseAdmin
+    .from("jobber_tokens")
+    .upsert({
+      connection_id: connectionId,
+      access_token: encAccess,
+      refresh_token: encRefresh,
+      expires_at: expiresAt,
+    }, { onConflict: "connection_id" });
 
   if (tokErr) throw new Error(tokErr.message);
 
-  // Kick off sync
+  // If user already exists for this connection, redirect to dashboard
+  if (existingConn?.user_id) {
+    // Kick off sync first
+    await fetch(new URL(`/api/sync/run?connection_id=${connectionId}`, req.url));
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
+
+  // New user - start sync then redirect to signup
+  await fetch(new URL(`/api/sync/run?connection_id=${connectionId}`, req.url));
   return NextResponse.redirect(
-    new URL(`/api/sync/run?connection_id=${conn.id}`, req.url)
+    new URL(`/signup?connection_id=${connectionId}`, req.url)
   );
 }

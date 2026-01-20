@@ -4,6 +4,8 @@ import { Controls } from "./controls";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { SyncButton } from "./SyncButton";
 import { ThemeToggle } from "./ThemeToggle";
+import { getUser } from "@/lib/supabaseAuth";
+import { redirect } from "next/navigation";
 
 /* --------------------------------- helpers --------------------------------- */
 type Granularity = "day" | "week" | "month" | "quarter";
@@ -69,7 +71,6 @@ function formatSyncTime(date: Date): string {
   const diffHr = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffHr / 24);
   
-  // Use coarse-grained time to avoid hydration mismatches
   if (diffHr < 1) return "Less than 1 hour ago";
   if (diffHr < 24) return `${diffHr} hour${diffHr === 1 ? "" : "s"} ago`;
   if (diffDays === 1) return "Yesterday";
@@ -78,13 +79,12 @@ function formatSyncTime(date: Date): string {
     const weeks = Math.floor(diffDays / 7);
     return `${weeks} week${weeks === 1 ? "" : "s"} ago`;
   }
-  // For older dates, just show the date
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 function startOfWeekUTC(d: Date) {
   const x = startOfDayUTC(d);
   const day = x.getUTCDay();
-  const delta = (day + 6) % 7; // Monday-start
+  const delta = (day + 6) % 7;
   x.setUTCDate(x.getUTCDate() - delta);
   return x;
 }
@@ -140,7 +140,6 @@ function moneyFactory(currency: string, locale = "en-US") {
   }
 }
 
-// For chart Y-axis: no cents, rounded to nearest $100
 function moneyForChart(cents: number): string {
   const dollars = Math.round((Number(cents || 0) as number) / 100);
   const rounded = Math.round(dollars / 100) * 100;
@@ -334,6 +333,7 @@ const ui = {
     borderRadius: 16,
     padding: 16,
     background: "rgba(255,255,255,0.03)",
+    marginBottom: 14,
   } as React.CSSProperties,
 
   kpiGroupTitle: {
@@ -435,18 +435,16 @@ function SparkLine(props: {
   const vbH = 150;
 
   const padL = 52;
-  const padR = 28; // Increased from 18 to prevent right-side cutoff
-  const padT = 24; // Increased from 18 to prevent cutoff at top
+  const padR = 28;
+  const padT = 24;
   const padB = 36;
 
-  // Chart colors - default to blue if not specified
   const chartColor = props.color || "#5aa6ff";
-  const glowColor = props.color ? `${props.color}28` : "rgba(90,166,255,0.16)"; // 28 = 16% opacity in hex
+  const glowColor = props.color ? `${props.color}28` : "rgba(90,166,255,0.16)";
 
   const vals = props.points.map((p) => p.value);
   const min = vals.length ? Math.min(...vals) : 0;
   const max = vals.length ? Math.max(...vals) : 1;
-  // Add 10% buffer at top to prevent cutoff
   const maxWithBuffer = max * 1.1;
   const span = Math.max(1e-9, maxWithBuffer - min);
 
@@ -469,7 +467,6 @@ function SparkLine(props: {
 
   const barW = Math.max(2, (vbW - padL - padR) / Math.max(1, props.points.length) - 6);
   
-  // Smart label display - skip labels if too crowded
   const labelSkip = props.points.length > 20 ? 4 : props.points.length > 12 ? 3 : 2;
 
   return (
@@ -552,19 +549,166 @@ export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: Promise<{
-    connection_id?: string;
     range?: string;
     start?: string;
     end?: string;
     g?: Granularity;
     chart?: ChartType;
     unscheduled_min_days?: string;
+    checkout?: string;
   }>;
 }) {
-  const sp = await searchParams;
-  const connectionId = sp.connection_id;
-  if (!connectionId) return <div style={{ padding: 24 }}>Missing connection_id</div>;
+  const user = await getUser();
+  if (!user) redirect("/login");
 
+  // Get the user's connection
+  const { data: connection } = await supabaseAdmin
+    .from("jobber_connections")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!connection) {
+    return (
+      <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100vh", background: theme.bg0 }}>
+        <h2>No Jobber account connected</h2>
+        <p style={{ marginTop: 8, color: theme.sub }}>Please connect your Jobber account first.</p>
+        <a href="/jobber" style={{ color: "#5aa6ff", marginTop: 16, display: "inline-block" }}>Connect Jobber →</a>
+      </div>
+    );
+  }
+
+  const connectionId = connection.id;
+
+  // Connection summary (including billing info)
+  const { data: conn } = await supabaseAdmin
+    .from("jobber_connections")
+    .select("last_sync_at,trial_started_at,trial_ends_at,billing_status,currency_code,company_name,jobber_account_name")
+    .eq("id", connectionId)
+    .maybeSingle();
+
+  const companyName = conn?.jobber_account_name || conn?.company_name || "Your Company";
+
+  // Check billing status for paywall
+  const billingStatus = conn?.billing_status ?? "trialing";
+  const trialEndsAt = conn?.trial_ends_at ? new Date(conn.trial_ends_at).getTime() : 0;
+  const trialActive = billingStatus === "trialing" && trialEndsAt > Date.now();
+  const subscriptionActive = billingStatus === "active";
+  const hasAccess = trialActive || subscriptionActive;
+
+  // Block entire dashboard if no access
+  if (!hasAccess) {
+    return (
+      <main className="paywall-page" style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "linear-gradient(180deg, #060811 0%, #0A1222 100%)",
+        padding: 24,
+      }}>
+        <style>{`
+          html[data-theme="light"] .paywall-page {
+            background: linear-gradient(180deg, #f0f4f8 0%, #e2e8f0 100%) !important;
+          }
+          html[data-theme="light"] .paywall-card {
+            background: #ffffff !important;
+            border-color: #d1d5db !important;
+            box-shadow: 0 24px 80px rgba(0,0,0,0.1) !important;
+          }
+          html[data-theme="light"] .paywall-title {
+            color: #1a202c !important;
+          }
+          html[data-theme="light"] .paywall-text {
+            color: #4b5563 !important;
+          }
+          html[data-theme="light"] .paywall-subtext {
+            color: #6b7280 !important;
+          }
+        `}</style>
+        <div className="paywall-card" style={{
+          maxWidth: 480,
+          width: "100%",
+          borderRadius: 20,
+          border: "1px solid rgba(255,255,255,0.12)",
+          background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)",
+          padding: 40,
+          textAlign: "center",
+          boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
+        }}>
+          <div style={{
+            width: 64,
+            height: 64,
+            borderRadius: 20,
+            background: "linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95))",
+            margin: "0 auto 24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 16px 48px rgba(90,166,255,0.25)",
+          }}>
+            <span style={{ fontSize: 28 }}>🔒</span>
+          </div>
+          
+          <h1 className="paywall-title" style={{
+            fontSize: 26,
+            fontWeight: 800,
+            color: "#EAF1FF",
+            marginBottom: 12,
+          }}>
+            {billingStatus === "trialing" ? "Trial Expired" : "Subscribe to Access"}
+          </h1>
+          
+          <p className="paywall-text" style={{
+            fontSize: 15,
+            color: "rgba(234,241,255,0.65)",
+            lineHeight: 1.6,
+            marginBottom: 8,
+          }}>
+            Your 14-day free trial has ended. Subscribe to continue accessing your OwnerView dashboard.
+          </p>
+          
+          <p className="paywall-subtext" style={{
+            fontSize: 14,
+            color: "rgba(234,241,255,0.5)",
+            marginBottom: 32,
+          }}>
+            {companyName}
+          </p>
+
+          <form action="/api/billing/checkout" method="POST">
+            <button
+              type="submit"
+              style={{
+                width: "100%",
+                padding: "16px 24px",
+                borderRadius: 12,
+                fontWeight: 800,
+                fontSize: 16,
+                border: "none",
+                background: "linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95))",
+                color: "white",
+                cursor: "pointer",
+                boxShadow: "0 12px 40px rgba(90,166,255,0.3)",
+              }}
+            >
+              Subscribe — $29/month
+            </button>
+          </form>
+          
+          <p className="paywall-subtext" style={{
+            marginTop: 20,
+            fontSize: 13,
+            color: "rgba(234,241,255,0.4)",
+          }}>
+            Cancel anytime • Instant access after payment
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  const sp = await searchParams;
   const g: Granularity = (sp.g ?? "week") as Granularity;
   const chartType: ChartType = (sp.chart ?? "line") as ChartType;
 
@@ -586,9 +730,8 @@ export default async function DashboardPage({
   const minDays = Number(sp.unscheduled_min_days ?? "0");
   const nextMinDays = minDays >= 7 ? 0 : 7;
 
-  // Build toggle URL server-side (NO onClick)
+  // Build toggle URL server-side
   const qp = new URLSearchParams();
-  qp.set("connection_id", connectionId);
   if (sp.range) qp.set("range", sp.range);
   if (sp.start) qp.set("start", sp.start);
   if (sp.end) qp.set("end", sp.end);
@@ -597,20 +740,10 @@ export default async function DashboardPage({
   if (nextMinDays) qp.set("unscheduled_min_days", String(nextMinDays));
   const toggleUnscheduledHref = `/jobber/dashboard?${qp.toString()}`;
 
-  // Connection summary
-  const { data: conn } = await supabaseAdmin
-    .from("jobber_connections")
-    .select("last_sync_at,trial_started_at,trial_ends_at,billing_status,currency_code,company_name,jobber_account_name")
-    .eq("id", connectionId)
-    .maybeSingle();
-
   const currencyCode = (conn?.currency_code || "USD").toUpperCase();
   const money = moneyFactory(currencyCode);
-  
-  const companyName = conn?.jobber_account_name || conn?.company_name || "Your Company";
 
   const lastSyncPretty = conn?.last_sync_at ? formatSyncTime(new Date(conn.last_sync_at)) : "Not synced yet";
-  const lastSyncAge = conn?.last_sync_at ? Math.max(0, daysBetweenUTC(todayUTC, startOfDayUTC(new Date(conn.last_sync_at)))) : null;
 
   // Fetch facts
   const { data: invoicesData } = await supabaseAdmin.from("fact_invoices").select("*").eq("connection_id", connectionId);
@@ -625,18 +758,17 @@ export default async function DashboardPage({
     .eq("connection_id", connectionId);
   const quotes = (quotesData ?? []) as any[];
 
-  // AR buckets - Total AR includes ALL unpaid invoices
+  // AR buckets
   const nowMs = Date.now();
   let b0_7 = 0, b8_14 = 0, b15p = 0, totalAR = 0;
   for (const inv of invoices) {
     const amt = Number(inv.total_amount_cents ?? inv.total_cents ?? inv.total_amount ?? 0);
-    totalAR += amt; // Count all invoices in total AR
+    totalAR += amt;
     
     const due = safeDate(inv.due_at ?? inv.dueDate ?? inv.due_date);
     if (!due) continue;
     const days = (nowMs - due.getTime()) / 86400000;
     
-    // Only categorize overdue amounts
     if (days > 0 && days <= 7) b0_7 += amt;
     else if (days > 7 && days <= 14) b8_14 += amt;
     else if (days > 14) b15p += amt;
@@ -665,8 +797,8 @@ export default async function DashboardPage({
 
   const capScore = clamp(
     (underbooked ? (TARGET_LOW - daysBookedAhead) * 14 : 0) + 
-    (overbookedMild ? 60 : 0) +  // Warning level (yellow) - increased from 50
-    (overbookedHard ? 90 : 0) +   // Critical level (red) - increased from 85
+    (overbookedMild ? 60 : 0) +
+    (overbookedHard ? 90 : 0) +
     clamp(unscheduledCount * 4, 0, 30),
     0,
     100
@@ -674,7 +806,7 @@ export default async function DashboardPage({
   const capSev = severityFromScore(capScore);
   const capState = underbooked ? "Underbooked" : balanced ? "Balanced" : "Overbooked";
 
-  // Completed & profitability (range-bound)
+  // Completed & profitability
   const completedDateKeys = ["completed_at_jobber", "completed_at", "completedAt", "completedAtJobber"];
 
   const completedInRange = jobs.filter((j) => {
@@ -694,7 +826,7 @@ export default async function DashboardPage({
 
   const marginPerJob = completedCount ? Math.round(profitSum / completedCount) : 0;
 
-  // Quote leak (range-bound on sent_at) - EXCLUDE archived and draft quotes
+  // Quote leak
   const leakCandidates = quotes
     .filter((q) => q.sent_at)
     .filter((q) => {
@@ -704,16 +836,13 @@ export default async function DashboardPage({
     })
     .filter((q) => {
       const st = String(q.quote_status ?? "").toLowerCase().trim();
-      // Exclude archived, draft, and won/converted quotes
-      if (!st) return true; // Include if status is missing
+      if (!st) return true;
       if (st === "archived" || st === "draft") return false;
       return !statusLooksWon(st);
     });
 
   const leakCount = leakCandidates.length;
   const leakDollars = leakCandidates.reduce((sum, q) => sum + Number(q.quote_total_cents ?? 0), 0);
-  const qScore = clamp(leakCount * 8, 0, 100);
-  const qSev = severityFromScore(qScore);
 
   // Quotes with changes requested
   const changesRequestedQuotes = quotes.filter((q) => {
@@ -722,7 +851,7 @@ export default async function DashboardPage({
   });
   const changesRequestedCount = changesRequestedQuotes.length;
 
-  // Aged AR (15+ days overdue)
+  // Aged AR
   const agedARInvoices = invoices
     .filter((inv) => {
       const due = safeDate(inv.due_at);
@@ -739,7 +868,7 @@ export default async function DashboardPage({
       jobber_url: inv.jobber_url || (inv.jobber_invoice_id ? `https://secure.getjobber.com/invoices/${inv.jobber_invoice_id}` : null),
     }));
 
-  // Unscheduled list (table)
+  // Unscheduled list
   const { data: unsched } = await supabaseAdmin
     .from("fact_jobs")
     .select("job_number,job_title,created_at_jobber,jobber_url,total_amount_cents")
@@ -775,7 +904,6 @@ export default async function DashboardPage({
     const be = nextBucketUTC(bs, g);
     const endTs = be.getTime();
     let sum = 0;
-    // Cumulative: count all quotes sent before this bucket end that are still leaking
     for (const q of leakCandidates) {
       const dt = safeDate(q.sent_at);
       if (!dt) continue;
@@ -827,11 +955,7 @@ export default async function DashboardPage({
     }),
   };
 
-  const trialEnds = conn?.trial_ends_at ? new Date(conn.trial_ends_at).getTime() : 0;
-  const trialActive = true;
-  const upgradeHref = `/billing/upgrade?connection_id=${connectionId}`;
-
-  // Shared table column widths so both tables align perfectly
+  // Shared table column widths
   const colW = {
     age: "96px",
     title: "auto",
@@ -840,11 +964,10 @@ export default async function DashboardPage({
     open: "190px",
   };
 
-  // Generate recommendations based on metrics
+  // Generate recommendations
   type Recommendation = { icon: string; text: string; };
   const recommendations: Recommendation[] = [];
   
-  // AR 15+ recommendation
   if (b15p > 0 && totalAR > 0) {
     const pct15 = b15p / totalAR;
     const agedCount = agedARInvoices.length;
@@ -861,7 +984,6 @@ export default async function DashboardPage({
     }
   }
 
-  // Capacity recommendation
   if (daysBookedAhead < 5) {
     recommendations.push({
       icon: "🔴",
@@ -879,9 +1001,8 @@ export default async function DashboardPage({
     });
   }
 
-  // Quote leak recommendation
   if (leakCount > 5) {
-    const winRate = 0.25; // Conservative 25%
+    const winRate = 0.25;
     const potentialWin = Math.round(leakDollars * winRate);
     recommendations.push({
       icon: "💰",
@@ -889,7 +1010,6 @@ export default async function DashboardPage({
     });
   }
 
-  // Changes requested recommendation
   if (changesRequestedCount > 0) {
     recommendations.push({
       icon: "✏️",
@@ -897,7 +1017,6 @@ export default async function DashboardPage({
     });
   }
 
-  // Margin recommendation
   if (completedCount >= 5 && marginPerJob > 0) {
     const marginPct = profitSum / revSum;
     if (marginPct < 0.20) {
@@ -908,7 +1027,6 @@ export default async function DashboardPage({
     }
   }
 
-  // Unscheduled jobs recommendation
   if (unscheduledCount > 15 && daysBookedAhead < 10) {
     recommendations.push({
       icon: "📋",
@@ -919,9 +1037,6 @@ export default async function DashboardPage({
   return (
     <main style={ui.page}>
       <style>{`
-          /* ========================================
-             DARK THEME (Default)
-             ======================================== */
           html[data-theme="dark"] {
             --bg0: #060811;
             --bg1: #0A1222;
@@ -932,9 +1047,6 @@ export default async function DashboardPage({
             --mut: rgba(234,241,255,0.58);
           }
           
-          /* ========================================
-             LIGHT THEME - Professional & Clean
-             ======================================== */
           html[data-theme="light"] {
             --bg0: #f0f4f8;
             --bg1: #ffffff;
@@ -945,11 +1057,6 @@ export default async function DashboardPage({
             --mut: #4b5563;
           }
           
-          /* ==========================================
-             LIGHT MODE - GLOBAL OVERRIDES
-             ========================================== */
-          
-          /* Page Background */
           html[data-theme="light"],
           html[data-theme="light"] body,
           html[data-theme="light"] main {
@@ -957,7 +1064,6 @@ export default async function DashboardPage({
             color: #1a202c !important;
           }
           
-          /* ALL Text Elements - Force Dark Text */
           html[data-theme="light"] * {
             color: inherit;
           }
@@ -977,7 +1083,6 @@ export default async function DashboardPage({
             color: #1a202c !important;
           }
           
-          /* Secondary/Muted Text - DARKER for readability */
           html[data-theme="light"] [style*="color: rgba(234"],
           html[data-theme="light"] [style*="color:rgba(234"],
           html[data-theme="light"] [style*="color: #EAF1FF"],
@@ -993,7 +1098,6 @@ export default async function DashboardPage({
             opacity: 1 !important;
           }
           
-          /* Cards and Panels - More defined borders */
           html[data-theme="light"] [style*="background: rgba(255,255,255"],
           html[data-theme="light"] [style*="background:rgba(255,255,255"],
           html[data-theme="light"] [style*="background: rgba(255, 255, 255"] {
@@ -1002,16 +1106,12 @@ export default async function DashboardPage({
             box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04) !important;
           }
           
-          /* Header Gradient */
           html[data-theme="light"] [style*="linear-gradient(180deg"] {
             background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
             border: 1px solid #d1d5db !important;
             box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
           }
           
-          /* ==========================================
-             LIGHT MODE - TABLES (Tighter Rows)
-             ========================================== */
           html[data-theme="light"] table {
             background: #ffffff !important;
           }
@@ -1030,7 +1130,6 @@ export default async function DashboardPage({
             padding: 8px 10px !important;
           }
           
-          /* Table content - ALL text dark in light mode */
           html[data-theme="light"] td span,
           html[data-theme="light"] td div,
           html[data-theme="light"] td strong,
@@ -1038,7 +1137,6 @@ export default async function DashboardPage({
             color: #1f2937 !important;
           }
           
-          /* Links in tables stay indigo */
           html[data-theme="light"] td a[href] {
             color: #4338ca !important;
           }
@@ -1051,30 +1149,22 @@ export default async function DashboardPage({
             background: #f9fafb !important;
           }
           
-          /* ==========================================
-             LIGHT MODE - CHARTS & SVG - FIXED
-             ========================================== */
-          
-          /* Chart text labels - darker */
           html[data-theme="light"] svg text,
           html[data-theme="light"] svg tspan {
             fill: #1f2937 !important;
             color: #1f2937 !important;
           }
           
-          /* Chart grid lines - more visible */
           html[data-theme="light"] svg line {
             stroke: #d1d5db !important;
             stroke-width: 1px !important;
           }
           
-          /* Chart axis lines */
           html[data-theme="light"] svg path.domain,
           html[data-theme="light"] svg .domain {
             stroke: #6b7280 !important;
           }
           
-          /* Chart data lines - THICK and VISIBLE */
           html[data-theme="light"] svg path[stroke="#5a67d8"],
           html[data-theme="light"] svg path[stroke="#667eea"],
           html[data-theme="light"] svg path[stroke="rgb(90, 103, 216)"],
@@ -1084,17 +1174,14 @@ export default async function DashboardPage({
             stroke-width: 3px !important;
           }
           
-          /* Chart bars - keep colorful */
           html[data-theme="light"] svg rect[fill]:not([fill="none"]):not([fill="transparent"]) {
             fill: #4c51bf !important;
           }
           
-          /* Chart area fills */
           html[data-theme="light"] svg path[fill*="rgba"] {
             fill: rgba(67, 56, 202, 0.12) !important;
           }
           
-          /* Chart dots/points - SMALLER */
           html[data-theme="light"] svg circle {
             fill: #4338ca !important;
             stroke: #ffffff !important;
@@ -1102,9 +1189,6 @@ export default async function DashboardPage({
             r: 4 !important;
           }
           
-          /* ==========================================
-             LIGHT MODE - BUTTONS & LINKS
-             ========================================== */
           html[data-theme="light"] a {
             color: #4338ca !important;
           }
@@ -1117,7 +1201,6 @@ export default async function DashboardPage({
             color: #1f2937 !important;
           }
           
-          /* Primary buttons - keep purple */
           html[data-theme="light"] [style*="background: #5a67d8"],
           html[data-theme="light"] [style*="background:#5a67d8"],
           html[data-theme="light"] [style*="background: rgb(90, 103, 216)"] {
@@ -1125,11 +1208,6 @@ export default async function DashboardPage({
             color: #ffffff !important;
           }
           
-          /* ==========================================
-             LIGHT MODE - PILLS & STATUS INDICATORS
-             ========================================== */
-          
-          /* Status pill backgrounds - slightly stronger */
           html[data-theme="light"] [style*="rgba(239,68,68,0.2"],
           html[data-theme="light"] [style*="rgba(239, 68, 68, 0.2"] {
             background: rgba(239,68,68,0.15) !important;
@@ -1145,9 +1223,6 @@ export default async function DashboardPage({
             background: rgba(16,185,129,0.15) !important;
           }
           
-          /* ==========================================
-             LIGHT MODE - INPUTS & FORMS
-             ========================================== */
           html[data-theme="light"] input,
           html[data-theme="light"] select,
           html[data-theme="light"] textarea {
@@ -1162,18 +1237,12 @@ export default async function DashboardPage({
             box-shadow: 0 0 0 3px rgba(76, 81, 191, 0.1) !important;
           }
           
-          /* ==========================================
-             LIGHT MODE - RECOMMENDATION BANNER
-             ========================================== */
           html[data-theme="light"] [style*="rgba(245,158,11,0.08)"],
           html[data-theme="light"] [style*="linear-gradient(135deg, rgba(245,158,11"] {
             background: linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(245,158,11,0.05) 100%) !important;
             border-color: rgba(245,158,11,0.4) !important;
           }
           
-          /* ==========================================
-             LIGHT MODE - SCROLLBAR
-             ========================================== */
           html[data-theme="light"] ::-webkit-scrollbar {
             background: #f0f4f8;
             width: 8px;
@@ -1188,9 +1257,6 @@ export default async function DashboardPage({
             background: #64748b;
           }
           
-          /* ==========================================
-             GENERAL STYLES (BOTH THEMES)
-             ========================================== */
           a:hover { filter: brightness(1.06); }
           
           @media (max-width: 980px) {
@@ -1199,11 +1265,7 @@ export default async function DashboardPage({
             .span6 { grid-column: span 12 !important; }
           }
           
-          /* ==========================================
-             MOBILE - ACTION LIST TABLES
-             ========================================== */
           @media (max-width: 768px) {
-            /* Make tables horizontally scrollable */
             table {
               display: block;
               overflow-x: auto;
@@ -1211,25 +1273,21 @@ export default async function DashboardPage({
               white-space: nowrap;
             }
             
-            /* Ensure minimum column widths on mobile */
             th, td {
               min-width: 70px !important;
               padding: 8px 6px !important;
               font-size: 12px !important;
             }
             
-            /* Title column needs more space */
             th:nth-child(2), td:nth-child(2) {
               min-width: 140px !important;
               white-space: normal !important;
             }
             
-            /* Shrink the Open button column */
             th:last-child, td:last-child {
               min-width: 90px !important;
             }
             
-            /* Smaller buttons on mobile */
             td a {
               padding: 6px 10px !important;
               font-size: 11px !important;
@@ -1237,13 +1295,11 @@ export default async function DashboardPage({
           }
           
           @media (max-width: 480px) {
-            /* Even smaller on phones */
             th, td {
               padding: 6px 4px !important;
               font-size: 11px !important;
             }
             
-            /* Hide less important columns on very small screens */
             th:nth-child(3), td:nth-child(3) {
               display: none !important;
             }
@@ -1263,13 +1319,10 @@ export default async function DashboardPage({
           </div>
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-            {/* SYNC BUTTON */}
             <SyncButton connectionId={connectionId} />
             
-            {/* THEME TOGGLE */}
             <ThemeToggle />
             
-            {/* AR RISK PILL - More visible */}
             <span style={{
               padding: "8px 14px",
               borderRadius: 10,
@@ -1290,7 +1343,6 @@ export default async function DashboardPage({
               AR Risk <strong style={{ color: theme.text }}>{pct(riskPct)}</strong>
             </span>
 
-            {/* CAPACITY PILL - More visible */}
             <span style={{
               padding: "8px 14px",
               borderRadius: 10,
@@ -1311,9 +1363,13 @@ export default async function DashboardPage({
               Capacity <strong style={{ color: theme.text }}>{capState}</strong>
             </span>
 
-            <a href={upgradeHref} style={ui.btnPrimary} title="Unlock trends + exports after the 14-day trial.">
-              Activate subscription →
-            </a>
+            {subscriptionActive ? (
+  <ManageSubscriptionButton />
+) : (
+  <SubscribeButton />
+)}
+
+<LogoutButton />
           </div>
         </div>
 
@@ -1321,7 +1377,7 @@ export default async function DashboardPage({
         {recommendations.length > 0 && (
           <div style={ui.recommendationBanner}>
             <div style={ui.recommendationTitle}>
-              💡 This Week's Focus
+              💡 This Week&apos;s Focus
             </div>
             {recommendations.map((rec, i) => (
               <div key={i} style={ui.recommendationItem}>
@@ -1344,7 +1400,6 @@ export default async function DashboardPage({
           </div>
 
           <div style={{ padding: 16 }}>
-            {/* FINANCIAL KPIs GROUP */}
             <div style={ui.kpiGroup}>
               <div style={ui.kpiGroupTitle}>💰 Financial Metrics</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
@@ -1378,7 +1433,6 @@ export default async function DashboardPage({
               </div>
             </div>
 
-            {/* OPERATIONS KPIs GROUP */}
             <div style={ui.kpiGroup}>
               <div style={ui.kpiGroupTitle}>📊 Operations Metrics</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
@@ -1429,189 +1483,347 @@ export default async function DashboardPage({
           </div>
         </div>
 
-        {/* Trends + Action Lists */}
+        {/* Trends */}
         <div style={{ marginTop: 14 }}>
-          {!trialActive ? (
-            <div
-              style={{
-                borderRadius: 18,
-                border: `1px solid ${theme.border2}`,
-                background:
-                  "radial-gradient(900px 520px at 50% 30%, rgba(124,92,255,0.26), transparent 62%), rgba(6,8,17,0.76)",
-                backdropFilter: "blur(12px)",
-                padding: 18,
-                boxShadow: "0 18px 60px rgba(0,0,0,0.55)",
-              }}
-            >
-              <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                <div
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 16,
-                    background: "linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95))",
-                    border: "1px solid rgba(255,255,255,0.18)",
-                    boxShadow: "0 16px 42px rgba(90,166,255,0.20)",
-                  }}
-                />
-                <div style={{ flex: 1, minWidth: 240 }}>
-                  <div style={{ fontSize: 16, fontWeight: 1000, letterSpacing: -0.2 }}>Unlock trends & exports</div>
-                  <div style={{ marginTop: 4, fontSize: 12, color: theme.sub, lineHeight: 1.5 }}>
-                    KPIs remain visible. Trends and CSV exports are subscription features.
-                  </div>
+          <div style={ui.panel}>
+            <div style={ui.section}>
+              <div>
+                <div style={ui.sectionTitle}>Trends</div>
+                <div style={ui.sectionSub}>
+                  Historical view over time. Bucketed by your selection (Daily/Weekly/Monthly/Quarterly).
                 </div>
-                <a href={upgradeHref} style={ui.btnPrimary}>
-                  Activate subscription →
-                </a>
+              </div>
+              <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                <span style={ui.badge("rgba(124,92,255,0.16)")}>
+                  Range: {toISODateOnlyUTC(start)} → {toISODateOnlyUTC(end)}
+                </span>
+                <span style={ui.badge("rgba(90,166,255,0.16)")}>
+                  {g === "day" ? "Daily" : g === "week" ? "Weekly" : g === "month" ? "Monthly" : "Quarterly"} •{" "}
+                  {chartType === "line" ? "Line" : "Bars"}
+                </span>
               </div>
             </div>
-          ) : (
-            <>
-              {/* Trends */}
-              <div style={ui.panel}>
-                <div style={ui.section}>
-                  <div>
-                    <div style={ui.sectionTitle}>Trends</div>
-                    <div style={ui.sectionSub}>
-                      Historical view over time. Bucketed by your selection (Daily/Weekly/Monthly/Quarterly).
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                    <span style={ui.badge("rgba(124,92,255,0.16)")}>
-                      Range: {toISODateOnlyUTC(start)} → {toISODateOnlyUTC(end)}
-                    </span>
-                    <span style={ui.badge("rgba(90,166,255,0.16)")}>
-                      {g === "day" ? "Daily" : g === "week" ? "Weekly" : g === "month" ? "Monthly" : "Quarterly"} •{" "}
-                      {chartType === "line" ? "Line" : "Bars"}
-                    </span>
-                  </div>
-                </div>
 
-                <div style={{ padding: "0 16px 16px" }}>
-                  <Controls />
-                </div>
+            <div style={{ padding: "0 16px 16px" }}>
+              <Controls />
+            </div>
 
-                <div style={ui.grid}>
-                  <div className="span4" style={{ gridColumn: "span 4" }}>
-                    <SparkLine
-                      title="Quote leak"
-                      subtitle="Cumulative total of leaked quotes (as-of each point)"
-                      points={points.leak}
-                      formatY={(v) => moneyForChart(v)}
-                      chartType={chartType}
-                      color="#ef4444"
-                    />
-                  </div>
-
-                  <div className="span4" style={{ gridColumn: "span 4" }}>
-                    <SparkLine
-                      title="AR 15+"
-                      subtitle="Cumulative AR overdue 15+ days (as-of each point)"
-                      points={points.ar15}
-                      formatY={(v) => moneyForChart(v)}
-                      chartType={chartType}
-                      color="#f59e0b"
-                    />
-                  </div>
-
-                  <div className="span4" style={{ gridColumn: "span 4" }}>
-                    <SparkLine
-                      title="Unscheduled jobs"
-                      subtitle="Cumulative backlog count (as-of each point)"
-                      points={points.unsched}
-                      formatY={(v) => `${Math.round(v)}`}
-                      chartType={chartType}
-                      color="#5aa6ff"
-                    />
-                  </div>
-                </div>
+            <div style={ui.grid}>
+              <div className="span4" style={{ gridColumn: "span 4" }}>
+                <SparkLine
+                  title="Quote leak"
+                  subtitle="Cumulative total of leaked quotes (as-of each point)"
+                  points={points.leak}
+                  formatY={(v) => moneyForChart(v)}
+                  chartType={chartType}
+                  color="#ef4444"
+                />
               </div>
 
-              {/* Action Lists */}
-              <div style={{ ...ui.panel, marginTop: 14 }}>
-                <div style={ui.section}>
+              <div className="span4" style={{ gridColumn: "span 4" }}>
+                <SparkLine
+                  title="AR 15+"
+                  subtitle="Cumulative AR overdue 15+ days (as-of each point)"
+                  points={points.ar15}
+                  formatY={(v) => moneyForChart(v)}
+                  chartType={chartType}
+                  color="#f59e0b"
+                />
+              </div>
+
+              <div className="span4" style={{ gridColumn: "span 4" }}>
+                <SparkLine
+                  title="Unscheduled jobs"
+                  subtitle="Cumulative backlog count (as-of each point)"
+                  points={points.unsched}
+                  formatY={(v) => `${Math.round(v)}`}
+                  chartType={chartType}
+                  color="#5aa6ff"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Action Lists */}
+          <div style={{ ...ui.panel, marginTop: 14 }}>
+            <div style={ui.section}>
+              <div>
+                <div style={ui.sectionTitle}>Action Lists</div>
+                <div style={ui.sectionSub}>Lists that drive weekly wins: collect AR, schedule backlog, close sales leaks.</div>
+              </div>
+            </div>
+
+            <div style={{ padding: 16 }}>
+              {/* Aged AR */}
+              <div style={{ ...ui.card, marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
                   <div>
-                    <div style={ui.sectionTitle}>Action Lists</div>
-                    <div style={ui.sectionSub}>Lists that drive weekly wins: collect AR, schedule backlog, close sales leaks.</div>
+                    <div style={{ fontWeight: 1000, letterSpacing: -0.2 }}>Aged AR (15+ Days)</div>
+                    <div style={{ marginTop: 3, fontSize: 12, color: theme.mut }}>
+                      Invoices overdue 15+ days - oldest first
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <span style={ui.badge("rgba(239,68,68,0.16)")}>Collections</span>
+                    {agedARInvoices.length > 0 && (
+                      <a
+                        href={generateCSV(
+                          agedARInvoices.map((inv) => ({
+                            "Age (days)": inv.days_overdue,
+                            "Invoice #": inv.invoice_number,
+                            "Client": inv.client_name || "",
+                            "Due Date": inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "",
+                            "Amount": (inv.amount_cents / 100).toFixed(2),
+                            "Jobber URL": inv.jobber_url || "",
+                          })),
+                          "aged-ar-15plus"
+                        )}
+                        download={`aged-ar-15plus-${new Date().toISOString().split("T")[0]}.csv`}
+                        style={ui.btnPrimary}
+                      >
+                        Export CSV →
+                      </a>
+                    )}
                   </div>
                 </div>
 
-                <div style={{ padding: 16 }}>
-                  {/* Aged AR */}
-                  <div style={{ ...ui.card, marginBottom: 12 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
-                      <div>
-                        <div style={{ fontWeight: 1000, letterSpacing: -0.2 }}>Aged AR (15+ Days)</div>
-                        <div style={{ marginTop: 3, fontSize: 12, color: theme.mut }}>
-                          Invoices overdue 15+ days - oldest first
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <span style={ui.badge("rgba(239,68,68,0.16)")}>Collections</span>
-                        {agedARInvoices.length > 0 && (
-                          <a
-                            href={generateCSV(
-                              agedARInvoices.map((inv) => ({
-                                "Age (days)": inv.days_overdue,
-                                "Invoice #": inv.invoice_number,
-                                "Client": inv.client_name || "",
-                                "Due Date": inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "",
-                                "Amount": (inv.amount_cents / 100).toFixed(2),
-                                "Jobber URL": inv.jobber_url || "",
-                              })),
-                              "aged-ar-15plus"
-                            )}
-                            download={`aged-ar-15plus-${new Date().toISOString().split("T")[0]}.csv`}
-                            style={ui.btnPrimary}
-                          >
-                            Export CSV →
-                          </a>
-                        )}
-                      </div>
-                    </div>
+                {agedARInvoices.length === 0 ? (
+                  <div style={{ fontSize: 12, color: theme.sub }}>No aged AR 15+ days! 🎉</div>
+                ) : (
+                  <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                    <table style={ui.table}>
+                      <colgroup>
+                        <col style={{ width: colW.age }} />
+                        <col style={{ width: colW.title }} />
+                        <col style={{ width: colW.date }} />
+                        <col style={{ width: colW.amount }} />
+                        <col style={{ width: colW.open }} />
+                      </colgroup>
+                      <thead>
+                        <tr>
+                          <th style={ui.th}>Age</th>
+                          <th style={ui.th}>Invoice # + Client</th>
+                          <th style={ui.th}>Due Date</th>
+                          <th style={ui.th}>Amount</th>
+                          <th style={ui.th}>Open</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {agedARInvoices
+                          .sort((a, b) => b.days_overdue - a.days_overdue)
+                          .map((inv, idx) => (
+                            <tr key={idx}>
+                              <td style={ui.td}>{inv.days_overdue}d</td>
+                              <td style={ui.td}>
+                                <div style={{ fontWeight: 950 }}>
+                                  <span style={{ color: theme.sub }}>#{inv.invoice_number}</span>
+                                  {inv.client_name && (
+                                    <span style={{ color: theme.text }}> • {inv.client_name}</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td style={ui.td}>
+                                {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "—"}
+                              </td>
+                              <td style={ui.td}>{money(inv.amount_cents)}</td>
+                              <td style={ui.td}>
+                                {inv.jobber_url ? (
+                                  <a href={inv.jobber_url} target="_blank" rel="noreferrer" style={ui.btn}>
+                                    Open in Jobber →
+                                  </a>
+                                ) : (
+                                  <span style={{ fontSize: 12, color: theme.mut }}>—</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
 
-                    {agedARInvoices.length === 0 ? (
-                      <div style={{ fontSize: 12, color: theme.sub }}>No aged AR 15+ days! 🎉</div>
-                    ) : (
-                      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-                        <table style={ui.table}>
-                          <colgroup>
-                            <col style={{ width: colW.age }} />
-                            <col style={{ width: colW.title }} />
-                            <col style={{ width: colW.date }} />
-                            <col style={{ width: colW.amount }} />
-                            <col style={{ width: colW.open }} />
-                          </colgroup>
-                          <thead>
-                            <tr>
-                              <th style={ui.th}>Age</th>
-                            <th style={ui.th}>Invoice # + Client</th>
-                            <th style={ui.th}>Due Date</th>
-                            <th style={ui.th}>Amount</th>
-                            <th style={ui.th}>Open</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {agedARInvoices
-                            .sort((a, b) => b.days_overdue - a.days_overdue)
-                            .map((inv, idx) => (
-                              <tr key={idx}>
-                                <td style={ui.td}>{inv.days_overdue}d</td>
+              {/* Unscheduled Jobs */}
+              <div style={ui.card}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+                  <div>
+                    <div style={{ fontWeight: 1000, letterSpacing: -0.2 }}>Top Unscheduled Jobs</div>
+                    <div style={{ marginTop: 3, fontSize: 12, color: theme.mut }}>
+                      Oldest first. Shows Job # and Title.
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <span style={ui.badge("rgba(90,166,255,0.16)")}>Scheduling</span>
+                    <a href={toggleUnscheduledHref} style={ui.btn} title="Filter unscheduled jobs">
+                      {minDays >= 7 ? "Show all" : "Show 7+ days only"}
+                    </a>
+                    {unscheduledRows.length > 0 && (
+                      <a
+                        href={generateCSV(
+                          unscheduledRows.map((r: any) => ({
+                            "Age (days)": ageDays(r.created_at_jobber),
+                            "Job #": r.job_number ? `#${r.job_number}` : "",
+                            "Job Title": r.job_title || "Untitled job",
+                            "Created": r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "",
+                            "Amount": r.total_amount_cents ? (r.total_amount_cents / 100).toFixed(2) : "",
+                            "Jobber URL": r.jobber_url || "",
+                          })),
+                          "unscheduled-jobs"
+                        )}
+                        download={`unscheduled-jobs-${new Date().toISOString().split("T")[0]}.csv`}
+                        style={ui.btnPrimary}
+                      >
+                        Export CSV →
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {unscheduledRows.length === 0 ? (
+                  <div style={{ fontSize: 12, color: theme.sub }}>No unscheduled jobs found 🎉</div>
+                ) : (
+                  <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                    <table style={ui.table}>
+                      <colgroup>
+                        <col style={{ width: colW.age }} />
+                        <col style={{ width: colW.title }} />
+                        <col style={{ width: colW.date }} />
+                        <col style={{ width: colW.amount }} />
+                        <col style={{ width: colW.open }} />
+                      </colgroup>
+                      <thead>
+                        <tr>
+                          <th style={ui.th}>Age</th>
+                          <th style={ui.th}>Job # + Title</th>
+                          <th style={ui.th}>Created</th>
+                          <th style={ui.th}>Amount</th>
+                          <th style={ui.th}>Open</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {unscheduledRows.map((r: any, idx: number) => {
+                          const age = ageDays(r.created_at_jobber);
+                          const jobNum = r.job_number ? `#${r.job_number}` : "—";
+                          const title = r.job_title ? r.job_title : "Untitled job";
+                          return (
+                            <tr key={`${jobNum}-${idx}`}>
+                              <td style={ui.td}>{age}d</td>
+                              <td style={ui.td}>
+                                <div style={{ fontWeight: 950 }}>
+                                  <span style={{ color: theme.sub }}>{jobNum}</span>{" "}
+                                  <span style={{ color: theme.text }}>• {title}</span>
+                                </div>
+                              </td>
+                              <td style={ui.td}>
+                                {r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "—"}
+                              </td>
+                              <td style={ui.td}>
+                                {r.total_amount_cents ? money(r.total_amount_cents) : "—"}
+                              </td>
+                              <td style={ui.td}>
+                                {r.jobber_url ? (
+                                  <a href={r.jobber_url} target="_blank" rel="noreferrer" style={ui.btn}>
+                                    Open in Jobber →
+                                  </a>
+                                ) : (
+                                  <span style={{ fontSize: 12, color: theme.mut }}>—</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Leaking Quotes */}
+              <div style={{ ...ui.card, marginTop: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+                  <div>
+                    <div style={{ fontWeight: 1000, letterSpacing: -0.2 }}>Top Leaking Quotes</div>
+                    <div style={{ marginTop: 3, fontSize: 12, color: theme.mut }}>
+                      Quotes sent that are not won/converted. Highest value first.
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <span style={ui.badge("rgba(124,92,255,0.16)")}>Sales follow-up</span>
+                    {leakCandidates.length > 0 && (
+                      <a
+                        href={generateCSV(
+                          leakCandidates
+                            .slice()
+                            .sort((a: any, b: any) => Number(b.quote_total_cents ?? 0) - Number(a.quote_total_cents ?? 0))
+                            .slice(0, 10)
+                            .map((q: any) => {
+                              const sent = safeDate(q.sent_at);
+                              const age = sent ? Math.max(0, Math.round((Date.now() - sent.getTime()) / 86400000)) : 0;
+                              return {
+                                "Age (days)": age,
+                                "Quote #": q.quote_number || "",
+                                "Quote Title": q.quote_title || "Untitled quote",
+                                "Sent": sent ? sent.toLocaleDateString() : "",
+                                "Total": ((Number(q.quote_total_cents ?? 0)) / 100).toFixed(2),
+                                "Jobber URL": q.quote_url || "",
+                              };
+                            }),
+                          "leaking-quotes"
+                        )}
+                        download={`leaking-quotes-${new Date().toISOString().split("T")[0]}.csv`}
+                        style={ui.btnPrimary}
+                      >
+                        Export CSV →
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {leakCandidates.length === 0 ? (
+                  <div style={{ fontSize: 12, color: theme.sub }}>No leaking quotes ✅</div>
+                ) : (
+                  <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                    <table style={ui.table}>
+                      <colgroup>
+                        <col style={{ width: colW.age }} />
+                        <col style={{ width: colW.title }} />
+                        <col style={{ width: colW.date }} />
+                        <col style={{ width: colW.amount }} />
+                        <col style={{ width: colW.open }} />
+                      </colgroup>
+                      <thead>
+                        <tr>
+                          <th style={ui.th}>Age</th>
+                          <th style={ui.th}>Quote # + Title</th>
+                          <th style={ui.th}>Sent</th>
+                          <th style={ui.th}>Amount</th>
+                          <th style={ui.th}>Open</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {leakCandidates
+                          .slice()
+                          .sort((a: any, b: any) => Number(b.quote_total_cents ?? 0) - Number(a.quote_total_cents ?? 0))
+                          .slice(0, 10)
+                          .map((q: any, idx: number) => {
+                            const sent = safeDate(q.sent_at);
+                            const age = sent ? Math.max(0, Math.round((Date.now() - sent.getTime()) / 86400000)) : 0;
+                            const quoteNum = q.quote_number ? `#${q.quote_number}` : "—";
+                            const title = q.quote_title ? q.quote_title : "Untitled quote";
+                            return (
+                              <tr key={`${quoteNum}-${idx}`}>
+                                <td style={ui.td}>{age}d</td>
                                 <td style={ui.td}>
                                   <div style={{ fontWeight: 950 }}>
-                                    <span style={{ color: theme.sub }}>#{inv.invoice_number}</span>
-                                    {inv.client_name && (
-                                      <span style={{ color: theme.text }}> • {inv.client_name}</span>
-                                    )}
+                                    <span style={{ color: theme.sub }}>{quoteNum}</span>{" "}
+                                    <span style={{ color: theme.text }}>• {title}</span>
                                   </div>
                                 </td>
+                                <td style={ui.td}>{sent ? sent.toLocaleDateString() : "—"}</td>
+                                <td style={ui.td}>{money(Number(q.quote_total_cents ?? 0))}</td>
                                 <td style={ui.td}>
-                                  {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "—"}
-                                </td>
-                                <td style={ui.td}>{money(inv.amount_cents)}</td>
-                                <td style={ui.td}>
-                                  {inv.jobber_url ? (
-                                    <a href={inv.jobber_url} target="_blank" rel="noreferrer" style={ui.btn}>
+                                  {q.quote_url ? (
+                                    <a href={q.quote_url} target="_blank" rel="noreferrer" style={ui.btn}>
                                       Open in Jobber →
                                     </a>
                                   ) : (
@@ -1619,214 +1831,99 @@ export default async function DashboardPage({
                                   )}
                                 </td>
                               </tr>
-                            ))}
-                        </tbody>
-                      </table>
-                      </div>
-                    )}
+                            );
+                          })}
+                      </tbody>
+                    </table>
                   </div>
-
-                  {/* Unscheduled Jobs */}
-                  <div style={ui.card}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
-                      <div>
-                        <div style={{ fontWeight: 1000, letterSpacing: -0.2 }}>Top Unscheduled Jobs</div>
-                        <div style={{ marginTop: 3, fontSize: 12, color: theme.mut }}>
-                          Oldest first. Shows Job # and Title.
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <span style={ui.badge("rgba(90,166,255,0.16)")}>Scheduling</span>
-                        <a href={toggleUnscheduledHref} style={ui.btn} title="Filter unscheduled jobs">
-                          {minDays >= 7 ? "Show all" : "Show 7+ days only"}
-                        </a>
-                        {unscheduledRows.length > 0 && (
-                          <a
-                            href={generateCSV(
-                              unscheduledRows.map((r: any) => ({
-                                "Age (days)": ageDays(r.created_at_jobber),
-                                "Job #": r.job_number ? `#${r.job_number}` : "",
-                                "Job Title": r.job_title || "Untitled job",
-                                "Created": r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "",
-                                "Amount": r.total_amount_cents ? (r.total_amount_cents / 100).toFixed(2) : "",
-                                "Jobber URL": r.jobber_url || "",
-                              })),
-                              "unscheduled-jobs"
-                            )}
-                            download={`unscheduled-jobs-${new Date().toISOString().split("T")[0]}.csv`}
-                            style={ui.btnPrimary}
-                          >
-                            Export CSV →
-                          </a>
-                        )}
-                      </div>
-                    </div>
-
-                    {unscheduledRows.length === 0 ? (
-                      <div style={{ fontSize: 12, color: theme.sub }}>No unscheduled jobs found 🎉</div>
-                    ) : (
-                      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-                        <table style={ui.table}>
-                          <colgroup>
-                            <col style={{ width: colW.age }} />
-                            <col style={{ width: colW.title }} />
-                            <col style={{ width: colW.date }} />
-                            <col style={{ width: colW.amount }} />
-                            <col style={{ width: colW.open }} />
-                          </colgroup>
-                          <thead>
-                            <tr>
-                              <th style={ui.th}>Age</th>
-                              <th style={ui.th}>Job # + Title</th>
-                              <th style={ui.th}>Created</th>
-                              <th style={ui.th}>Amount</th>
-                              <th style={ui.th}>Open</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {unscheduledRows.map((r: any, idx: number) => {
-                              const age = ageDays(r.created_at_jobber);
-                              const jobNum = r.job_number ? `#${r.job_number}` : "—";
-                              const title = r.job_title ? r.job_title : "Untitled job";
-                              return (
-                                <tr key={`${jobNum}-${idx}`}>
-                                  <td style={ui.td}>{age}d</td>
-                                  <td style={ui.td}>
-                                    <div style={{ fontWeight: 950 }}>
-                                      <span style={{ color: theme.sub }}>{jobNum}</span>{" "}
-                                      <span style={{ color: theme.text }}>• {title}</span>
-                                    </div>
-                                  </td>
-                                  <td style={ui.td}>
-                                    {r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "—"}
-                                  </td>
-                                  <td style={ui.td}>
-                                    {r.total_amount_cents ? money(r.total_amount_cents) : "—"}
-                                  </td>
-                                  <td style={ui.td}>
-                                    {r.jobber_url ? (
-                                      <a href={r.jobber_url} target="_blank" rel="noreferrer" style={ui.btn}>
-                                        Open in Jobber →
-                                      </a>
-                                    ) : (
-                                      <span style={{ fontSize: 12, color: theme.mut }}>—</span>
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Leaking Quotes */}
-                  <div style={{ ...ui.card, marginTop: 12 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
-                      <div>
-                        <div style={{ fontWeight: 1000, letterSpacing: -0.2 }}>Top Leaking Quotes</div>
-                        <div style={{ marginTop: 3, fontSize: 12, color: theme.mut }}>
-                          Quotes sent that are not won/converted. Highest value first.
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <span style={ui.badge("rgba(124,92,255,0.16)")}>Sales follow-up</span>
-                        {leakCandidates.length > 0 && (
-                          <a
-                            href={generateCSV(
-                              leakCandidates
-                                .slice()
-                                .sort((a: any, b: any) => Number(b.quote_total_cents ?? 0) - Number(a.quote_total_cents ?? 0))
-                                .slice(0, 10)
-                                .map((q: any) => {
-                                  const sent = safeDate(q.sent_at);
-                                  const age = sent ? Math.max(0, Math.round((Date.now() - sent.getTime()) / 86400000)) : 0;
-                                  return {
-                                    "Age (days)": age,
-                                    "Quote #": q.quote_number || "",
-                                    "Quote Title": q.quote_title || "Untitled quote",
-                                    "Sent": sent ? sent.toLocaleDateString() : "",
-                                    "Total": ((Number(q.quote_total_cents ?? 0)) / 100).toFixed(2),
-                                    "Jobber URL": q.quote_url || "",
-                                  };
-                                }),
-                              "leaking-quotes"
-                            )}
-                            download={`leaking-quotes-${new Date().toISOString().split("T")[0]}.csv`}
-                            style={ui.btnPrimary}
-                          >
-                            Export CSV →
-                          </a>
-                        )}
-                      </div>
-                    </div>
-
-                    {leakCandidates.length === 0 ? (
-                      <div style={{ fontSize: 12, color: theme.sub }}>No leaking quotes ✅</div>
-                    ) : (
-                      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-                        <table style={ui.table}>
-                          <colgroup>
-                            <col style={{ width: colW.age }} />
-                            <col style={{ width: colW.title }} />
-                            <col style={{ width: colW.date }} />
-                            <col style={{ width: colW.amount }} />
-                            <col style={{ width: colW.open }} />
-                          </colgroup>
-                          <thead>
-                            <tr>
-                              <th style={ui.th}>Age</th>
-                              <th style={ui.th}>Quote # + Title</th>
-                              <th style={ui.th}>Sent</th>
-                              <th style={ui.th}>Amount</th>
-                              <th style={ui.th}>Open</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {leakCandidates
-                              .slice()
-                              .sort((a: any, b: any) => Number(b.quote_total_cents ?? 0) - Number(a.quote_total_cents ?? 0))
-                              .slice(0, 10)
-                              .map((q: any, idx: number) => {
-                                const sent = safeDate(q.sent_at);
-                                const age = sent ? Math.max(0, Math.round((Date.now() - sent.getTime()) / 86400000)) : 0;
-                                const quoteNum = q.quote_number ? `#${q.quote_number}` : "—";
-                                const title = q.quote_title ? q.quote_title : "Untitled quote";
-                                return (
-                                  <tr key={`${quoteNum}-${idx}`}>
-                                    <td style={ui.td}>{age}d</td>
-                                    <td style={ui.td}>
-                                      <div style={{ fontWeight: 950 }}>
-                                        <span style={{ color: theme.sub }}>{quoteNum}</span>{" "}
-                                        <span style={{ color: theme.text }}>• {title}</span>
-                                      </div>
-                                    </td>
-                                    <td style={ui.td}>{sent ? sent.toLocaleDateString() : "—"}</td>
-                                    <td style={ui.td}>{money(Number(q.quote_total_cents ?? 0))}</td>
-                                    <td style={ui.td}>
-                                      {q.quote_url ? (
-                                        <a href={q.quote_url} target="_blank" rel="noreferrer" style={ui.btn}>
-                                          Open in Jobber →
-                                        </a>
-                                      ) : (
-                                        <span style={{ fontSize: 12, color: theme.mut }}>—</span>
-                                      )}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                )}
               </div>
-            </>
-          )}
+            </div>
+          </div>
         </div>
       </div>
     </main>
+  );
+}
+
+/* -------------------------------- Subscribe Button -------------------------------- */
+function SubscribeButton() {
+  return (
+    <form action="/api/billing/checkout" method="POST">
+      <button
+        type="submit"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+          padding: "10px 14px",
+          borderRadius: 12,
+          fontWeight: 1000,
+          fontSize: 13,
+          textDecoration: "none",
+          border: "1px solid rgba(255,255,255,0.16)",
+          background: "linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95))",
+          color: "white",
+          boxShadow: "0 18px 48px rgba(90,166,255,0.22)",
+          cursor: "pointer",
+        }}
+      >
+        Subscribe — $29/mo →
+      </button>
+    </form>
+  );
+}
+/* -------------------------------- Manage Subscription Button -------------------------------- */
+function ManageSubscriptionButton() {
+  return (
+    <form action="/api/billing/portal" method="POST">
+      <button
+        type="submit"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          padding: "9px 12px",
+          borderRadius: 12,
+          fontWeight: 950,
+          fontSize: 13,
+          textDecoration: "none",
+          border: "1px solid rgba(255,255,255,0.10)",
+          background: "rgba(255,255,255,0.06)",
+          color: "#EAF1FF",
+          cursor: "pointer",
+        }}
+      >
+        Manage Subscription
+      </button>
+    </form>
+  );
+}
+
+/* -------------------------------- Logout Button -------------------------------- */
+function LogoutButton() {
+  return (
+    <form action="/api/auth/logout" method="POST">
+      <button
+        type="submit"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "9px 12px",
+          borderRadius: 12,
+          fontWeight: 950,
+          fontSize: 13,
+          border: "1px solid rgba(255,255,255,0.10)",
+          background: "transparent",
+          color: "rgba(234,241,255,0.6)",
+          cursor: "pointer",
+        }}
+      >
+        Log out
+      </button>
+    </form>
   );
 }
