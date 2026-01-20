@@ -44,7 +44,7 @@ export default function TermsOfService() {
         </h1>
         
         <p style={{ color: "rgba(234,241,255,0.5)", marginBottom: 48 }}>
-          Last updated: January 19, 2025
+          Last updated: January 19, 2026
         </p>
 
         <div
@@ -268,7 +268,7 @@ export default function TermsOfService() {
             fontSize: 13,
           }}
         >
-          <p>© 2025 OwnerView. All rights reserved.</p>
+          <p>© 2026 OwnerView. All rights reserved.</p>
           <p style={{ marginTop: 8 }}>
             <Link
               href="/privacy"
