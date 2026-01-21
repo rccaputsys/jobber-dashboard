@@ -60,7 +60,7 @@ export function Controls() {
       if (v === null) params.delete(k);
       else params.set(k, v);
     }
-    router.push(`/dashboard?${params.toString()}`);
+    router.push(`/jobber/dashboard?${params.toString()}`);
   }
 
   function applyCustomRange(e: React.FormEvent) {
