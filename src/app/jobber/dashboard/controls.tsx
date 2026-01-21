@@ -55,13 +55,13 @@ export function Controls() {
   }, [start, end]);
 
   function setParams(next: Record<string, string | null>) {
-    const params = new URLSearchParams(sp.toString());
-    for (const [k, v] of Object.entries(next)) {
-      if (v === null) params.delete(k);
-      else params.set(k, v);
-    }
-    router.push(`/jobber/dashboard?${params.toString()}`);
+  const params = new URLSearchParams(sp.toString());
+  for (const [k, v] of Object.entries(next)) {
+    if (v === null) params.delete(k);
+    else params.set(k, v);
   }
+  router.push(`/jobber/dashboard?${params.toString()}`, { scroll: false });
+}
 
   function applyCustomRange(e: React.FormEvent) {
     e.preventDefault();
