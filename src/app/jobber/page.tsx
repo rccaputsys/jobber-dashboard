@@ -281,7 +281,7 @@ export default function JobberLanding() {
                   <div style={{ fontSize: 14, fontWeight: 700 }}>Aged AR (15+ Days)</div>
                   <div style={{ fontSize: 11, color: "rgba(234,241,255,0.5)" }}>Invoices overdue 15+ days - oldest first</div>
                 </div>
-                <span style={{ padding: "4px 10px", borderRadius: 8, fontSize: 11, fontWeight: 700, background: "rgba(239,68,68,0.16)", color: "#fca5a5" }}>Collections</span>
+                <span style={{ padding: "4px 10px", borderRadius: 8, fontSize: 11, fontWeight: 700, background: "rgba(239,68,68,0.16)", color: "#fca5a5" }}>Receivables</span>
               </div>
               <div style={{ fontSize: 12 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "45px 1fr 70px 70px", gap: 8, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.06)", color: "rgba(234,241,255,0.5)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3, fontSize: 10 }}>

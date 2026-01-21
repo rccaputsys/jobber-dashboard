@@ -1564,7 +1564,7 @@ export default async function DashboardPage({
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span style={ui.badge("rgba(239,68,68,0.16)")}>Collections</span>
+                    <span style={ui.badge("rgba(239,68,68,0.16)")}>Receivables</span>
                     {agedARInvoices.length > 0 && (
                       <a
                         href={generateCSV(
