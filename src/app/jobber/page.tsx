@@ -50,7 +50,7 @@ export default function JobberLanding() {
               backgroundClip: "text",
             }}
           >
-            OwnerView for Jobber
+            AccuInsight by OwnerView
           </h1>
           
           <p
@@ -125,7 +125,7 @@ export default function JobberLanding() {
             }}
           >
             <div>
-              <div style={{ fontSize: 18, fontWeight: 800 }}>OwnerView Dashboard</div>
+              <div style={{ fontSize: 18, fontWeight: 800 }}>AccuInsight Dashboard</div>
               <div style={{ fontSize: 12, color: "rgba(234,241,255,0.5)" }}>Last sync: 2 hours ago • USD</div>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>

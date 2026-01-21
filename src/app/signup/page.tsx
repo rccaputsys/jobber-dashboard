@@ -46,7 +46,7 @@ function SignupForm() {
     <div style={styles.card}>
       <h1 style={styles.title}>Create your account</h1>
       <p style={styles.subtitle}>
-        Set up your login to access your OwnerView dashboard
+        Set up your login to access your AccuInsight dashboard
       </p>
 
       <form onSubmit={handleSubmit} style={styles.form}>

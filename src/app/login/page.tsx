@@ -43,7 +43,7 @@ export default function LoginPage() {
     <main style={styles.page}>
       <div style={styles.card}>
         <h1 style={styles.title}>Welcome back</h1>
-        <p style={styles.subtitle}>Log in to your OwnerView dashboard</p>
+        <p style={styles.subtitle}>Log in to your AccuInsight dashboard</p>
 
         <form onSubmit={handleSubmit} style={styles.form}>
           <div>
