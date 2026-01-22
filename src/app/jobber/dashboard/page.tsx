@@ -1,4 +1,5 @@
 // src/app/jobber/dashboard/page.tsx
+import { ExportCSV } from "./ExportCSV";
 import React from "react";
 import { Controls } from "./controls";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -10,28 +11,6 @@ import { redirect } from "next/navigation";
 /* --------------------------------- helpers --------------------------------- */
 type Granularity = "day" | "week" | "month" | "quarter";
 type ChartType = "line" | "bar";
-
-// Helper to generate CSV download link
-function generateCSV(data: any[], filename: string): string {
-  if (!data.length) return "";
-  
-  const headers = Object.keys(data[0]);
-  const csvContent = [
-    headers.join(","),
-    ...data.map((row) =>
-      headers
-        .map((header) => {
-          const value = row[header] ?? "";
-          const escaped = String(value).replace(/"/g, '""');
-          return escaped.includes(",") ? `"${escaped}"` : escaped;
-        })
-        .join(",")
-    ),
-  ].join("\n");
-
-  const blob = new Blob([csvContent], { type: "text/csv" });
-  return URL.createObjectURL(blob);
-}
 
 function safeDate(v: any): Date | null {
   if (!v) return null;
@@ -155,10 +134,6 @@ function severityFromScore(score: number): "critical" | "warning" | "good" {
 function statusLooksWon(status: string) {
   const s = status.toUpperCase();
   return s.includes("APPROV") || s.includes("ACCEPT") || s.includes("WON") || s.includes("CONVERT") || s.includes("BOOK");
-}
-
-function daysBetweenUTC(a: Date, b: Date) {
-  return Math.round((a.getTime() - b.getTime()) / 86400000);
 }
 
 /* ----------------------------------- UI ----------------------------------- */
@@ -1034,6 +1009,42 @@ export default async function DashboardPage({
     });
   }
 
+  // Prepare data for ExportCSV components
+  const agedARExportData = agedARInvoices.map((inv) => ({
+    "Age (days)": inv.days_overdue,
+    "Invoice #": inv.invoice_number,
+    "Client": inv.client_name || "",
+    "Due Date": inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "",
+    "Amount": (inv.amount_cents / 100).toFixed(2),
+    "Jobber URL": inv.jobber_url || "",
+  }));
+
+  const unscheduledExportData = unscheduledRows.map((r: any) => ({
+    "Age (days)": ageDays(r.created_at_jobber),
+    "Job #": r.job_number ? `#${r.job_number}` : "",
+    "Job Title": r.job_title || "Untitled job",
+    "Created": r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "",
+    "Amount": r.total_amount_cents ? (r.total_amount_cents / 100).toFixed(2) : "",
+    "Jobber URL": r.jobber_url || "",
+  }));
+
+  const leakingQuotesExportData = leakCandidates
+    .slice()
+    .sort((a: any, b: any) => Number(b.quote_total_cents ?? 0) - Number(a.quote_total_cents ?? 0))
+    .slice(0, 10)
+    .map((q: any) => {
+      const sent = safeDate(q.sent_at);
+      const age = sent ? Math.max(0, Math.round((Date.now() - sent.getTime()) / 86400000)) : 0;
+      return {
+        "Age (days)": age,
+        "Quote #": q.quote_number || "",
+        "Quote Title": q.quote_title || "Untitled quote",
+        "Sent": sent ? sent.toLocaleDateString() : "",
+        "Total": ((Number(q.quote_total_cents ?? 0)) / 100).toFixed(2),
+        "Jobber URL": q.quote_url || "",
+      };
+    });
+
   return (
     <main style={ui.page}>
       <style>{`
@@ -1364,12 +1375,12 @@ export default async function DashboardPage({
             </span>
 
             {subscriptionActive ? (
-  <ManageSubscriptionButton />
-) : (
-  <SubscribeButton />
-)}
+              <ManageSubscriptionButton />
+            ) : (
+              <SubscribeButton />
+            )}
 
-<LogoutButton />
+            <LogoutButton />
           </div>
         </div>
 
@@ -1413,7 +1424,7 @@ export default async function DashboardPage({
 
                 <div style={ui.kpiCard}>
                   <div style={ui.kpiLabel}>AR 15+ DAYS</div>
-                  <div style={{ ...ui.kpiValue, color: b15p > 0 ? (riskPct >= 15 ? "#ef4444" : "#f59e0b") : "#10b981" }}>
+                  <div style={{ ...ui.kpiValue, color: b15p > 0 ? (riskPct >= 0.15 ? "#ef4444" : "#f59e0b") : "#10b981" }}>
                     {money(b15p)}
                   </div>
                   <div style={ui.kpiMeta}>
@@ -1566,23 +1577,7 @@ export default async function DashboardPage({
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <span style={ui.badge("rgba(239,68,68,0.16)")}>Receivables</span>
                     {agedARInvoices.length > 0 && (
-                      <a
-                        href={generateCSV(
-                          agedARInvoices.map((inv) => ({
-                            "Age (days)": inv.days_overdue,
-                            "Invoice #": inv.invoice_number,
-                            "Client": inv.client_name || "",
-                            "Due Date": inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "",
-                            "Amount": (inv.amount_cents / 100).toFixed(2),
-                            "Jobber URL": inv.jobber_url || "",
-                          })),
-                          "aged-ar-15plus"
-                        )}
-                        download={`aged-ar-15plus-${new Date().toISOString().split("T")[0]}.csv`}
-                        style={ui.btnPrimary}
-                      >
-                        Export CSV →
-                      </a>
+                      <ExportCSV data={agedARExportData} filename="aged-ar-15plus" />
                     )}
                   </div>
                 </div>
@@ -1658,23 +1653,7 @@ export default async function DashboardPage({
                       {minDays >= 7 ? "Show all" : "Show 7+ days only"}
                     </a>
                     {unscheduledRows.length > 0 && (
-                      <a
-                        href={generateCSV(
-                          unscheduledRows.map((r: any) => ({
-                            "Age (days)": ageDays(r.created_at_jobber),
-                            "Job #": r.job_number ? `#${r.job_number}` : "",
-                            "Job Title": r.job_title || "Untitled job",
-                            "Created": r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "",
-                            "Amount": r.total_amount_cents ? (r.total_amount_cents / 100).toFixed(2) : "",
-                            "Jobber URL": r.jobber_url || "",
-                          })),
-                          "unscheduled-jobs"
-                        )}
-                        download={`unscheduled-jobs-${new Date().toISOString().split("T")[0]}.csv`}
-                        style={ui.btnPrimary}
-                      >
-                        Export CSV →
-                      </a>
+                      <ExportCSV data={unscheduledExportData} filename="unscheduled-jobs" />
                     )}
                   </div>
                 </div>
@@ -1750,31 +1729,7 @@ export default async function DashboardPage({
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <span style={ui.badge("rgba(124,92,255,0.16)")}>Sales follow-up</span>
                     {leakCandidates.length > 0 && (
-                      <a
-                        href={generateCSV(
-                          leakCandidates
-                            .slice()
-                            .sort((a: any, b: any) => Number(b.quote_total_cents ?? 0) - Number(a.quote_total_cents ?? 0))
-                            .slice(0, 10)
-                            .map((q: any) => {
-                              const sent = safeDate(q.sent_at);
-                              const age = sent ? Math.max(0, Math.round((Date.now() - sent.getTime()) / 86400000)) : 0;
-                              return {
-                                "Age (days)": age,
-                                "Quote #": q.quote_number || "",
-                                "Quote Title": q.quote_title || "Untitled quote",
-                                "Sent": sent ? sent.toLocaleDateString() : "",
-                                "Total": ((Number(q.quote_total_cents ?? 0)) / 100).toFixed(2),
-                                "Jobber URL": q.quote_url || "",
-                              };
-                            }),
-                          "leaking-quotes"
-                        )}
-                        download={`leaking-quotes-${new Date().toISOString().split("T")[0]}.csv`}
-                        style={ui.btnPrimary}
-                      >
-                        Export CSV →
-                      </a>
+                      <ExportCSV data={leakingQuotesExportData} filename="leaking-quotes" />
                     )}
                   </div>
                 </div>
@@ -1874,6 +1829,7 @@ function SubscribeButton() {
     </form>
   );
 }
+
 /* -------------------------------- Manage Subscription Button -------------------------------- */
 function ManageSubscriptionButton() {
   return (
