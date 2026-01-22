@@ -900,6 +900,176 @@ const globalStyles = `
   /* Hover lift shadow adjustment */
   html[data-theme="light"] .hover-lift:hover {
     box-shadow: 0 12px 24px rgba(0,0,0,0.08) !important;
+
+    /* ================================ */
+/* CONTROLS COMPONENT STYLES        */
+/* ================================ */
+
+.controls-container {
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%);
+  box-shadow: 0 18px 54px rgba(0,0,0,0.40);
+  padding: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.controls-title {
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  font-size: 14px;
+  color: #EAF1FF;
+}
+
+.controls-label {
+  font-size: 12px;
+  color: rgba(234,241,255,0.62);
+  font-weight: 700;
+}
+
+.controls-pill {
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: #EAF1FF;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.controls-pill:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.controls-pill.active {
+  background: linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95));
+  border-color: rgba(255,255,255,0.2);
+  color: #ffffff;
+}
+
+.controls-chip {
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: #EAF1FF;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.controls-chip:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.controls-chip.active {
+  background: rgba(90,166,255,0.18);
+  border-color: rgba(90,166,255,0.3);
+  color: #5aa6ff;
+}
+
+.controls-input {
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  color: #EAF1FF;
+  padding: 7px 10px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.controls-btn {
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.06);
+  color: #EAF1FF;
+  padding: 8px 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.controls-btn:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+/* ================================ */
+/* CONTROLS - LIGHT MODE            */
+/* ================================ */
+
+html[data-theme="light"] .controls-container {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06) !important;
+}
+
+html[data-theme="light"] .controls-title {
+  color: #1e293b !important;
+}
+
+html[data-theme="light"] .controls-label {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .controls-pill {
+  background: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+html[data-theme="light"] .controls-pill:hover {
+  background: #e2e8f0 !important;
+}
+
+html[data-theme="light"] .controls-pill.active {
+  background: linear-gradient(135deg, #7c5cff, #5aa6ff) !important;
+  border-color: rgba(90,166,255,0.3) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="light"] .controls-chip {
+  background: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+html[data-theme="light"] .controls-chip:hover {
+  background: #e2e8f0 !important;
+}
+
+html[data-theme="light"] .controls-chip.active {
+  background: rgba(90,166,255,0.15) !important;
+  border-color: rgba(37,99,235,0.3) !important;
+  color: #2563eb !important;
+}
+
+html[data-theme="light"] .controls-input {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+html[data-theme="light"] .controls-input::-webkit-calendar-picker-indicator {
+  filter: invert(0);
+}
+
+html[data-theme="light"] .controls-btn {
+  background: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+html[data-theme="light"] .controls-btn:hover {
+  background: #e2e8f0 !important;
+}
+
   }
 `;
 

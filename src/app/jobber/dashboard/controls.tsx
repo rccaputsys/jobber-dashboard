@@ -55,61 +55,23 @@ export function Controls() {
   }, [start, end]);
 
   function setParams(next: Record<string, string | null>) {
-  const params = new URLSearchParams(sp.toString());
-  for (const [k, v] of Object.entries(next)) {
-    if (v === null) params.delete(k);
-    else params.set(k, v);
+    const params = new URLSearchParams(sp.toString());
+    for (const [k, v] of Object.entries(next)) {
+      if (v === null) params.delete(k);
+      else params.set(k, v);
+    }
+    router.push(`/jobber/dashboard?${params.toString()}`, { scroll: false });
   }
-  router.push(`/jobber/dashboard?${params.toString()}`, { scroll: false });
-}
 
   function applyCustomRange(e: React.FormEvent) {
     e.preventDefault();
     setParams({ range: "custom", start: startLocal, end: endLocal });
   }
 
-  const pill = (active: boolean) => ({
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: active
-      ? "linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95))"
-      : "rgba(255,255,255,0.06)",
-    color: "white",
-    padding: "7px 10px",
-    fontSize: 12,
-    fontWeight: 950,
-    cursor: "pointer" as const,
-  });
-
-  const chip = (active: boolean) => ({
-    borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: active ? "rgba(90,166,255,0.18)" : "rgba(255,255,255,0.06)",
-    color: "white",
-    padding: "7px 10px",
-    fontSize: 12,
-    fontWeight: 950,
-    cursor: "pointer" as const,
-  });
-
   return (
-    <div
-      style={{
-        borderRadius: 18,
-        border: "1px solid rgba(255,255,255,0.10)",
-        background:
-          "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%)",
-        boxShadow: "0 18px 54px rgba(0,0,0,0.40)",
-        padding: 14,
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 12,
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}
-    >
+    <div className="controls-container">
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-        <div style={{ fontWeight: 990, letterSpacing: -0.2, fontSize: 14 }}>Controls</div>
+        <div className="controls-title">Controls</div>
 
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {[
@@ -122,7 +84,7 @@ export function Controls() {
             <button
               key={key}
               onClick={() => setParams({ range: key, start: null, end: null })}
-              style={pill(rangePreset === key)}
+              className={`controls-pill ${rangePreset === key ? "active" : ""}`}
             >
               {label}
             </button>
@@ -130,47 +92,21 @@ export function Controls() {
         </div>
 
         <form onSubmit={applyCustomRange} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <label style={{ fontSize: 12, color: "rgba(234,241,255,0.62)", fontWeight: 900 }}>Start</label>
+          <label className="controls-label">Start</label>
           <input
             type="date"
             value={startLocal}
             onChange={(e) => setStartLocal(e.target.value)}
-            style={{
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.04)",
-              color: "white",
-              padding: "7px 10px",
-              fontWeight: 800,
-            }}
+            className="controls-input"
           />
-          <label style={{ fontSize: 12, color: "rgba(234,241,255,0.62)", fontWeight: 900 }}>End</label>
+          <label className="controls-label">End</label>
           <input
             type="date"
             value={endLocal}
             onChange={(e) => setEndLocal(e.target.value)}
-            style={{
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.04)",
-              color: "white",
-              padding: "7px 10px",
-              fontWeight: 800,
-            }}
+            className="controls-input"
           />
-          <button
-            type="submit"
-            style={{
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.16)",
-              background: "rgba(255,255,255,0.06)",
-              color: "white",
-              padding: "8px 12px",
-              fontWeight: 950,
-              cursor: "pointer",
-            }}
-            title="Apply custom range"
-          >
+          <button type="submit" className="controls-btn" title="Apply custom range">
             Apply
           </button>
         </form>
@@ -178,18 +114,18 @@ export function Controls() {
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, color: "rgba(234,241,255,0.62)", fontWeight: 900 }}>Bucket</span>
+          <span className="controls-label">Bucket</span>
           {(["day", "week", "month", "quarter"] as Granularity[]).map((k) => (
-            <button key={k} onClick={() => setParams({ g: k })} style={chip(g === k)}>
+            <button key={k} onClick={() => setParams({ g: k })} className={`controls-chip ${g === k ? "active" : ""}`}>
               {k === "day" ? "Daily" : k === "week" ? "Weekly" : k === "month" ? "Monthly" : "Quarterly"}
             </button>
           ))}
         </div>
 
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, color: "rgba(234,241,255,0.62)", fontWeight: 900 }}>Chart</span>
+          <span className="controls-label">Chart</span>
           {(["line", "bar"] as ChartType[]).map((k) => (
-            <button key={k} onClick={() => setParams({ chart: k })} style={chip(chart === k)}>
+            <button key={k} onClick={() => setParams({ chart: k })} className={`controls-chip ${chart === k ? "active" : ""}`}>
               {k === "line" ? "Line" : "Bars"}
             </button>
           ))}
