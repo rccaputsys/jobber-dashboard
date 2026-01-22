@@ -18,10 +18,14 @@ async function tokenExchange(code: string) {
     body,
   });
 
-  const json = await res.json().catch(async () => {
-    const t = await res.text();
-    throw new Error(`Token exchange non-JSON response: ${res.status} ${t}`);
-  });
+  const text = await res.text();
+  
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch (e) {
+    throw new Error(`Token exchange non-JSON response: ${res.status} ${text}`);
+  }
 
   if (!res.ok) {
     throw new Error(
@@ -38,6 +42,7 @@ async function tokenExchange(code: string) {
     scope?: string;
   };
 }
+  
 
 async function jobberGraphQL<T>(
   accessToken: string,
