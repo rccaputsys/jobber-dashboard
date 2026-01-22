@@ -108,37 +108,95 @@ export async function GET(req: Request) {
     );
   }
 
-  const acct = await jobberGraphQL<{ account: { id: string; name: string } }>(
+  // Fetch account info AND user email from Jobber
+  const data = await jobberGraphQL<{ 
+    account: { id: string; name: string }; 
+    user: { email: { raw: string } } 
+  }>(
     token.access_token,
-    `query { account { id name } }`
+    `query { 
+      account { id name } 
+      user { email { raw } }
+    }`
   );
+
+  const acct = data.account;
+  const userEmail = data.user?.email?.raw;
+
+  if (!userEmail) {
+    throw new Error("Could not get user email from Jobber");
+  }
 
   // Check if this Jobber account already has a connection
   const { data: existingConn } = await supabaseAdmin
     .from("jobber_connections")
     .select("id, user_id")
-    .eq("jobber_account_id", acct.account.id)
+    .eq("jobber_account_id", acct.id)
     .maybeSingle();
 
   let connectionId: string;
+  let userId: string;
 
   if (existingConn) {
     // Update existing connection
     connectionId = existingConn.id;
     await supabaseAdmin
       .from("jobber_connections")
-      .update({ jobber_account_name: acct.account.name })
+      .update({ jobber_account_name: acct.name })
       .eq("id", connectionId);
+
+    if (existingConn.user_id) {
+      userId = existingConn.user_id;
+    } else {
+      // Connection exists but no user - create one
+      const { data: newUser, error: userErr } = await supabaseAdmin.auth.admin.createUser({
+        email: userEmail,
+        email_confirm: true,
+      });
+
+      if (userErr || !newUser.user) {
+        throw new Error(userErr?.message || "Failed to create user");
+      }
+
+      userId = newUser.user.id;
+
+      // Link user to connection
+      await supabaseAdmin
+        .from("jobber_connections")
+        .update({ user_id: userId })
+        .eq("id", connectionId);
+    }
   } else {
-    // Create new connection (without user_id - will be set after signup)
+    // Check if user already exists with this email
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+    const existingUser = existingUsers.users.find(u => u.email === userEmail);
+
+    if (existingUser) {
+      userId = existingUser.id;
+    } else {
+      // Create new user
+      const { data: newUser, error: userErr } = await supabaseAdmin.auth.admin.createUser({
+        email: userEmail,
+        email_confirm: true,
+      });
+
+      if (userErr || !newUser.user) {
+        throw new Error(userErr?.message || "Failed to create user");
+      }
+
+      userId = newUser.user.id;
+    }
+
+    // Create new connection
     const now = new Date();
-    const trialEnds = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 days from now
-    
+    const trialEnds = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+
     const { data: conn, error: connErr } = await supabaseAdmin
       .from("jobber_connections")
       .insert({
-        jobber_account_id: acct.account.id,
-        jobber_account_name: acct.account.name,
+        jobber_account_id: acct.id,
+        jobber_account_name: acct.name,
+        user_id: userId,
         billing_status: 'trialing',
         trial_started_at: now.toISOString(),
         trial_ends_at: trialEnds.toISOString(),
@@ -167,16 +225,24 @@ export async function GET(req: Request) {
 
   if (tokErr) throw new Error(tokErr.message);
 
-  // If user already exists for this connection, redirect to dashboard
-  if (existingConn?.user_id) {
-    // Kick off sync first
-    await fetch(new URL(`/api/sync/run?connection_id=${connectionId}`, req.url));
-    return NextResponse.redirect(new URL("/login", req.url));
+  // Generate magic link to sign user in
+  const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
+    type: 'magiclink',
+    email: userEmail,
+  });
+
+  if (linkErr || !linkData.properties?.hashed_token) {
+    throw new Error(linkErr?.message || "Failed to generate session");
   }
 
-  // New user - start sync then redirect to signup
-  await fetch(new URL(`/api/sync/run?connection_id=${connectionId}`, req.url));
-  return NextResponse.redirect(
-    new URL(`/signup?connection_id=${connectionId}`, req.url)
-  );
+  // Start sync in background
+  fetch(new URL(`/api/sync/run?connection_id=${connectionId}`, req.url)).catch(() => {});
+
+  // Redirect to verify the magic link token (this logs them in)
+  const verifyUrl = new URL("/api/auth/callback", req.url);
+  verifyUrl.searchParams.set("token_hash", linkData.properties.hashed_token);
+  verifyUrl.searchParams.set("type", "magiclink");
+  verifyUrl.searchParams.set("next", "/jobber/dashboard");
+
+  return NextResponse.redirect(verifyUrl.toString());
 }

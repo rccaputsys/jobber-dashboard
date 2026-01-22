@@ -90,7 +90,7 @@ async function fetchAllPages<T>(
   accessToken: string,
   resourceName: string,
   nodeFields: string,
-  maxPages: number = 50 // Safety limit to prevent infinite loops
+  maxPages: number = 50
 ): Promise<{ nodes: T[]; errors: unknown[] }> {
   const allNodes: T[] = [];
   const allErrors: unknown[] = [];
@@ -124,7 +124,12 @@ async function fetchAllPages<T>(
     const data = result.data?.[resourceName];
     if (!data) break;
 
-    const validNodes = (data.nodes || []).filter((n: T | null): n is T => n !== null);
+    const validNodes: T[] = [];
+    for (const n of data.nodes || []) {
+      if (n !== null) {
+        validNodes.push(n);
+      }
+    }
     allNodes.push(...validNodes);
 
     if (!data.pageInfo.hasNextPage) break;
