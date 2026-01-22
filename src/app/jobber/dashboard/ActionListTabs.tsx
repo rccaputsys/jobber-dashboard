@@ -74,7 +74,7 @@ type Props = {
   leakingQuotesExportData: Record<string, any>[];
   toggleUnscheduledHref: string;
   minDays: number;
-  currencyCode: string;  // Pass currency code instead of money function
+  currencyCode: string;
 };
 
 export function ActionListTabs({
