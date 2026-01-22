@@ -36,6 +36,20 @@ function defaultRange(preset: string) {
 export function Controls() {
   const router = useRouter();
   const sp = useSearchParams();
+  const [isLight, setIsLight] = React.useState(false);
+
+  // Detect theme changes
+  React.useEffect(() => {
+    const checkTheme = () => {
+      setIsLight(document.documentElement.getAttribute("data-theme") === "light");
+    };
+    checkTheme();
+    
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    
+    return () => observer.disconnect();
+  }, []);
 
   const rangePreset = sp.get("range") ?? "8w";
   const g = (sp.get("g") ?? "week") as Granularity;
@@ -68,10 +82,82 @@ export function Controls() {
     setParams({ range: "custom", start: startLocal, end: endLocal });
   }
 
+  const pill = (active: boolean): React.CSSProperties => ({
+    borderRadius: 999,
+    border: active
+      ? "1px solid rgba(90,166,255,0.3)"
+      : isLight
+      ? "1px solid #e2e8f0"
+      : "1px solid rgba(255,255,255,0.12)",
+    background: active
+      ? "linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95))"
+      : isLight
+      ? "#f1f5f9"
+      : "rgba(255,255,255,0.06)",
+    color: active ? "white" : isLight ? "#334155" : "white",
+    padding: "7px 10px",
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+  });
+
+  const chip = (active: boolean): React.CSSProperties => ({
+    borderRadius: 12,
+    border: active
+      ? isLight
+        ? "1px solid rgba(37,99,235,0.3)"
+        : "1px solid rgba(90,166,255,0.3)"
+      : isLight
+      ? "1px solid #e2e8f0"
+      : "1px solid rgba(255,255,255,0.12)",
+    background: active
+      ? isLight
+        ? "rgba(90,166,255,0.15)"
+        : "rgba(90,166,255,0.18)"
+      : isLight
+      ? "#f1f5f9"
+      : "rgba(255,255,255,0.06)",
+    color: active
+      ? isLight
+        ? "#2563eb"
+        : "#5aa6ff"
+      : isLight
+      ? "#334155"
+      : "white",
+    padding: "7px 10px",
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+  });
+
   return (
-    <div className="controls-container">
+    <div
+      style={{
+        borderRadius: 18,
+        border: isLight ? "1px solid #e2e8f0" : "1px solid rgba(255,255,255,0.10)",
+        background: isLight
+          ? "#ffffff"
+          : "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%)",
+        boxShadow: isLight ? "0 4px 16px rgba(0,0,0,0.06)" : "0 18px 54px rgba(0,0,0,0.40)",
+        padding: 14,
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 12,
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}
+    >
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-        <div className="controls-title">Controls</div>
+        <div
+          style={{
+            fontWeight: 800,
+            letterSpacing: -0.2,
+            fontSize: 14,
+            color: isLight ? "#1e293b" : "white",
+          }}
+        >
+          Controls
+        </div>
 
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {[
@@ -84,7 +170,7 @@ export function Controls() {
             <button
               key={key}
               onClick={() => setParams({ range: key, start: null, end: null })}
-              className={`controls-pill ${rangePreset === key ? "active" : ""}`}
+              style={pill(rangePreset === key)}
             >
               {label}
             </button>
@@ -92,21 +178,65 @@ export function Controls() {
         </div>
 
         <form onSubmit={applyCustomRange} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <label className="controls-label">Start</label>
+          <label
+            style={{
+              fontSize: 12,
+              color: isLight ? "#64748b" : "rgba(234,241,255,0.62)",
+              fontWeight: 700,
+            }}
+          >
+            Start
+          </label>
           <input
             type="date"
             value={startLocal}
             onChange={(e) => setStartLocal(e.target.value)}
-            className="controls-input"
+            style={{
+              borderRadius: 12,
+              border: isLight ? "1px solid #e2e8f0" : "1px solid rgba(255,255,255,0.12)",
+              background: isLight ? "#ffffff" : "rgba(255,255,255,0.04)",
+              color: isLight ? "#1e293b" : "white",
+              padding: "7px 10px",
+              fontWeight: 600,
+              colorScheme: isLight ? "light" : "dark",
+            }}
           />
-          <label className="controls-label">End</label>
+          <label
+            style={{
+              fontSize: 12,
+              color: isLight ? "#64748b" : "rgba(234,241,255,0.62)",
+              fontWeight: 700,
+            }}
+          >
+            End
+          </label>
           <input
             type="date"
             value={endLocal}
             onChange={(e) => setEndLocal(e.target.value)}
-            className="controls-input"
+            style={{
+              borderRadius: 12,
+              border: isLight ? "1px solid #e2e8f0" : "1px solid rgba(255,255,255,0.12)",
+              background: isLight ? "#ffffff" : "rgba(255,255,255,0.04)",
+              color: isLight ? "#1e293b" : "white",
+              padding: "7px 10px",
+              fontWeight: 600,
+              colorScheme: isLight ? "light" : "dark",
+            }}
           />
-          <button type="submit" className="controls-btn" title="Apply custom range">
+          <button
+            type="submit"
+            style={{
+              borderRadius: 12,
+              border: isLight ? "1px solid #e2e8f0" : "1px solid rgba(255,255,255,0.16)",
+              background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.06)",
+              color: isLight ? "#334155" : "white",
+              padding: "8px 12px",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+            title="Apply custom range"
+          >
             Apply
           </button>
         </form>
@@ -114,18 +244,34 @@ export function Controls() {
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-          <span className="controls-label">Bucket</span>
+          <span
+            style={{
+              fontSize: 12,
+              color: isLight ? "#64748b" : "rgba(234,241,255,0.62)",
+              fontWeight: 700,
+            }}
+          >
+            Bucket
+          </span>
           {(["day", "week", "month", "quarter"] as Granularity[]).map((k) => (
-            <button key={k} onClick={() => setParams({ g: k })} className={`controls-chip ${g === k ? "active" : ""}`}>
+            <button key={k} onClick={() => setParams({ g: k })} style={chip(g === k)}>
               {k === "day" ? "Daily" : k === "week" ? "Weekly" : k === "month" ? "Monthly" : "Quarterly"}
             </button>
           ))}
         </div>
 
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-          <span className="controls-label">Chart</span>
+          <span
+            style={{
+              fontSize: 12,
+              color: isLight ? "#64748b" : "rgba(234,241,255,0.62)",
+              fontWeight: 700,
+            }}
+          >
+            Chart
+          </span>
           {(["line", "bar"] as ChartType[]).map((k) => (
-            <button key={k} onClick={() => setParams({ chart: k })} className={`controls-chip ${chart === k ? "active" : ""}`}>
+            <button key={k} onClick={() => setParams({ chart: k })} style={chip(chart === k)}>
               {k === "line" ? "Line" : "Bars"}
             </button>
           ))}
