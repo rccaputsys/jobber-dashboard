@@ -3,6 +3,43 @@
 import { useState } from "react";
 import { ExportCSV } from "./ExportCSV";
 
+/* --------------------------------- helpers --------------------------------- */
+function safeDate(v: any): Date | null {
+  if (!v) return null;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function ageDays(ts: string | null): number {
+  if (!ts) return 0;
+  const d = safeDate(ts);
+  if (!d) return 0;
+  return Math.max(0, Math.round((Date.now() - d.getTime()) / 86400000));
+}
+
+function moneyFactory(currency: string, locale = "en-US") {
+  const code = (currency || "USD").toUpperCase();
+  const safeCode = code.length === 3 ? code : "USD";
+  try {
+    const fmt = new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: safeCode,
+      currencyDisplay: "symbol",
+      maximumFractionDigits: 0,
+    });
+    return (cents: number) => fmt.format((Number(cents || 0) as number) / 100);
+  } catch {
+    const fmt = new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: "USD",
+      currencyDisplay: "symbol",
+      maximumFractionDigits: 0,
+    });
+    return (cents: number) => fmt.format((Number(cents || 0) as number) / 100);
+  }
+}
+
+/* --------------------------------- types --------------------------------- */
 type AgedARInvoice = {
   invoice_number: string;
   client_name: string;
@@ -37,9 +74,7 @@ type Props = {
   leakingQuotesExportData: Record<string, any>[];
   toggleUnscheduledHref: string;
   minDays: number;
-  money: (cents: number) => string;
-  ageDays: (ts: string | null) => number;
-  safeDate: (v: any) => Date | null;
+  currencyCode: string;  // Pass currency code instead of money function
 };
 
 export function ActionListTabs({
@@ -51,11 +86,12 @@ export function ActionListTabs({
   leakingQuotesExportData,
   toggleUnscheduledHref,
   minDays,
-  money,
-  ageDays,
-  safeDate,
+  currencyCode,
 }: Props) {
   const [activeTab, setActiveTab] = useState<"ar" | "unscheduled" | "quotes">("ar");
+
+  // Create money formatter from currency code
+  const money = moneyFactory(currencyCode);
 
   const tabs = [
     { id: "ar" as const, label: "Aged AR", count: agedARInvoices.length, icon: "💰" },

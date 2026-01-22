@@ -1725,6 +1725,7 @@ export default async function DashboardPage({
             </div>
             <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Quotes to revise</div>
           </div>
+
         </div>
 
         {/* Trends */}
@@ -1791,9 +1792,7 @@ export default async function DashboardPage({
               leakingQuotesExportData={leakingQuotesExportData}
               toggleUnscheduledHref={toggleUnscheduledHref}
               minDays={minDays}
-              money={money}
-              ageDays={ageDays}
-              safeDate={safeDate}
+              currencyCode={currencyCode}
             />
           </div>
         </div>
