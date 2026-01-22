@@ -200,8 +200,13 @@ export async function GET(req: Request) {
   );
 
   const jobs = jobResult.nodes;
-  const invoices = invoiceResult.nodes;
   const quotes = quoteResult.nodes;
+  
+  // Filter invoices to only unpaid (past_due or null status)
+  const invoices = invoiceResult.nodes.filter((inv) => {
+    const status = (inv.invoiceStatus || '').toLowerCase();
+    return status === 'past_due' || status === '' || !inv.invoiceStatus;
+  });
 
   // Log any permission errors (optional)
   const allErrors = [...jobResult.errors, ...invoiceResult.errors, ...quoteResult.errors];
@@ -232,7 +237,7 @@ export async function GET(req: Request) {
     if (error) throw new Error(`fact_jobs upsert failed: ${error.message}`);
   }
 
-  // Upsert Invoices
+  // Upsert Invoices (only unpaid ones)
   for (const inv of invoices) {
     const { error } = await supabaseAdmin
       .from("fact_invoices")
