@@ -1214,10 +1214,18 @@ export default async function DashboardPage({
     .eq("connection_id", connectionId);
   const quotes = (quotesData ?? []) as any[];
 
-  // AR buckets
+  // AR buckets - only unpaid invoices
   const nowMs = Date.now();
   let b0_7 = 0, b8_14 = 0, b15p = 0, totalAR = 0;
-  for (const inv of invoices) {
+  
+  // Filter to only unpaid invoices (awaiting_payment, overdue, etc.)
+  const unpaidInvoices = invoices.filter((inv: any) => {
+    const status = (inv.status || '').toLowerCase();
+    // Exclude paid, draft, and voided invoices
+    return status !== 'paid' && status !== 'draft' && status !== 'voided' && status !== 'bad_debt';
+  });
+  
+  for (const inv of unpaidInvoices) {
     const amt = Number(inv.total_amount_cents ?? inv.total_cents ?? inv.total_amount ?? 0);
     totalAR += amt;
     
@@ -1307,9 +1315,9 @@ export default async function DashboardPage({
   });
   const changesRequestedCount = changesRequestedQuotes.length;
 
-  // Aged AR
-  const agedARInvoices = invoices
-    .filter((inv) => {
+  // Aged AR - only unpaid invoices
+  const agedARInvoices = unpaidInvoices
+    .filter((inv: any) => {
       const due = safeDate(inv.due_at);
       if (!due) return false;
       const daysOverdue = Math.max(0, Math.round((Date.now() - due.getTime()) / 86400000));

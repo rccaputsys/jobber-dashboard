@@ -30,6 +30,7 @@ type InvoiceNode = {
   jobberWebUri?: string | null;
   client?: InvoiceClient | null;
   subject?: string | null;
+  invoiceStatus?: string | null;
 };
 
 type QuoteAmounts = {
@@ -177,6 +178,7 @@ export async function GET(req: Request) {
      total
      jobberWebUri
      subject
+     invoiceStatus
      client {
        name
      }`
@@ -246,6 +248,7 @@ export async function GET(req: Request) {
           jobber_url: inv.jobberWebUri ?? null,
           client_name: inv.client?.name ?? null,
           subject: inv.subject ?? null,
+          status: inv.invoiceStatus ?? null,
         },
         { onConflict: "connection_id,jobber_invoice_id" }
       );
