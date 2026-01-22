@@ -79,7 +79,6 @@ async function jobberGraphQLWithPartialErrors<T>(
 
   const json = await res.json();
   
-  // Return both data and errors - don't throw on partial errors
   return {
     data: json.data as T | null,
     errors: json.errors || [],
@@ -202,10 +201,10 @@ export async function GET(req: Request) {
   const jobs = jobResult.nodes;
   const quotes = quoteResult.nodes;
   
-  // Filter invoices to only unpaid (past_due or null status)
+  // Filter invoices to only past_due (these are AR)
   const invoices = invoiceResult.nodes.filter((inv) => {
     const status = (inv.invoiceStatus || '').toLowerCase();
-    return status === 'past_due' || status === '' || !inv.invoiceStatus;
+    return status === 'past_due';
   });
 
   // Log any permission errors (optional)
@@ -237,7 +236,7 @@ export async function GET(req: Request) {
     if (error) throw new Error(`fact_jobs upsert failed: ${error.message}`);
   }
 
-  // Upsert Invoices (only unpaid ones)
+  // Upsert Invoices (only past_due)
   for (const inv of invoices) {
     const { error } = await supabaseAdmin
       .from("fact_invoices")
