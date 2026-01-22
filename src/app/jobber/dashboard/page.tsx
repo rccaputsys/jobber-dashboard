@@ -444,7 +444,6 @@ const globalStyles = `
   .data-table th {
     text-align: left;
     padding: 10px 12px;
-    color: rgba(234,241,255,0.5);
     font-weight: 600;
     font-size: 10px;
     letter-spacing: 0.5px;
@@ -493,7 +492,6 @@ const globalStyles = `
     text-decoration: none;
     border: 1px solid rgba(255,255,255,0.1);
     background: rgba(255,255,255,0.06);
-    color: #EAF1FF;
     cursor: pointer;
     transition: all 0.15s ease;
     white-space: nowrap;
@@ -582,21 +580,18 @@ const globalStyles = `
     color: #6ee7b7;
   }
   
-  /* Light mode overrides */
-  html[data-theme="light"] {
-    --bg0: #f8fafc;
-    --bg1: #ffffff;
-    --text: #1e293b;
-    --sub: #475569;
-    --mut: #64748b;
-  }
+  /* ================================ */
+  /* LIGHT MODE - COMPREHENSIVE FIXES */
+  /* ================================ */
   
   html[data-theme="light"] body,
-  html[data-theme="light"] main {
+  html[data-theme="light"] main,
+  html[data-theme="light"] .dashboard-main {
     background: #f1f5f9 !important;
     color: #1e293b !important;
   }
   
+  /* Panels and Cards */
   html[data-theme="light"] .panel {
     background: #ffffff !important;
     border-color: #e2e8f0 !important;
@@ -616,18 +611,78 @@ const globalStyles = `
   
   html[data-theme="light"] .kpi-secondary:hover {
     background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
   }
   
+  /* ALL TEXT - Default dark for light mode */
+  html[data-theme="light"] h1,
+  html[data-theme="light"] h2,
+  html[data-theme="light"] h3,
+  html[data-theme="light"] .dashboard-header h1 {
+    color: #1e293b !important;
+  }
+  
+  /* Theme-aware text classes */
+  .text-primary { color: #EAF1FF; }
+  .text-secondary { color: rgba(234,241,255,0.7); }
+  .text-muted { color: rgba(234,241,255,0.5); }
+  
+  html[data-theme="light"] .text-primary { color: #1e293b !important; }
+  html[data-theme="light"] .text-secondary { color: #475569 !important; }
+  html[data-theme="light"] .text-muted { color: #64748b !important; }
+  
+  /* Semantic status colors */
+  .text-critical { color: #ef4444 !important; }
+  .text-warning { color: #f59e0b !important; }
+  .text-success { color: #10b981 !important; }
+  
+  html[data-theme="light"] .text-critical { color: #dc2626 !important; }
+  html[data-theme="light"] .text-warning { color: #d97706 !important; }
+  html[data-theme="light"] .text-success { color: #059669 !important; }
+  
+  /* KPI Values */
+  html[data-theme="light"] .kpi-value-large,
+  html[data-theme="light"] .kpi-value-medium {
+    color: #1e293b !important;
+  }
+  
+  /* Override for semantic colors in KPIs */
+  html[data-theme="light"] .kpi-value-large.text-critical,
+  html[data-theme="light"] .kpi-value-medium.text-critical {
+    color: #dc2626 !important;
+  }
+  
+  html[data-theme="light"] .kpi-value-large.text-warning,
+  html[data-theme="light"] .kpi-value-medium.text-warning {
+    color: #d97706 !important;
+  }
+  
+  html[data-theme="light"] .kpi-value-large.text-success,
+  html[data-theme="light"] .kpi-value-medium.text-success {
+    color: #059669 !important;
+  }
+  
+  /* Recommendations */
   html[data-theme="light"] .recommendation-banner {
     background: linear-gradient(135deg, rgba(245,158,11,0.1) 0%, rgba(245,158,11,0.03) 100%) !important;
-    border-color: rgba(245,158,11,0.3) !important;
+    border-color: rgba(217,119,6,0.3) !important;
   }
   
   html[data-theme="light"] .recommendation-item {
     background: rgba(0,0,0,0.03) !important;
     border-color: rgba(0,0,0,0.05) !important;
+    color: #334155 !important;
   }
   
+  html[data-theme="light"] .recommendation-item span {
+    color: #334155 !important;
+  }
+  
+  html[data-theme="light"] .focus-title {
+    color: #d97706 !important;
+  }
+  
+  /* Tables */
   html[data-theme="light"] .data-table th {
     color: #64748b !important;
     background: #f8fafc !important;
@@ -643,6 +698,19 @@ const globalStyles = `
     background: #f8fafc !important;
   }
   
+  html[data-theme="light"] .cell-primary {
+    color: #1e293b !important;
+  }
+  
+  html[data-theme="light"] .cell-secondary {
+    color: #64748b !important;
+  }
+  
+  html[data-theme="light"] .cell-muted {
+    color: #475569 !important;
+  }
+  
+  /* Buttons */
   html[data-theme="light"] .btn {
     background: #ffffff !important;
     border-color: #e2e8f0 !important;
@@ -651,18 +719,79 @@ const globalStyles = `
   
   html[data-theme="light"] .btn:hover {
     background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
   }
   
+  html[data-theme="light"] .btn-primary {
+    background: linear-gradient(135deg, #7c5cff, #5aa6ff) !important;
+    border-color: rgba(90,166,255,0.3) !important;
+    color: #ffffff !important;
+  }
+  
+  html[data-theme="light"] .btn-muted {
+    color: #64748b !important;
+  }
+  
+  /* Status Pills */
   html[data-theme="light"] .status-pill {
     color: #334155 !important;
   }
   
+  /* Age Badges - Darker colors for light mode */
+  html[data-theme="light"] .age-badge.critical {
+    background: rgba(220,38,38,0.12) !important;
+    color: #dc2626 !important;
+  }
+  
+  html[data-theme="light"] .age-badge.warning {
+    background: rgba(217,119,6,0.12) !important;
+    color: #d97706 !important;
+  }
+  
+  html[data-theme="light"] .age-badge.good {
+    background: rgba(5,150,105,0.12) !important;
+    color: #059669 !important;
+  }
+  
+  /* SVG Charts */
   html[data-theme="light"] svg text {
     fill: #64748b !important;
   }
   
   html[data-theme="light"] svg line {
     stroke: #e2e8f0 !important;
+  }
+  
+  /* Chart text */
+  .chart-title { color: #EAF1FF; }
+  .chart-subtitle { color: rgba(234,241,255,0.5); }
+  .chart-label { color: rgba(234,241,255,0.5); }
+  
+  html[data-theme="light"] .chart-title { color: #1e293b !important; }
+  html[data-theme="light"] .chart-subtitle { color: #64748b !important; }
+  html[data-theme="light"] .chart-label { color: #64748b !important; }
+  
+  /* KPI labels */
+  .kpi-label { color: rgba(234,241,255,0.5); }
+  .kpi-sublabel { color: rgba(234,241,255,0.7); }
+  
+  html[data-theme="light"] .kpi-label { color: #64748b !important; }
+  html[data-theme="light"] .kpi-sublabel { color: #475569 !important; }
+  
+  /* Header text */
+  .header-subtitle { color: rgba(234,241,255,0.5); }
+  .header-subtitle span { color: rgba(234,241,255,0.7); }
+  
+  html[data-theme="light"] .header-subtitle { color: #64748b !important; }
+  html[data-theme="light"] .header-subtitle span { color: #475569 !important; }
+  
+  /* Empty state */
+  .empty-state { color: rgba(234,241,255,0.7); }
+  html[data-theme="light"] .empty-state { color: #64748b !important; }
+  
+  /* Hover lift shadow adjustment */
+  html[data-theme="light"] .hover-lift:hover {
+    box-shadow: 0 12px 24px rgba(0,0,0,0.08) !important;
   }
 `;
 
@@ -734,14 +863,14 @@ function SparkLine(props: {
     <div className="panel hover-lift" style={{ padding: 16, height: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 12 }}>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 14, color: theme.text }}>{props.title}</div>
-          <div style={{ fontSize: 11, color: theme.mut, marginTop: 2 }}>{props.subtitle}</div>
+          <div className="chart-title" style={{ fontWeight: 700, fontSize: 14 }}>{props.title}</div>
+          <div className="chart-subtitle" style={{ fontSize: 11, marginTop: 2 }}>{props.subtitle}</div>
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 20, fontWeight: 800, color: chartColor, letterSpacing: -0.5 }}>
             {props.formatY(currentValue)}
           </div>
-          <div style={{ fontSize: 10, color: theme.mut, marginTop: 2 }}>Current</div>
+          <div className="chart-label" style={{ fontSize: 10, marginTop: 2 }}>Current</div>
         </div>
       </div>
 
@@ -762,8 +891,8 @@ function SparkLine(props: {
         <line x1={padL} y1={yOf(yBot)} x2={vbW - padR} y2={yOf(yBot)} stroke="rgba(255,255,255,0.06)" strokeDasharray="4,4" />
 
         {/* Y axis labels */}
-        <text x={padL - 6} y={yOf(yTop) + 3} fill={theme.faint} fontSize="9" textAnchor="end">{props.formatY(yTop)}</text>
-        <text x={padL - 6} y={yOf(yBot) + 3} fill={theme.faint} fontSize="9" textAnchor="end">{props.formatY(yBot)}</text>
+        <text x={padL - 6} y={yOf(yTop) + 3} fontSize="9" textAnchor="end">{props.formatY(yTop)}</text>
+        <text x={padL - 6} y={yOf(yBot) + 3} fontSize="9" textAnchor="end">{props.formatY(yBot)}</text>
 
         <g clipPath={`url(#${clipId})`}>
           {props.chartType === "line" ? (
@@ -806,7 +935,7 @@ function SparkLine(props: {
         {props.points.map((p, i) => {
           if (i % labelSkip !== 0 && i !== props.points.length - 1) return null;
           return (
-            <text key={`x-${i}`} x={xOf(i)} y={vbH - 8} fill={theme.faint} fontSize="9" textAnchor="middle">
+            <text key={`x-${i}`} x={xOf(i)} y={vbH - 8} fontSize="9" textAnchor="middle">
               {p.xLabel}
             </text>
           );
@@ -1301,9 +1430,8 @@ export default async function DashboardPage({
   };
 
   return (
-    <main style={{
+    <main className="dashboard-main" style={{
       minHeight: "100vh",
-      color: "#EAF1FF",
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       background: `
         radial-gradient(ellipse 80% 60% at 50% -20%, rgba(124,92,255,0.15), transparent),
@@ -1317,11 +1445,11 @@ export default async function DashboardPage({
         {/* Header */}
         <header className="dashboard-header animate-in">
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5, margin: 0 }}>
+            <h1 className="text-primary" style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5, margin: 0 }}>
               {companyName}
             </h1>
-            <p style={{ fontSize: 13, color: theme.mut, marginTop: 4 }}>
-              Last sync: <span style={{ color: theme.sub }}>{lastSyncPretty}</span> • {currencyCode}
+            <p className="header-subtitle" style={{ fontSize: 13, marginTop: 4 }}>
+              Last sync: <span>{lastSyncPretty}</span> • {currencyCode}
             </p>
           </div>
 
@@ -1376,12 +1504,12 @@ export default async function DashboardPage({
           <div className="recommendation-banner animate-in delay-1" style={{ marginTop: 20 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
               <span style={{ fontSize: 16 }}>💡</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#f59e0b" }}>This Week&apos;s Focus</span>
+              <span className="focus-title" style={{ fontSize: 13, fontWeight: 700 }}>This Week&apos;s Focus</span>
             </div>
             {recommendations.slice(0, 3).map((rec, i) => (
               <div key={i} className="recommendation-item">
                 <span style={{ fontSize: 14 }}>{rec.icon}</span>
-                <span style={{ color: "rgba(234,241,255,0.85)" }}>{rec.text}</span>
+                <span>{rec.text}</span>
               </div>
             ))}
           </div>
@@ -1393,12 +1521,12 @@ export default async function DashboardPage({
             <div style={{ position: "relative", zIndex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <span style={{ fontSize: 20 }}>💰</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: theme.mut, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                <span className="kpi-label" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
                   Total AR
                 </span>
               </div>
-              <div className="kpi-value-large">{money(totalAR)}</div>
-              <div style={{ fontSize: 12, color: theme.sub, marginTop: 8 }}>
+              <div className="kpi-value-large text-primary">{money(totalAR)}</div>
+              <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
                 Outstanding receivables
               </div>
             </div>
@@ -1411,12 +1539,14 @@ export default async function DashboardPage({
             <div style={{ position: "relative", zIndex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <span style={{ fontSize: 20 }}>⚠️</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: theme.mut, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                <span className="kpi-label" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
                   AR 15+ Days
                 </span>
               </div>
-              <div className="kpi-value-large" style={{ color: sevColor(arSev) }}>{money(b15p)}</div>
-              <div style={{ fontSize: 12, color: theme.sub, marginTop: 8 }}>
+              <div className={`kpi-value-large ${arSev === "critical" ? "text-critical" : arSev === "warning" ? "text-warning" : "text-success"}`}>
+                {money(b15p)}
+              </div>
+              <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
                 {totalAR > 0 ? pct(b15p / totalAR) : "0%"} of total • {agedARInvoices.length} invoices
               </div>
             </div>
@@ -1429,14 +1559,14 @@ export default async function DashboardPage({
             <div style={{ position: "relative", zIndex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <span style={{ fontSize: 20 }}>📋</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: theme.mut, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                <span className="kpi-label" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
                   Quote Leak
                 </span>
               </div>
-              <div className="kpi-value-large" style={{ color: leakDollars > 0 ? "#ef4444" : "#10b981" }}>
+              <div className={`kpi-value-large ${leakDollars > 0 ? "text-critical" : "text-success"}`}>
                 {money(leakDollars)}
               </div>
-              <div style={{ fontSize: 12, color: theme.sub, marginTop: 8 }}>
+              <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
                 {leakCount} quotes not won in range
               </div>
             </div>
@@ -1448,55 +1578,55 @@ export default async function DashboardPage({
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
               <span style={{ fontSize: 14 }}>📅</span>
-              <span style={{ fontSize: 10, fontWeight: 600, color: theme.mut, textTransform: "uppercase" }}>Days Ahead</span>
+              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Days Ahead</span>
             </div>
-            <div className="kpi-value-medium" style={{ 
-              color: daysBookedAhead < TARGET_LOW ? "#ef4444" : 
-                     daysBookedAhead > 21 ? "#ef4444" :
-                     daysBookedAhead > TARGET_HIGH ? "#f59e0b" : "#10b981" 
-            }}>
+            <div className={`kpi-value-medium ${
+              daysBookedAhead < TARGET_LOW ? "text-critical" : 
+              daysBookedAhead > 21 ? "text-critical" :
+              daysBookedAhead > TARGET_HIGH ? "text-warning" : "text-success"
+            }`}>
               {daysBookedAhead}
             </div>
-            <div style={{ fontSize: 11, color: theme.mut, marginTop: 4 }}>Target: {TARGET_LOW}-{TARGET_HIGH}</div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Target: {TARGET_LOW}-{TARGET_HIGH}</div>
           </div>
 
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
               <span style={{ fontSize: 14 }}>📦</span>
-              <span style={{ fontSize: 10, fontWeight: 600, color: theme.mut, textTransform: "uppercase" }}>Unscheduled</span>
+              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Unscheduled</span>
             </div>
-            <div className="kpi-value-medium" style={{ 
-              color: unscheduledCount > 10 ? "#ef4444" : 
-                     unscheduledCount > 5 ? "#f59e0b" : "#10b981" 
-            }}>
+            <div className={`kpi-value-medium ${
+              unscheduledCount > 10 ? "text-critical" : 
+              unscheduledCount > 5 ? "text-warning" : "text-success"
+            }`}>
               {unscheduledCount}
             </div>
-            <div style={{ fontSize: 11, color: theme.mut, marginTop: 4 }}>Jobs in backlog</div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Jobs in backlog</div>
           </div>
 
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
               <span style={{ fontSize: 14 }}>✏️</span>
-              <span style={{ fontSize: 10, fontWeight: 600, color: theme.mut, textTransform: "uppercase" }}>Changes Req.</span>
+              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Changes Req.</span>
             </div>
-            <div className="kpi-value-medium" style={{ 
-              color: changesRequestedCount > 5 ? "#ef4444" : 
-                     changesRequestedCount > 2 ? "#f59e0b" : "#10b981" 
-            }}>
+            <div className={`kpi-value-medium ${
+              changesRequestedCount > 5 ? "text-critical" : 
+              changesRequestedCount > 2 ? "text-warning" : "text-success"
+            }`}>
               {changesRequestedCount}
             </div>
-            <div style={{ fontSize: 11, color: theme.mut, marginTop: 4 }}>Quotes to revise</div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Quotes to revise</div>
           </div>
 
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
               <span style={{ fontSize: 14 }}>✅</span>
-              <span style={{ fontSize: 10, fontWeight: 600, color: theme.mut, textTransform: "uppercase" }}>Completed</span>
+              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Completed</span>
             </div>
-            <div className="kpi-value-medium" style={{ color: "#10b981" }}>
+            <div className="kpi-value-medium text-success">
               {completedCount}
             </div>
-            <div style={{ fontSize: 11, color: theme.mut, marginTop: 4 }}>Jobs in range</div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Jobs in range</div>
           </div>
         </div>
 
@@ -1505,8 +1635,8 @@ export default async function DashboardPage({
           <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
               <div>
-                <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Trends</h2>
-                <p style={{ fontSize: 12, color: theme.mut, marginTop: 2 }}>
+                <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Trends</h2>
+                <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
                   {toISODateOnlyUTC(start)} → {toISODateOnlyUTC(end)} • {g === "day" ? "Daily" : g === "week" ? "Weekly" : g === "month" ? "Monthly" : "Quarterly"}
                 </p>
               </div>
@@ -1548,8 +1678,8 @@ export default async function DashboardPage({
         {/* Action Lists */}
         <div className="panel animate-in delay-5" style={{ marginTop: 20 }}>
           <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Action Lists</h2>
-            <p style={{ fontSize: 12, color: theme.mut, marginTop: 2 }}>
+            <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Action Lists</h2>
+            <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
               Collect AR, schedule backlog, close sales leaks
             </p>
           </div>
@@ -1559,8 +1689,8 @@ export default async function DashboardPage({
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
                 <div>
-                  <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Aged Receivables (15+ Days)</h3>
-                  <p style={{ fontSize: 12, color: theme.mut, marginTop: 2 }}>Oldest first</p>
+                  <h3 className="text-primary" style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Aged Receivables (15+ Days)</h3>
+                  <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>Oldest first</p>
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   {agedARInvoices.length > 0 && (
@@ -1570,7 +1700,7 @@ export default async function DashboardPage({
               </div>
 
               {agedARInvoices.length === 0 ? (
-                <div style={{ padding: 24, textAlign: "center", color: theme.sub, fontSize: 13 }}>
+                <div className="empty-state" style={{ padding: 24, textAlign: "center", fontSize: 13 }}>
                   ✨ No aged AR 15+ days!
                 </div>
               ) : (
@@ -1597,22 +1727,22 @@ export default async function DashboardPage({
                               </span>
                             </td>
                             <td>
-                              <div style={{ fontWeight: 600 }}>#{inv.invoice_number}</div>
+                              <div className="cell-primary">#{inv.invoice_number}</div>
                               {inv.client_name && (
-                                <div style={{ fontSize: 11, color: theme.mut, marginTop: 2 }}>{inv.client_name}</div>
+                                <div className="cell-secondary" style={{ fontSize: 11, marginTop: 2 }}>{inv.client_name}</div>
                               )}
                             </td>
-                            <td style={{ color: theme.sub }}>
+                            <td className="cell-muted">
                               {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "—"}
                             </td>
-                            <td style={{ fontWeight: 600 }}>{money(inv.amount_cents)}</td>
+                            <td className="cell-primary">{money(inv.amount_cents)}</td>
                             <td>
                               {inv.jobber_url ? (
                                 <a href={inv.jobber_url} target="_blank" rel="noreferrer" className="btn">
                                   Open →
                                 </a>
                               ) : (
-                                <span style={{ color: theme.mut }}>—</span>
+                                <span className="cell-secondary">—</span>
                               )}
                             </td>
                           </tr>
@@ -1627,8 +1757,8 @@ export default async function DashboardPage({
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
                 <div>
-                  <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Unscheduled Jobs</h3>
-                  <p style={{ fontSize: 12, color: theme.mut, marginTop: 2 }}>Oldest first</p>
+                  <h3 className="text-primary" style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Unscheduled Jobs</h3>
+                  <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>Oldest first</p>
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <a href={toggleUnscheduledHref} className="btn">
@@ -1641,7 +1771,7 @@ export default async function DashboardPage({
               </div>
 
               {unscheduledRows.length === 0 ? (
-                <div style={{ padding: 24, textAlign: "center", color: theme.sub, fontSize: 13 }}>
+                <div className="empty-state" style={{ padding: 24, textAlign: "center", fontSize: 13 }}>
                   ✨ No unscheduled jobs!
                 </div>
               ) : (
@@ -1667,17 +1797,17 @@ export default async function DashboardPage({
                               </span>
                             </td>
                             <td>
-                              <div style={{ fontWeight: 600 }}>
+                              <div className="cell-primary">
                                 {r.job_number ? `#${r.job_number}` : "—"}
                               </div>
                               {r.job_title && (
-                                <div style={{ fontSize: 11, color: theme.mut, marginTop: 2 }}>{r.job_title}</div>
+                                <div className="cell-secondary" style={{ fontSize: 11, marginTop: 2 }}>{r.job_title}</div>
                               )}
                             </td>
-                            <td style={{ color: theme.sub }}>
+                            <td className="cell-muted">
                               {r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "—"}
                             </td>
-                            <td style={{ fontWeight: 600 }}>
+                            <td className="cell-primary">
                               {r.total_amount_cents ? money(r.total_amount_cents) : "—"}
                             </td>
                             <td>
@@ -1686,7 +1816,7 @@ export default async function DashboardPage({
                                   Open →
                                 </a>
                               ) : (
-                                <span style={{ color: theme.mut }}>—</span>
+                                <span className="cell-secondary">—</span>
                               )}
                             </td>
                           </tr>
@@ -1702,8 +1832,8 @@ export default async function DashboardPage({
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
                 <div>
-                  <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Leaking Quotes</h3>
-                  <p style={{ fontSize: 12, color: theme.mut, marginTop: 2 }}>Highest value first</p>
+                  <h3 className="text-primary" style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Leaking Quotes</h3>
+                  <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>Highest value first</p>
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   {leakCandidates.length > 0 && (
@@ -1713,7 +1843,7 @@ export default async function DashboardPage({
               </div>
 
               {leakCandidates.length === 0 ? (
-                <div style={{ padding: 24, textAlign: "center", color: theme.sub, fontSize: 13 }}>
+                <div className="empty-state" style={{ padding: 24, textAlign: "center", fontSize: 13 }}>
                   ✨ No leaking quotes!
                 </div>
               ) : (
@@ -1744,24 +1874,24 @@ export default async function DashboardPage({
                                 </span>
                               </td>
                               <td>
-                                <div style={{ fontWeight: 600 }}>
+                                <div className="cell-primary">
                                   {q.quote_number ? `#${q.quote_number}` : "—"}
                                 </div>
                                 {q.quote_title && (
-                                  <div style={{ fontSize: 11, color: theme.mut, marginTop: 2 }}>{q.quote_title}</div>
+                                  <div className="cell-secondary" style={{ fontSize: 11, marginTop: 2 }}>{q.quote_title}</div>
                                 )}
                               </td>
-                              <td style={{ color: theme.sub }}>
+                              <td className="cell-muted">
                                 {sent ? sent.toLocaleDateString() : "—"}
                               </td>
-                              <td style={{ fontWeight: 600 }}>{money(Number(q.quote_total_cents ?? 0))}</td>
+                              <td className="cell-primary">{money(Number(q.quote_total_cents ?? 0))}</td>
                               <td>
                                 {q.quote_url ? (
                                   <a href={q.quote_url} target="_blank" rel="noreferrer" className="btn">
                                     Open →
                                   </a>
                                 ) : (
-                                  <span style={{ color: theme.mut }}>—</span>
+                                  <span className="cell-secondary">—</span>
                                 )}
                               </td>
                             </tr>
@@ -1806,7 +1936,7 @@ function ManageSubscriptionButton() {
 function LogoutButton() {
   return (
     <form action="/api/auth/logout" method="POST">
-      <button type="submit" className="btn" style={{ color: "rgba(234,241,255,0.5)" }}>
+      <button type="submit" className="btn btn-muted">
         Log out
       </button>
     </form>
