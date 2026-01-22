@@ -42,7 +42,6 @@ async function tokenExchange(code: string) {
     scope?: string;
   };
 }
-  
 
 async function jobberGraphQL<T>(
   accessToken: string,
@@ -67,10 +66,7 @@ async function jobberGraphQL<T>(
   });
 
   const json = await res.json();
-  if (!res.ok || json.errors) {
-    throw new Error(`GraphQL error: ${JSON.stringify(json.errors ?? json)}`);
-  }
-  return json.data as T;
+  return { data: json.data as T | null, errors: json.errors || [] };
 }
 
 export async function GET(req: Request) {
@@ -113,23 +109,24 @@ export async function GET(req: Request) {
     );
   }
 
-  // Fetch account info AND user email from Jobber
-  const data = await jobberGraphQL<{ 
-    account: { id: string; name: string }; 
-    user: { email: { raw: string } } 
-  }>(
+  // Fetch account info from Jobber
+  const acctResult = await jobberGraphQL<{ account: { id: string; name: string; billingEmail?: string } }>(
     token.access_token,
-    `query { 
-      account { id name } 
-      user { email { raw } }
-    }`
+    `query { account { id name billingEmail } }`
   );
 
-  const acct = data.account;
-  const userEmail = data.user?.email?.raw;
+  if (!acctResult.data?.account) {
+    throw new Error("Could not get account from Jobber");
+  }
 
+  const acct = acctResult.data.account;
+  
+  // Try to get email - use billingEmail or generate one from account
+  let userEmail = acct.billingEmail;
+  
   if (!userEmail) {
-    throw new Error("Could not get user email from Jobber");
+    // Generate a unique email based on Jobber account ID
+    userEmail = `jobber-${acct.id}@ownerview.io`;
   }
 
   // Check if this Jobber account already has a connection
