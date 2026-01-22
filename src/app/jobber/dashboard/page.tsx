@@ -105,7 +105,7 @@ function moneyFactory(currency: string, locale = "en-US") {
       style: "currency",
       currency: safeCode,
       currencyDisplay: "symbol",
-      maximumFractionDigits: 2,
+      maximumFractionDigits: 0,
     });
     return (cents: number) => fmt.format((Number(cents || 0) as number) / 100);
   } catch {
@@ -113,7 +113,7 @@ function moneyFactory(currency: string, locale = "en-US") {
       style: "currency",
       currency: "USD",
       currencyDisplay: "symbol",
-      maximumFractionDigits: 2,
+      maximumFractionDigits: 0,
     });
     return (cents: number) => fmt.format((Number(cents || 0) as number) / 100);
   }
@@ -121,8 +121,10 @@ function moneyFactory(currency: string, locale = "en-US") {
 
 function moneyForChart(cents: number): string {
   const dollars = Math.round((Number(cents || 0) as number) / 100);
-  const rounded = Math.round(dollars / 100) * 100;
-  return `$${rounded.toLocaleString()}`;
+  if (dollars >= 1000) {
+    return `$${(dollars / 1000).toFixed(1)}k`;
+  }
+  return `$${dollars.toLocaleString()}`;
 }
 
 function severityFromScore(score: number): "critical" | "warning" | "good" {
@@ -136,265 +138,540 @@ function statusLooksWon(status: string) {
   return s.includes("APPROV") || s.includes("ACCEPT") || s.includes("WON") || s.includes("CONVERT") || s.includes("BOOK");
 }
 
+/* ----------------------------------- Global Styles ----------------------------------- */
+const globalStyles = `
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  
+  .animate-in {
+    animation: fadeInUp 0.5s ease-out forwards;
+    opacity: 0;
+  }
+  
+  .delay-1 { animation-delay: 0.1s; }
+  .delay-2 { animation-delay: 0.2s; }
+  .delay-3 { animation-delay: 0.3s; }
+  .delay-4 { animation-delay: 0.4s; }
+  .delay-5 { animation-delay: 0.5s; }
+  
+  .hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  }
+  
+  .hover-glow {
+    transition: box-shadow 0.2s ease;
+  }
+  .hover-glow:hover {
+    box-shadow: 0 0 30px rgba(90,166,255,0.2);
+  }
+  
+  .pulse-dot {
+    animation: pulse 2s ease-in-out infinite;
+  }
+  
+  /* Mobile-first responsive */
+  .dashboard-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+  
+  @media (min-width: 640px) {
+    .dashboard-container {
+      padding: 20px;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .dashboard-container {
+      padding: 24px 32px 80px;
+    }
+  }
+  
+  /* Header responsive */
+  .dashboard-header {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  @media (min-width: 768px) {
+    .dashboard-header {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+  }
+  
+  .header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  
+  @media (min-width: 640px) {
+    .header-actions {
+      gap: 10px;
+    }
+  }
+  
+  /* Status pills responsive */
+  .status-pill {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  
+  @media (min-width: 640px) {
+    .status-pill {
+      padding: 8px 14px;
+      font-size: 13px;
+    }
+  }
+  
+  /* KPI Grid responsive */
+  .kpi-grid-primary {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  @media (min-width: 640px) {
+    .kpi-grid-primary {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .kpi-grid-primary {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+  }
+  
+  .kpi-grid-secondary {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  
+  @media (min-width: 640px) {
+    .kpi-grid-secondary {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .kpi-grid-secondary {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+  }
+  
+  /* Chart grid responsive */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  @media (min-width: 768px) {
+    .chart-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+  }
+  
+  /* Primary KPI card */
+  .kpi-primary {
+    position: relative;
+    overflow: hidden;
+    border-radius: 20px;
+    padding: 20px;
+    background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.25);
+  }
+  
+  @media (min-width: 640px) {
+    .kpi-primary {
+      padding: 24px;
+    }
+  }
+  
+  .kpi-primary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.3;
+    pointer-events: none;
+  }
+  
+  .kpi-primary.gradient-purple::before {
+    background: linear-gradient(135deg, #7c5cff, #5aa6ff);
+  }
+  
+  .kpi-primary.gradient-red::before {
+    background: #ef4444;
+  }
+  
+  .kpi-primary.gradient-amber::before {
+    background: #f59e0b;
+  }
+  
+  .kpi-primary.gradient-green::before {
+    background: #10b981;
+  }
+  
+  .kpi-value-large {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1.1;
+  }
+  
+  @media (min-width: 640px) {
+    .kpi-value-large {
+      font-size: 40px;
+    }
+  }
+  
+  /* Secondary KPI card */
+  .kpi-secondary {
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    transition: all 0.2s ease;
+  }
+  
+  @media (min-width: 640px) {
+    .kpi-secondary {
+      padding: 16px;
+      border-radius: 16px;
+    }
+  }
+  
+  .kpi-secondary:hover {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.12);
+  }
+  
+  .kpi-value-medium {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  
+  @media (min-width: 640px) {
+    .kpi-value-medium {
+      font-size: 28px;
+    }
+  }
+  
+  /* Panel */
+  .panel {
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.3);
+    overflow: hidden;
+  }
+  
+  @media (min-width: 640px) {
+    .panel {
+      border-radius: 20px;
+    }
+  }
+  
+  /* Table responsive */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+  
+  @media (min-width: 640px) {
+    .table-container {
+      margin: 0;
+      padding: 0;
+    }
+  }
+  
+  .data-table {
+    width: 100%;
+    min-width: 500px;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  
+  @media (min-width: 640px) {
+    .data-table {
+      font-size: 13px;
+    }
+  }
+  
+  .data-table th {
+    text-align: left;
+    padding: 10px 12px;
+    color: rgba(234,241,255,0.5);
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    white-space: nowrap;
+  }
+  
+  @media (min-width: 640px) {
+    .data-table th {
+      padding: 12px 14px;
+      font-size: 11px;
+    }
+  }
+  
+  .data-table td {
+    padding: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    vertical-align: middle;
+  }
+  
+  @media (min-width: 640px) {
+    .data-table td {
+      padding: 14px;
+    }
+  }
+  
+  .data-table tbody tr {
+    transition: background 0.15s ease;
+  }
+  
+  .data-table tbody tr:hover {
+    background: rgba(255,255,255,0.03);
+  }
+  
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 12px;
+    text-decoration: none;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.06);
+    color: #EAF1FF;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  
+  .btn:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.15);
+  }
+  
+  @media (min-width: 640px) {
+    .btn {
+      padding: 9px 14px;
+      font-size: 13px;
+    }
+  }
+  
+  .btn-primary {
+    background: linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95));
+    border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: 0 8px 24px rgba(90,166,255,0.25);
+  }
+  
+  .btn-primary:hover {
+    box-shadow: 0 12px 32px rgba(90,166,255,0.35);
+    transform: translateY(-1px);
+  }
+  
+  /* Recommendations */
+  .recommendation-banner {
+    border-radius: 14px;
+    border: 1px solid rgba(245,158,11,0.2);
+    background: linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(245,158,11,0.02) 100%);
+    padding: 14px;
+  }
+  
+  @media (min-width: 640px) {
+    .recommendation-banner {
+      padding: 18px;
+      border-radius: 16px;
+    }
+  }
+  
+  .recommendation-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(0,0,0,0.2);
+    margin-bottom: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    border: 1px solid rgba(255,255,255,0.03);
+  }
+  
+  @media (min-width: 640px) {
+    .recommendation-item {
+      padding: 12px 14px;
+      font-size: 14px;
+    }
+  }
+  
+  /* Age badge */
+  .age-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  
+  .age-badge.critical {
+    background: rgba(239,68,68,0.2);
+    color: #fca5a5;
+  }
+  
+  .age-badge.warning {
+    background: rgba(245,158,11,0.2);
+    color: #fcd34d;
+  }
+  
+  .age-badge.good {
+    background: rgba(16,185,129,0.2);
+    color: #6ee7b7;
+  }
+  
+  /* Light mode overrides */
+  html[data-theme="light"] {
+    --bg0: #f8fafc;
+    --bg1: #ffffff;
+    --text: #1e293b;
+    --sub: #475569;
+    --mut: #64748b;
+  }
+  
+  html[data-theme="light"] body,
+  html[data-theme="light"] main {
+    background: #f1f5f9 !important;
+    color: #1e293b !important;
+  }
+  
+  html[data-theme="light"] .panel {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06) !important;
+  }
+  
+  html[data-theme="light"] .kpi-primary {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06) !important;
+  }
+  
+  html[data-theme="light"] .kpi-secondary {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+  }
+  
+  html[data-theme="light"] .kpi-secondary:hover {
+    background: #f8fafc !important;
+  }
+  
+  html[data-theme="light"] .recommendation-banner {
+    background: linear-gradient(135deg, rgba(245,158,11,0.1) 0%, rgba(245,158,11,0.03) 100%) !important;
+    border-color: rgba(245,158,11,0.3) !important;
+  }
+  
+  html[data-theme="light"] .recommendation-item {
+    background: rgba(0,0,0,0.03) !important;
+    border-color: rgba(0,0,0,0.05) !important;
+  }
+  
+  html[data-theme="light"] .data-table th {
+    color: #64748b !important;
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+  }
+  
+  html[data-theme="light"] .data-table td {
+    color: #334155 !important;
+    border-color: #f1f5f9 !important;
+  }
+  
+  html[data-theme="light"] .data-table tbody tr:hover {
+    background: #f8fafc !important;
+  }
+  
+  html[data-theme="light"] .btn {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #334155 !important;
+  }
+  
+  html[data-theme="light"] .btn:hover {
+    background: #f8fafc !important;
+  }
+  
+  html[data-theme="light"] .status-pill {
+    color: #334155 !important;
+  }
+  
+  html[data-theme="light"] svg text {
+    fill: #64748b !important;
+  }
+  
+  html[data-theme="light"] svg line {
+    stroke: #e2e8f0 !important;
+  }
+`;
+
 /* ----------------------------------- UI ----------------------------------- */
 const theme = {
-  bg0: "#060811",
-  bg1: "#0A1222",
-  card: "rgba(255,255,255,0.060)",
-  border: "rgba(255,255,255,0.10)",
-  border2: "rgba(255,255,255,0.16)",
   text: "#EAF1FF",
-  sub: "rgba(234,241,255,0.74)",
-  mut: "rgba(234,241,255,0.58)",
-  faint: "rgba(234,241,255,0.38)",
-  good: "rgba(34,197,94,0.20)",
-  warn: "rgba(245,158,11,0.20)",
-  crit: "rgba(239,68,68,0.20)",
-};
-
-function sevBg(sev: "critical" | "warning" | "good") {
-  if (sev === "critical") return theme.crit;
-  if (sev === "warning") return theme.warn;
-  return theme.good;
-}
-
-const ui = {
-  page: {
-    minHeight: "100vh",
-    color: theme.text,
-    fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial',
-    background: `
-      radial-gradient(1200px 760px at 12% -12%, rgba(124,92,255,0.26), transparent 60%),
-      radial-gradient(960px 640px at 88% -6%, rgba(90,166,255,0.20), transparent 56%),
-      radial-gradient(800px 520px at 52% 8%, rgba(34,197,94,0.10), transparent 60%),
-      linear-gradient(180deg, ${theme.bg0} 0%, ${theme.bg1} 74%, #050713 100%)
-    `,
-  } as React.CSSProperties,
-
-  container: { maxWidth: 1220, margin: "0 auto", padding: "24px 18px 76px" } as React.CSSProperties,
-
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    gap: 12,
-    flexWrap: "wrap",
-  } as React.CSSProperties,
-
-  brand: { display: "flex", alignItems: "center", gap: 12 } as React.CSSProperties,
-
-  logo: {
-    width: 40,
-    height: 40,
-    borderRadius: 16,
-    background: "linear-gradient(135deg, rgba(124,92,255,0.98), rgba(90,166,255,0.98))",
-    boxShadow: "0 18px 44px rgba(90,166,255,0.20)",
-    border: "1px solid rgba(255,255,255,0.20)",
-  } as React.CSSProperties,
-
-  h1: { fontSize: 22, fontWeight: 1000, letterSpacing: -0.4 } as React.CSSProperties,
-  hSub: { marginTop: 2, fontSize: 13, color: theme.sub } as React.CSSProperties,
-
-  pill: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "8px 12px",
-    borderRadius: 999,
-    border: `1px solid ${theme.border}`,
-    background: "rgba(255,255,255,0.06)",
-    fontSize: 12,
-    color: theme.sub,
-    fontWeight: 950,
-  } as React.CSSProperties,
-
-  dot: (bg: string) => ({
-    width: 8,
-    height: 8,
-    borderRadius: 999,
-    background: bg,
-    boxShadow: `0 0 0 4px ${bg.replace("0.20", "0.08")}`,
-  } as React.CSSProperties),
-
-  panel: {
-    marginTop: 14,
-    borderRadius: 18,
-    border: `1px solid ${theme.border}`,
-    background: "linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.04) 100%)",
-    boxShadow: "0 18px 54px rgba(0,0,0,0.40)",
-    overflow: "hidden",
-  } as React.CSSProperties,
-
-  section: {
-    padding: "16px 16px 12px",
-    borderBottom: "1px solid rgba(255,255,255,0.08)",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "baseline",
-    gap: 12,
-    flexWrap: "wrap",
-  } as React.CSSProperties,
-
-  sectionTitle: { fontSize: 14, fontWeight: 1000, letterSpacing: -0.18 } as React.CSSProperties,
-  sectionSub: { fontSize: 12, color: theme.mut } as React.CSSProperties,
-
-  grid: { display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: 12, padding: 16 } as React.CSSProperties,
-
-  card: {
-    borderRadius: 16,
-    border: `1px solid ${theme.border}`,
-    background: theme.card,
-    padding: 14,
-    boxShadow: "0 12px 34px rgba(0,0,0,0.30)",
-  } as React.CSSProperties,
-
-  kpiCard: {
-    borderRadius: 16,
-    border: `1px solid ${theme.border2}`,
-    background: "linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.05) 100%)",
-    padding: 14,
-    boxShadow: "0 18px 46px rgba(0,0,0,0.40)",
-  } as React.CSSProperties,
-
-  kpiLabel: { display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: theme.mut, fontWeight: 950 } as React.CSSProperties,
-  kpiValue: { marginTop: 8, fontSize: 28, fontWeight: 1000, letterSpacing: -0.7 } as React.CSSProperties,
-  kpiMeta: { marginTop: 8, fontSize: 12, color: theme.sub, lineHeight: 1.35 } as React.CSSProperties,
-
-  recommendationBanner: {
-    marginTop: 14,
-    borderRadius: 14,
-    border: `1px solid rgba(245,158,11,0.25)`,
-    background: "linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(245,158,11,0.03) 100%)",
-    padding: "14px 18px",
-    boxShadow: "0 8px 24px rgba(245,158,11,0.08)",
-  } as React.CSSProperties,
-
-  recommendationTitle: {
-    fontSize: 13,
-    fontWeight: 1000,
-    color: "#f59e0b",
-    marginBottom: 10,
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-    letterSpacing: -0.2,
-  } as React.CSSProperties,
-
-  recommendationItem: {
-    padding: "8px 12px 8px 10px",
-    borderRadius: 8,
-    background: "rgba(0,0,0,0.15)",
-    marginBottom: 6,
-    fontSize: 13,
-    lineHeight: 1.5,
-    display: "flex",
-    alignItems: "flex-start",
-    gap: 8,
-    border: "1px solid rgba(255,255,255,0.05)",
-  } as React.CSSProperties,
-  
-  recommendationIcon: {
-    fontSize: 14,
-    marginTop: 1,
-    flexShrink: 0,
-  } as React.CSSProperties,
-  
-  recommendationText: {
-    flex: 1,
-  } as React.CSSProperties,
-
-  kpiGroup: {
-    border: `1px solid ${theme.border2}`,
-    borderRadius: 16,
-    padding: 16,
-    background: "rgba(255,255,255,0.03)",
-    marginBottom: 14,
-  } as React.CSSProperties,
-
-  kpiGroupTitle: {
-    fontSize: 13,
-    fontWeight: 1000,
-    color: theme.mut,
-    marginBottom: 14,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  } as React.CSSProperties,
-
-  btnPrimary: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    padding: "10px 14px",
-    borderRadius: 12,
-    fontWeight: 1000,
-    fontSize: 13,
-    textDecoration: "none",
-    border: "1px solid rgba(255,255,255,0.16)",
-    background: "linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95))",
-    color: "white",
-    boxShadow: "0 18px 48px rgba(90,166,255,0.22)",
-  } as React.CSSProperties,
-
-  btn: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    padding: "9px 12px",
-    borderRadius: 12,
-    fontWeight: 950,
-    fontSize: 13,
-    textDecoration: "none",
-    border: `1px solid ${theme.border}`,
-    background: "rgba(255,255,255,0.06)",
-    color: theme.text,
-    cursor: "pointer",
-  } as React.CSSProperties,
-
-  badge: (bg: string) => ({
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "6px 10px",
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 980,
-    border: `1px solid ${theme.border}`,
-    background: bg,
-    color: theme.text,
-    whiteSpace: "nowrap",
-  } as React.CSSProperties),
-
-  info: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: 18,
-    height: 18,
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.16)",
-    background: "rgba(255,255,255,0.05)",
-    color: theme.sub,
-    fontSize: 12,
-    fontWeight: 1000,
-    cursor: "help",
-  } as React.CSSProperties,
-
-  table: { width: "100%", borderCollapse: "collapse", fontSize: 13, tableLayout: "fixed" } as React.CSSProperties,
-  th: {
-    textAlign: "left",
-    padding: "8px 10px",
-    color: theme.mut,
-    fontWeight: 700,
-    borderBottom: "1px solid rgba(255,255,255,0.10)",
-    fontSize: 11,
-    letterSpacing: 0.3,
-    textTransform: "uppercase",
-    userSelect: "none",
-    whiteSpace: "nowrap",
-  } as React.CSSProperties,
-  td: { padding: "8px 10px", borderBottom: "1px solid rgba(255,255,255,0.07)", verticalAlign: "middle" } as React.CSSProperties,
+  sub: "rgba(234,241,255,0.7)",
+  mut: "rgba(234,241,255,0.5)",
+  faint: "rgba(234,241,255,0.3)",
 };
 
 /* ------------------------------ Mini Charts ------------------------------ */
@@ -407,20 +684,20 @@ function SparkLine(props: {
   color?: string;
 }) {
   const vbW = 360;
-  const vbH = 150;
+  const vbH = 140;
 
-  const padL = 52;
-  const padR = 28;
-  const padT = 24;
-  const padB = 36;
+  const padL = 48;
+  const padR = 20;
+  const padT = 20;
+  const padB = 32;
 
   const chartColor = props.color || "#5aa6ff";
-  const glowColor = props.color ? `${props.color}28` : "rgba(90,166,255,0.16)";
+  const glowColor = props.color ? `${props.color}30` : "rgba(90,166,255,0.2)";
 
   const vals = props.points.map((p) => p.value);
   const min = vals.length ? Math.min(...vals) : 0;
   const max = vals.length ? Math.max(...vals) : 1;
-  const maxWithBuffer = max * 1.1;
+  const maxWithBuffer = max * 1.15;
   const span = Math.max(1e-9, maxWithBuffer - min);
 
   const xStep = (vbW - padL - padR) / Math.max(1, props.points.length - 1);
@@ -434,82 +711,102 @@ function SparkLine(props: {
     .map((p, i) => `${i === 0 ? "M" : "L"} ${xOf(i).toFixed(1)} ${yOf(p.value).toFixed(1)}`)
     .join(" ");
 
+  // Area fill path
+  const areaD = props.points.length > 0 
+    ? d + ` L ${xOf(props.points.length - 1).toFixed(1)} ${vbH - padB} L ${xOf(0).toFixed(1)} ${vbH - padB} Z`
+    : "";
+
   const yTop = max;
   const yMid = (max + min) / 2;
   const yBot = min;
 
   const clipId = `clip-${Math.random().toString(16).slice(2)}`;
+  const gradientId = `gradient-${Math.random().toString(16).slice(2)}`;
 
-  const barW = Math.max(2, (vbW - padL - padR) / Math.max(1, props.points.length) - 6);
+  const barW = Math.max(4, (vbW - padL - padR) / Math.max(1, props.points.length) - 4);
   
-  const labelSkip = props.points.length > 20 ? 4 : props.points.length > 12 ? 3 : 2;
+  const labelSkip = props.points.length > 16 ? 4 : props.points.length > 10 ? 3 : 2;
+
+  // Get current value (last point)
+  const currentValue = props.points.length > 0 ? props.points[props.points.length - 1].value : 0;
 
   return (
-    <div style={{ ...ui.card, height: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+    <div className="panel hover-lift" style={{ padding: 16, height: "100%" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 12 }}>
         <div>
-          <div style={{ fontWeight: 1000, letterSpacing: -0.2 }}>
-            {props.title}
-          </div>
-          <div style={{ marginTop: 3, fontSize: 12, color: theme.mut }}>{props.subtitle}</div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: theme.text }}>{props.title}</div>
+          <div style={{ fontSize: 11, color: theme.mut, marginTop: 2 }}>{props.subtitle}</div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 11, color: theme.mut, fontWeight: 950 }}>Max</div>
-          <div style={{ fontWeight: 1000, color: chartColor }}>{props.formatY(yTop)}</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: chartColor, letterSpacing: -0.5 }}>
+            {props.formatY(currentValue)}
+          </div>
+          <div style={{ fontSize: 10, color: theme.mut, marginTop: 2 }}>Current</div>
         </div>
       </div>
 
-      <svg width="100%" viewBox={`0 0 ${vbW} ${vbH}`} preserveAspectRatio="xMidYMid meet" style={{ marginTop: 10, display: "block" }}>
+      <svg width="100%" viewBox={`0 0 ${vbW} ${vbH}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block" }}>
         <defs>
           <clipPath id={clipId}>
-            <rect x={padL} y={padT} width={vbW - padL - padR} height={vbH - padT - padB} rx="8" />
+            <rect x={padL} y={padT} width={vbW - padL - padR} height={vbH - padT - padB} />
           </clipPath>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={chartColor} stopOpacity="0.3" />
+            <stop offset="100%" stopColor={chartColor} stopOpacity="0" />
+          </linearGradient>
         </defs>
 
-        <line x1={padL} y1={yOf(yTop)} x2={vbW - padR} y2={yOf(yTop)} stroke="rgba(255,255,255,0.10)" />
-        <line x1={padL} y1={yOf(yMid)} x2={vbW - padR} y2={yOf(yMid)} stroke="rgba(255,255,255,0.06)" />
-        <line x1={padL} y1={yOf(yBot)} x2={vbW - padR} y2={yOf(yBot)} stroke="rgba(255,255,255,0.10)" />
+        {/* Grid lines */}
+        <line x1={padL} y1={yOf(yTop)} x2={vbW - padR} y2={yOf(yTop)} stroke="rgba(255,255,255,0.06)" strokeDasharray="4,4" />
+        <line x1={padL} y1={yOf(yMid)} x2={vbW - padR} y2={yOf(yMid)} stroke="rgba(255,255,255,0.04)" strokeDasharray="4,4" />
+        <line x1={padL} y1={yOf(yBot)} x2={vbW - padR} y2={yOf(yBot)} stroke="rgba(255,255,255,0.06)" strokeDasharray="4,4" />
 
-        <text x={10} y={yOf(yTop) + 4} fill={theme.faint} fontSize="10">{props.formatY(yTop)}</text>
-        <text x={10} y={yOf(yMid) + 4} fill="rgba(234,241,255,0.30)" fontSize="10">{props.formatY(yMid)}</text>
-        <text x={10} y={yOf(yBot) + 4} fill={theme.faint} fontSize="10">{props.formatY(yBot)}</text>
+        {/* Y axis labels */}
+        <text x={padL - 6} y={yOf(yTop) + 3} fill={theme.faint} fontSize="9" textAnchor="end">{props.formatY(yTop)}</text>
+        <text x={padL - 6} y={yOf(yBot) + 3} fill={theme.faint} fontSize="9" textAnchor="end">{props.formatY(yBot)}</text>
 
         <g clipPath={`url(#${clipId})`}>
           {props.chartType === "line" ? (
             <>
-              <path d={d} fill="none" stroke={glowColor} strokeWidth="10" strokeLinecap="round" />
-              <path d={d} fill="none" stroke={chartColor} strokeWidth="2.4" strokeLinecap="round" />
+              {/* Area fill */}
+              <path d={areaD} fill={`url(#${gradientId})`} />
+              {/* Glow line */}
+              <path d={d} fill="none" stroke={glowColor} strokeWidth="8" strokeLinecap="round" />
+              {/* Main line */}
+              <path d={d} fill="none" stroke={chartColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              {/* Points */}
               {props.points.map((p, i) => (
                 <g key={i}>
-                  <circle cx={xOf(i)} cy={yOf(p.value)} r={3.4} fill={chartColor}>
+                  <circle cx={xOf(i)} cy={yOf(p.value)} r={i === props.points.length - 1 ? 5 : 3} fill={chartColor}>
                     <title>{p.tooltip}</title>
                   </circle>
-                  <circle cx={xOf(i)} cy={yOf(p.value)} r={10} fill="transparent">
-                    <title>{p.tooltip}</title>
-                  </circle>
+                  {i === props.points.length - 1 && (
+                    <circle cx={xOf(i)} cy={yOf(p.value)} r={8} fill={chartColor} opacity={0.2}>
+                      <title>{p.tooltip}</title>
+                    </circle>
+                  )}
                 </g>
               ))}
             </>
           ) : (
-            <>
-              {props.points.map((p, i) => {
-                const x = padL + i * ((vbW - padL - padR) / Math.max(1, props.points.length)) + 3;
-                const y = yOf(p.value);
-                const h = vbH - padB - y;
-                return (
-                  <rect key={i} x={x} y={y} width={barW} height={Math.max(1, h)} rx={6} fill={chartColor}>
-                    <title>{p.tooltip}</title>
-                  </rect>
-                );
-              })}
-            </>
+            props.points.map((p, i) => {
+              const x = padL + i * ((vbW - padL - padR) / Math.max(1, props.points.length)) + 2;
+              const y = yOf(p.value);
+              const h = vbH - padB - y;
+              return (
+                <rect key={i} x={x} y={y} width={barW} height={Math.max(2, h)} rx={4} fill={chartColor} opacity={0.85}>
+                  <title>{p.tooltip}</title>
+                </rect>
+              );
+            })
           )}
         </g>
 
+        {/* X axis labels */}
         {props.points.map((p, i) => {
-          if (i % labelSkip !== 0) return null;
+          if (i % labelSkip !== 0 && i !== props.points.length - 1) return null;
           return (
-            <text key={`x-${i}`} x={xOf(i)} y={vbH - 12} fill="rgba(234,241,255,0.40)" fontSize="10" textAnchor="middle">
+            <text key={`x-${i}`} x={xOf(i)} y={vbH - 8} fill={theme.faint} fontSize="9" textAnchor="middle">
               {p.xLabel}
             </text>
           );
@@ -545,7 +842,7 @@ export default async function DashboardPage({
 
   if (!connection) {
     return (
-      <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100vh", background: theme.bg0 }}>
+      <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100vh", background: "#060811" }}>
         <h2>No Jobber account connected</h2>
         <p style={{ marginTop: 8, color: theme.sub }}>Please connect your Jobber account first.</p>
         <a href="/jobber" style={{ color: "#5aa6ff", marginTop: 16, display: "inline-block" }}>Connect Jobber →</a>
@@ -574,7 +871,7 @@ export default async function DashboardPage({
   // Block entire dashboard if no access
   if (!hasAccess) {
     return (
-      <main className="paywall-page" style={{
+      <main style={{
         minHeight: "100vh",
         display: "flex",
         alignItems: "center",
@@ -582,101 +879,55 @@ export default async function DashboardPage({
         background: "linear-gradient(180deg, #060811 0%, #0A1222 100%)",
         padding: 24,
       }}>
-        <style>{`
-          html[data-theme="light"] .paywall-page {
-            background: linear-gradient(180deg, #f0f4f8 0%, #e2e8f0 100%) !important;
-          }
-          html[data-theme="light"] .paywall-card {
-            background: #ffffff !important;
-            border-color: #d1d5db !important;
-            box-shadow: 0 24px 80px rgba(0,0,0,0.1) !important;
-          }
-          html[data-theme="light"] .paywall-title {
-            color: #1a202c !important;
-          }
-          html[data-theme="light"] .paywall-text {
-            color: #4b5563 !important;
-          }
-          html[data-theme="light"] .paywall-subtext {
-            color: #6b7280 !important;
-          }
-        `}</style>
-        <div className="paywall-card" style={{
-          maxWidth: 480,
+        <style>{globalStyles}</style>
+        <div className="animate-in" style={{
+          maxWidth: 420,
           width: "100%",
-          borderRadius: 20,
-          border: "1px solid rgba(255,255,255,0.12)",
-          background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)",
-          padding: 40,
+          borderRadius: 24,
+          border: "1px solid rgba(255,255,255,0.1)",
+          background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)",
+          padding: "48px 32px",
           textAlign: "center",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
+          boxShadow: "0 32px 64px rgba(0,0,0,0.5)",
         }}>
           <div style={{
-            width: 64,
-            height: 64,
+            width: 72,
+            height: 72,
             borderRadius: 20,
-            background: "linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95))",
-            margin: "0 auto 24px",
+            background: "linear-gradient(135deg, #7c5cff, #5aa6ff)",
+            margin: "0 auto 28px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: "0 16px 48px rgba(90,166,255,0.25)",
+            boxShadow: "0 20px 40px rgba(90,166,255,0.3)",
           }}>
-            <span style={{ fontSize: 28 }}>🔒</span>
+            <span style={{ fontSize: 32 }}>🔒</span>
           </div>
           
-          <h1 className="paywall-title" style={{
-            fontSize: 26,
-            fontWeight: 800,
-            color: "#EAF1FF",
-            marginBottom: 12,
-          }}>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: "#EAF1FF", marginBottom: 12 }}>
             {billingStatus === "trialing" ? "Trial Expired" : "Subscribe to Access"}
           </h1>
           
-          <p className="paywall-text" style={{
-            fontSize: 15,
-            color: "rgba(234,241,255,0.65)",
-            lineHeight: 1.6,
-            marginBottom: 8,
-          }}>
+          <p style={{ fontSize: 15, color: "rgba(234,241,255,0.6)", lineHeight: 1.6, marginBottom: 32 }}>
             Your 14-day free trial has ended. Subscribe to continue accessing your AccuInsight dashboard.
-          </p>
-          
-          <p className="paywall-subtext" style={{
-            fontSize: 14,
-            color: "rgba(234,241,255,0.5)",
-            marginBottom: 32,
-          }}>
-            {companyName}
           </p>
 
           <form action="/api/billing/checkout" method="POST">
-            <button
-              type="submit"
-              style={{
-                width: "100%",
-                padding: "16px 24px",
-                borderRadius: 12,
-                fontWeight: 800,
-                fontSize: 16,
-                border: "none",
-                background: "linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95))",
-                color: "white",
-                cursor: "pointer",
-                boxShadow: "0 12px 40px rgba(90,166,255,0.3)",
-              }}
-            >
+            <button type="submit" className="btn-primary" style={{
+              width: "100%",
+              padding: "16px 24px",
+              borderRadius: 14,
+              fontWeight: 700,
+              fontSize: 16,
+              border: "none",
+              cursor: "pointer",
+            }}>
               Subscribe — $29/month
             </button>
           </form>
           
-          <p className="paywall-subtext" style={{
-            marginTop: 20,
-            fontSize: 13,
-            color: "rgba(234,241,255,0.4)",
-          }}>
-            Cancel anytime • Instant access after payment
+          <p style={{ marginTop: 20, fontSize: 13, color: "rgba(234,241,255,0.4)" }}>
+            Cancel anytime • Instant access
           </p>
         </div>
       </main>
@@ -930,17 +1181,8 @@ export default async function DashboardPage({
     }),
   };
 
-  // Shared table column widths
-  const colW = {
-    age: "96px",
-    title: "auto",
-    date: "140px",
-    amount: "140px",
-    open: "190px",
-  };
-
   // Generate recommendations
-  type Recommendation = { icon: string; text: string; };
+  type Recommendation = { icon: string; text: string; priority: "high" | "medium" };
   const recommendations: Recommendation[] = [];
   
   if (b15p > 0 && totalAR > 0) {
@@ -949,12 +1191,14 @@ export default async function DashboardPage({
     if (pct15 > 0.15) {
       recommendations.push({
         icon: "🔴",
-        text: `${money(b15p)} overdue 15+ days (${agedCount} invoices). Priority: Call top 3 oldest accounts today.`
+        text: `${money(b15p)} overdue 15+ days (${agedCount} invoices). Priority: Call top 3 oldest accounts today.`,
+        priority: "high"
       });
     } else if (pct15 > 0.08) {
       recommendations.push({
         icon: "⚠️",
-        text: `${money(b15p)} aging past 15 days (${agedCount} invoices). Send payment reminders this week.`
+        text: `${money(b15p)} aging past 15 days (${agedCount} invoices). Send payment reminders this week.`,
+        priority: "medium"
       });
     }
   }
@@ -962,17 +1206,20 @@ export default async function DashboardPage({
   if (daysBookedAhead < 5) {
     recommendations.push({
       icon: "🔴",
-      text: `Only ${daysBookedAhead} days scheduled ahead. Book ${Math.min(5, unscheduledCount)} jobs from backlog by Friday.`
+      text: `Only ${daysBookedAhead} days scheduled ahead. Book ${Math.min(5, unscheduledCount)} jobs from backlog by Friday.`,
+      priority: "high"
     });
   } else if (daysBookedAhead < 7) {
     recommendations.push({
       icon: "📅",
-      text: `${daysBookedAhead} days booked (target: 7-14). Schedule ${Math.min(3, unscheduledCount)} more jobs this week.`
+      text: `${daysBookedAhead} days booked (target: 7-14). Schedule ${Math.min(3, unscheduledCount)} more jobs this week.`,
+      priority: "medium"
     });
   } else if (daysBookedAhead > 21) {
     recommendations.push({
       icon: "⚠️",
-      text: `${daysBookedAhead} days ahead (overbooked). Push lower-margin work or add crew capacity.`
+      text: `${daysBookedAhead} days ahead (overbooked). Push lower-margin work or add crew capacity.`,
+      priority: "medium"
     });
   }
 
@@ -981,14 +1228,16 @@ export default async function DashboardPage({
     const potentialWin = Math.round(leakDollars * winRate);
     recommendations.push({
       icon: "💰",
-      text: `${leakCount} quotes pending (${money(leakDollars)} total). Follow up on top 5 - potential ${money(potentialWin)} recovery.`
+      text: `${leakCount} quotes pending (${money(leakDollars)} total). Follow up on top 5 - potential ${money(potentialWin)} recovery.`,
+      priority: "medium"
     });
   }
 
   if (changesRequestedCount > 0) {
     recommendations.push({
       icon: "✏️",
-      text: `${changesRequestedCount} quote${changesRequestedCount > 1 ? 's' : ''} waiting for revisions. Hot leads - respond within 24hrs.`
+      text: `${changesRequestedCount} quote${changesRequestedCount > 1 ? 's' : ''} waiting for revisions. Hot leads - respond within 24hrs.`,
+      priority: "high"
     });
   }
 
@@ -997,16 +1246,10 @@ export default async function DashboardPage({
     if (marginPct < 0.20) {
       recommendations.push({
         icon: "📊",
-        text: `Margins at ${pct(marginPct)} (target: 25%+). Review pricing or reduce material/labor costs.`
+        text: `Margins at ${pct(marginPct)} (target: 25%+). Review pricing or reduce material/labor costs.`,
+        priority: "medium"
       });
     }
-  }
-
-  if (unscheduledCount > 15 && daysBookedAhead < 10) {
-    recommendations.push({
-      icon: "📋",
-      text: `${unscheduledCount} jobs unscheduled. Fill calendar gaps to maintain steady cash flow.`
-    });
   }
 
   // Prepare data for ExportCSV components
@@ -1045,839 +1288,525 @@ export default async function DashboardPage({
       };
     });
 
-  return (
-    <main style={ui.page}>
-      <style>{`
-          html[data-theme="dark"] {
-            --bg0: #060811;
-            --bg1: #0A1222;
-            --card: rgba(255,255,255,0.060);
-            --border: rgba(255,255,255,0.10);
-            --text: #EAF1FF;
-            --sub: rgba(234,241,255,0.74);
-            --mut: rgba(234,241,255,0.58);
-          }
-          
-          html[data-theme="light"] {
-            --bg0: #f0f4f8;
-            --bg1: #ffffff;
-            --card: #ffffff;
-            --border: #e2e8f0;
-            --text: #1a202c;
-            --sub: #374151;
-            --mut: #4b5563;
-          }
-          
-          html[data-theme="light"],
-          html[data-theme="light"] body,
-          html[data-theme="light"] main {
-            background: #f0f4f8 !important;
-            color: #1a202c !important;
-          }
-          
-          html[data-theme="light"] * {
-            color: inherit;
-          }
-          
-          html[data-theme="light"] div,
-          html[data-theme="light"] span,
-          html[data-theme="light"] p,
-          html[data-theme="light"] h1,
-          html[data-theme="light"] h2,
-          html[data-theme="light"] h3,
-          html[data-theme="light"] h4,
-          html[data-theme="light"] h5,
-          html[data-theme="light"] h6,
-          html[data-theme="light"] label,
-          html[data-theme="light"] strong,
-          html[data-theme="light"] b {
-            color: #1a202c !important;
-          }
-          
-          html[data-theme="light"] [style*="color: rgba(234"],
-          html[data-theme="light"] [style*="color:rgba(234"],
-          html[data-theme="light"] [style*="color: #EAF1FF"],
-          html[data-theme="light"] [style*="color:#EAF1FF"],
-          html[data-theme="light"] [style*="color: rgb(234"],
-          html[data-theme="light"] [style*="opacity: 0.74"],
-          html[data-theme="light"] [style*="opacity: 0.58"],
-          html[data-theme="light"] [style*="opacity: 0.38"],
-          html[data-theme="light"] [style*="opacity:0.74"],
-          html[data-theme="light"] [style*="opacity:0.58"],
-          html[data-theme="light"] [style*="opacity:0.38"] {
-            color: #4b5563 !important;
-            opacity: 1 !important;
-          }
-          
-          html[data-theme="light"] [style*="background: rgba(255,255,255"],
-          html[data-theme="light"] [style*="background:rgba(255,255,255"],
-          html[data-theme="light"] [style*="background: rgba(255, 255, 255"] {
-            background: #ffffff !important;
-            border: 1px solid #d1d5db !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04) !important;
-          }
-          
-          html[data-theme="light"] [style*="linear-gradient(180deg"] {
-            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
-            border: 1px solid #d1d5db !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
-          }
-          
-          html[data-theme="light"] table {
-            background: #ffffff !important;
-          }
-          
-          html[data-theme="light"] th {
-            color: #374151 !important;
-            background: #f8fafc !important;
-            border-color: #e2e8f0 !important;
-            padding: 8px 10px !important;
-          }
-          
-          html[data-theme="light"] td {
-            color: #1f2937 !important;
-            border-color: #e5e7eb !important;
-            background: #ffffff !important;
-            padding: 8px 10px !important;
-          }
-          
-          html[data-theme="light"] td span,
-          html[data-theme="light"] td div,
-          html[data-theme="light"] td strong,
-          html[data-theme="light"] td a {
-            color: #1f2937 !important;
-          }
-          
-          html[data-theme="light"] td a[href] {
-            color: #4338ca !important;
-          }
-          
-          html[data-theme="light"] tr:hover td {
-            background: #f3f4f6 !important;
-          }
-          
-          html[data-theme="light"] tbody tr:nth-child(2n) td {
-            background: #f9fafb !important;
-          }
-          
-          html[data-theme="light"] svg text,
-          html[data-theme="light"] svg tspan {
-            fill: #1f2937 !important;
-            color: #1f2937 !important;
-          }
-          
-          html[data-theme="light"] svg line {
-            stroke: #d1d5db !important;
-            stroke-width: 1px !important;
-          }
-          
-          html[data-theme="light"] svg path.domain,
-          html[data-theme="light"] svg .domain {
-            stroke: #6b7280 !important;
-          }
-          
-          html[data-theme="light"] svg path[stroke="#5a67d8"],
-          html[data-theme="light"] svg path[stroke="#667eea"],
-          html[data-theme="light"] svg path[stroke="rgb(90, 103, 216)"],
-          html[data-theme="light"] svg path[fill="none"],
-          html[data-theme="light"] svg polyline {
-            stroke: #4338ca !important;
-            stroke-width: 3px !important;
-          }
-          
-          html[data-theme="light"] svg rect[fill]:not([fill="none"]):not([fill="transparent"]) {
-            fill: #4c51bf !important;
-          }
-          
-          html[data-theme="light"] svg path[fill*="rgba"] {
-            fill: rgba(67, 56, 202, 0.12) !important;
-          }
-          
-          html[data-theme="light"] svg circle {
-            fill: #4338ca !important;
-            stroke: #ffffff !important;
-            stroke-width: 2px !important;
-            r: 4 !important;
-          }
-          
-          html[data-theme="light"] a {
-            color: #4338ca !important;
-          }
-          
-          html[data-theme="light"] a:hover {
-            color: #3730a3 !important;
-          }
-          
-          html[data-theme="light"] button {
-            color: #1f2937 !important;
-          }
-          
-          html[data-theme="light"] [style*="background: #5a67d8"],
-          html[data-theme="light"] [style*="background:#5a67d8"],
-          html[data-theme="light"] [style*="background: rgb(90, 103, 216)"] {
-            background: #4c51bf !important;
-            color: #ffffff !important;
-          }
-          
-          html[data-theme="light"] [style*="rgba(239,68,68,0.2"],
-          html[data-theme="light"] [style*="rgba(239, 68, 68, 0.2"] {
-            background: rgba(239,68,68,0.15) !important;
-          }
-          
-          html[data-theme="light"] [style*="rgba(245,158,11,0.2"],
-          html[data-theme="light"] [style*="rgba(245, 158, 11, 0.2"] {
-            background: rgba(245,158,11,0.15) !important;
-          }
-          
-          html[data-theme="light"] [style*="rgba(16,185,129,0.2"],
-          html[data-theme="light"] [style*="rgba(16, 185, 129, 0.2"] {
-            background: rgba(16,185,129,0.15) !important;
-          }
-          
-          html[data-theme="light"] input,
-          html[data-theme="light"] select,
-          html[data-theme="light"] textarea {
-            background: #ffffff !important;
-            color: #1f2937 !important;
-            border-color: #d1d5db !important;
-          }
-          
-          html[data-theme="light"] input:focus,
-          html[data-theme="light"] select:focus {
-            border-color: #4c51bf !important;
-            box-shadow: 0 0 0 3px rgba(76, 81, 191, 0.1) !important;
-          }
-          
-          html[data-theme="light"] [style*="rgba(245,158,11,0.08)"],
-          html[data-theme="light"] [style*="linear-gradient(135deg, rgba(245,158,11"] {
-            background: linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(245,158,11,0.05) 100%) !important;
-            border-color: rgba(245,158,11,0.4) !important;
-          }
-          
-          html[data-theme="light"] ::-webkit-scrollbar {
-            background: #f0f4f8;
-            width: 8px;
-          }
-          
-          html[data-theme="light"] ::-webkit-scrollbar-thumb {
-            background: #94a3b8;
-            border-radius: 4px;
-          }
-          
-          html[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
-          }
-          
-          a:hover { filter: brightness(1.06); }
-          
-          @media (max-width: 980px) {
-            .span3 { grid-column: span 12 !important; }
-            .span4 { grid-column: span 12 !important; }
-            .span6 { grid-column: span 12 !important; }
-          }
-          
-          @media (max-width: 768px) {
-            table {
-              display: block;
-              overflow-x: auto;
-              -webkit-overflow-scrolling: touch;
-              white-space: nowrap;
-            }
-            
-            th, td {
-              min-width: 70px !important;
-              padding: 8px 6px !important;
-              font-size: 12px !important;
-            }
-            
-            th:nth-child(2), td:nth-child(2) {
-              min-width: 140px !important;
-              white-space: normal !important;
-            }
-            
-            th:last-child, td:last-child {
-              min-width: 90px !important;
-            }
-            
-            td a {
-              padding: 6px 10px !important;
-              font-size: 11px !important;
-            }
-          }
-          
-          @media (max-width: 480px) {
-            th, td {
-              padding: 6px 4px !important;
-              font-size: 11px !important;
-            }
-            
-            th:nth-child(3), td:nth-child(3) {
-              display: none !important;
-            }
-          }
-        `}</style>
+  const sevColor = (sev: "critical" | "warning" | "good") => {
+    if (sev === "critical") return "#ef4444";
+    if (sev === "warning") return "#f59e0b";
+    return "#10b981";
+  };
 
-      <div style={ui.container}>
-        <div style={ui.header}>
-          <div style={ui.brand}>
-            <div>
-              <div style={ui.h1}>{companyName} | AccuInsight</div>
-              <div style={ui.hSub}>
-                Last sync: <strong style={{ color: theme.text }}>{lastSyncPretty}</strong>
-                <span style={{ color: theme.mut }}> • {currencyCode}</span>
-              </div>
-            </div>
+  const sevBg = (sev: "critical" | "warning" | "good") => {
+    if (sev === "critical") return "rgba(239,68,68,0.15)";
+    if (sev === "warning") return "rgba(245,158,11,0.15)";
+    return "rgba(16,185,129,0.15)";
+  };
+
+  return (
+    <main style={{
+      minHeight: "100vh",
+      color: "#EAF1FF",
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      background: `
+        radial-gradient(ellipse 80% 60% at 50% -20%, rgba(124,92,255,0.15), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 0%, rgba(90,166,255,0.1), transparent),
+        linear-gradient(180deg, #060811 0%, #0a1020 100%)
+      `,
+    }}>
+      <style>{globalStyles}</style>
+
+      <div className="dashboard-container">
+        {/* Header */}
+        <header className="dashboard-header animate-in">
+          <div>
+            <h1 style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5, margin: 0 }}>
+              {companyName}
+            </h1>
+            <p style={{ fontSize: 13, color: theme.mut, marginTop: 4 }}>
+              Last sync: <span style={{ color: theme.sub }}>{lastSyncPretty}</span> • {currencyCode}
+            </p>
           </div>
 
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <div className="header-actions">
             <SyncButton connectionId={connectionId} />
-            
             <ThemeToggle />
             
-            <span style={{
-              padding: "8px 14px",
+            {/* Status Pills */}
+            <div className="status-pill" style={{
               borderRadius: 10,
-              fontSize: 13,
               fontWeight: 600,
               display: "flex",
               alignItems: "center",
-              gap: 8,
-              color: theme.text,
-              background: arSev === "critical" ? "rgba(239,68,68,0.25)" : 
-                         arSev === "warning" ? "rgba(245,158,11,0.25)" : 
-                         "rgba(16,185,129,0.25)",
-              border: `2px solid ${arSev === "critical" ? "#ef4444" : 
-                                  arSev === "warning" ? "#f59e0b" : "#10b981"}`,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-            }} title="Share of AR that is 15+ days overdue.">
-              <span style={ui.dot(sevBg(arSev))} />
-              AR Risk <strong style={{ color: theme.text }}>{pct(riskPct)}</strong>
-            </span>
+              gap: 6,
+              background: sevBg(arSev),
+              border: `1.5px solid ${sevColor(arSev)}`,
+            }}>
+              <span className={arSev === "critical" ? "pulse-dot" : ""} style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: sevColor(arSev),
+              }} />
+              AR Risk <strong>{pct(riskPct)}</strong>
+            </div>
 
-            <span style={{
-              padding: "8px 14px",
+            <div className="status-pill" style={{
               borderRadius: 10,
-              fontSize: 13,
               fontWeight: 600,
               display: "flex",
               alignItems: "center",
-              gap: 8,
-              color: theme.text,
-              background: capSev === "critical" ? "rgba(239,68,68,0.25)" : 
-                         capSev === "warning" ? "rgba(245,158,11,0.25)" : 
-                         "rgba(16,185,129,0.25)",
-              border: `2px solid ${capSev === "critical" ? "#ef4444" : 
-                                  capSev === "warning" ? "#f59e0b" : "#10b981"}`,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-            }} title="Capacity uses days booked ahead plus unscheduled job volume.">
-              <span style={ui.dot(sevBg(capSev))} />
-              Capacity <strong style={{ color: theme.text }}>{capState}</strong>
-            </span>
+              gap: 6,
+              background: sevBg(capSev),
+              border: `1.5px solid ${sevColor(capSev)}`,
+            }}>
+              <span style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: sevColor(capSev),
+              }} />
+              {capState}
+            </div>
 
-            {subscriptionActive ? (
-              <ManageSubscriptionButton />
-            ) : (
-              <SubscribeButton />
-            )}
-
+            {subscriptionActive ? <ManageSubscriptionButton /> : <SubscribeButton />}
             <LogoutButton />
           </div>
-        </div>
+        </header>
 
-        {/* RECOMMENDATIONS */}
+        {/* Recommendations */}
         {recommendations.length > 0 && (
-          <div style={ui.recommendationBanner}>
-            <div style={ui.recommendationTitle}>
-              💡 This Week&apos;s Focus
+          <div className="recommendation-banner animate-in delay-1" style={{ marginTop: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <span style={{ fontSize: 16 }}>💡</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#f59e0b" }}>This Week&apos;s Focus</span>
             </div>
-            {recommendations.map((rec, i) => (
-              <div key={i} style={ui.recommendationItem}>
-                <span style={ui.recommendationIcon}>{rec.icon}</span>
-                <span style={ui.recommendationText}>{rec.text}</span>
+            {recommendations.slice(0, 3).map((rec, i) => (
+              <div key={i} className="recommendation-item">
+                <span style={{ fontSize: 14 }}>{rec.icon}</span>
+                <span style={{ color: "rgba(234,241,255,0.85)" }}>{rec.text}</span>
               </div>
             ))}
           </div>
         )}
 
-        {/* KPIs */}
-        <div style={ui.panel}>
-          <div style={ui.section}>
-            <div>
-              <div style={ui.sectionTitle}>Overview KPIs</div>
-              <div style={ui.sectionSub}>
-                Current status as of today. High-signal metrics for cash, capacity, and sales.
+        {/* Primary KPIs */}
+        <div className="kpi-grid-primary animate-in delay-2" style={{ marginTop: 20 }}>
+          <div className="kpi-primary gradient-purple hover-lift">
+            <div style={{ position: "relative", zIndex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 20 }}>💰</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: theme.mut, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  Total AR
+                </span>
+              </div>
+              <div className="kpi-value-large">{money(totalAR)}</div>
+              <div style={{ fontSize: 12, color: theme.sub, marginTop: 8 }}>
+                Outstanding receivables
+              </div>
+            </div>
+          </div>
+
+          <div className="kpi-primary hover-lift" style={{
+            background: `linear-gradient(145deg, ${sevBg(arSev === "critical" ? "critical" : arSev === "warning" ? "warning" : "good")} 0%, rgba(255,255,255,0.02) 100%)`,
+            borderColor: `${sevColor(arSev)}40`,
+          }}>
+            <div style={{ position: "relative", zIndex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 20 }}>⚠️</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: theme.mut, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  AR 15+ Days
+                </span>
+              </div>
+              <div className="kpi-value-large" style={{ color: sevColor(arSev) }}>{money(b15p)}</div>
+              <div style={{ fontSize: 12, color: theme.sub, marginTop: 8 }}>
+                {totalAR > 0 ? pct(b15p / totalAR) : "0%"} of total • {agedARInvoices.length} invoices
+              </div>
+            </div>
+          </div>
+
+          <div className="kpi-primary hover-lift" style={{
+            background: `linear-gradient(145deg, rgba(239,68,68,0.08) 0%, rgba(255,255,255,0.02) 100%)`,
+            borderColor: leakDollars > 0 ? "rgba(239,68,68,0.3)" : "rgba(255,255,255,0.1)",
+          }}>
+            <div style={{ position: "relative", zIndex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 20 }}>📋</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: theme.mut, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  Quote Leak
+                </span>
+              </div>
+              <div className="kpi-value-large" style={{ color: leakDollars > 0 ? "#ef4444" : "#10b981" }}>
+                {money(leakDollars)}
+              </div>
+              <div style={{ fontSize: 12, color: theme.sub, marginTop: 8 }}>
+                {leakCount} quotes not won in range
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Secondary KPIs */}
+        <div className="kpi-grid-secondary animate-in delay-3" style={{ marginTop: 16 }}>
+          <div className="kpi-secondary">
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+              <span style={{ fontSize: 14 }}>📅</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: theme.mut, textTransform: "uppercase" }}>Days Ahead</span>
+            </div>
+            <div className="kpi-value-medium" style={{ 
+              color: daysBookedAhead < TARGET_LOW ? "#ef4444" : 
+                     daysBookedAhead > 21 ? "#ef4444" :
+                     daysBookedAhead > TARGET_HIGH ? "#f59e0b" : "#10b981" 
+            }}>
+              {daysBookedAhead}
+            </div>
+            <div style={{ fontSize: 11, color: theme.mut, marginTop: 4 }}>Target: {TARGET_LOW}-{TARGET_HIGH}</div>
+          </div>
+
+          <div className="kpi-secondary">
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+              <span style={{ fontSize: 14 }}>📦</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: theme.mut, textTransform: "uppercase" }}>Unscheduled</span>
+            </div>
+            <div className="kpi-value-medium" style={{ 
+              color: unscheduledCount > 10 ? "#ef4444" : 
+                     unscheduledCount > 5 ? "#f59e0b" : "#10b981" 
+            }}>
+              {unscheduledCount}
+            </div>
+            <div style={{ fontSize: 11, color: theme.mut, marginTop: 4 }}>Jobs in backlog</div>
+          </div>
+
+          <div className="kpi-secondary">
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+              <span style={{ fontSize: 14 }}>✏️</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: theme.mut, textTransform: "uppercase" }}>Changes Req.</span>
+            </div>
+            <div className="kpi-value-medium" style={{ 
+              color: changesRequestedCount > 5 ? "#ef4444" : 
+                     changesRequestedCount > 2 ? "#f59e0b" : "#10b981" 
+            }}>
+              {changesRequestedCount}
+            </div>
+            <div style={{ fontSize: 11, color: theme.mut, marginTop: 4 }}>Quotes to revise</div>
+          </div>
+
+          <div className="kpi-secondary">
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+              <span style={{ fontSize: 14 }}>✅</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: theme.mut, textTransform: "uppercase" }}>Completed</span>
+            </div>
+            <div className="kpi-value-medium" style={{ color: "#10b981" }}>
+              {completedCount}
+            </div>
+            <div style={{ fontSize: 11, color: theme.mut, marginTop: 4 }}>Jobs in range</div>
+          </div>
+        </div>
+
+        {/* Trends */}
+        <div className="panel animate-in delay-4" style={{ marginTop: 20 }}>
+          <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+              <div>
+                <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Trends</h2>
+                <p style={{ fontSize: 12, color: theme.mut, marginTop: 2 }}>
+                  {toISODateOnlyUTC(start)} → {toISODateOnlyUTC(end)} • {g === "day" ? "Daily" : g === "week" ? "Weekly" : g === "month" ? "Monthly" : "Quarterly"}
+                </p>
               </div>
             </div>
           </div>
 
           <div style={{ padding: 16 }}>
-            <div style={ui.kpiGroup}>
-              <div style={ui.kpiGroupTitle}>💰 Financial Metrics</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-                <div style={ui.kpiCard}>
-                  <div style={ui.kpiLabel}>TOTAL AR</div>
-                  <div style={ui.kpiValue}>{money(totalAR)}</div>
-                  <div style={ui.kpiMeta}>
-                    Total outstanding receivables
-                  </div>
-                </div>
+            <Controls />
+          </div>
 
-                <div style={ui.kpiCard}>
-                  <div style={ui.kpiLabel}>AR 15+ DAYS</div>
-                  <div style={{ ...ui.kpiValue, color: b15p > 0 ? (riskPct >= 0.15 ? "#ef4444" : "#f59e0b") : "#10b981" }}>
-                    {money(b15p)}
-                  </div>
-                  <div style={ui.kpiMeta}>
-                    {totalAR > 0 ? pct(b15p / totalAR) : "0%"} of total AR • Invoices overdue 15+ days
-                  </div>
-                </div>
-
-                <div style={ui.kpiCard}>
-                  <div style={ui.kpiLabel}>QUOTE LEAK</div>
-                  <div style={{ ...ui.kpiValue, color: leakDollars > 0 ? "#ef4444" : "#10b981" }}>
-                    {money(leakDollars)}
-                  </div>
-                  <div style={ui.kpiMeta}>
-                    {leakCount} quotes not won • Sent in range, not converted
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div style={ui.kpiGroup}>
-              <div style={ui.kpiGroupTitle}>📊 Operations Metrics</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-                <div style={ui.kpiCard}>
-                  <div style={ui.kpiLabel}>DAYS BOOKED AHEAD</div>
-                  <div style={{ 
-                    ...ui.kpiValue, 
-                    color: daysBookedAhead < TARGET_LOW ? "#ef4444" : 
-                           daysBookedAhead > 21 ? "#ef4444" :
-                           daysBookedAhead > TARGET_HIGH ? "#f59e0b" : "#10b981" 
-                  }}>
-                    {daysBookedAhead}
-                  </div>
-                  <div style={ui.kpiMeta}>
-                    Target: {TARGET_LOW}-{TARGET_HIGH} days • Days until latest scheduled job
-                  </div>
-                </div>
-
-                <div style={ui.kpiCard}>
-                  <div style={ui.kpiLabel}>UNSCHEDULED JOBS</div>
-                  <div style={{ 
-                    ...ui.kpiValue, 
-                    color: unscheduledCount > 10 ? "#ef4444" : 
-                           unscheduledCount > 5 ? "#f59e0b" : "#10b981" 
-                  }}>
-                    {unscheduledCount}
-                  </div>
-                  <div style={ui.kpiMeta}>
-                    Jobs with no scheduled start • Available backlog
-                  </div>
-                </div>
-
-                <div style={ui.kpiCard}>
-                  <div style={ui.kpiLabel}>CHANGES REQUESTED</div>
-                  <div style={{ 
-                    ...ui.kpiValue, 
-                    color: changesRequestedCount > 5 ? "#ef4444" : 
-                           changesRequestedCount > 2 ? "#f59e0b" : "#10b981" 
-                  }}>
-                    {changesRequestedCount}
-                  </div>
-                  <div style={ui.kpiMeta}>
-                    Quotes waiting for revisions • Respond quickly to close
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div className="chart-grid" style={{ padding: "0 16px 16px" }}>
+            <SparkLine
+              title="Quote Leak"
+              subtitle="Cumulative leaked quotes"
+              points={points.leak}
+              formatY={moneyForChart}
+              chartType={chartType}
+              color="#ef4444"
+            />
+            <SparkLine
+              title="AR 15+ Days"
+              subtitle="Cumulative overdue balance"
+              points={points.ar15}
+              formatY={moneyForChart}
+              chartType={chartType}
+              color="#f59e0b"
+            />
+            <SparkLine
+              title="Unscheduled"
+              subtitle="Cumulative backlog"
+              points={points.unsched}
+              formatY={(v) => `${Math.round(v)}`}
+              chartType={chartType}
+              color="#5aa6ff"
+            />
           </div>
         </div>
 
-        {/* Trends */}
-        <div style={{ marginTop: 14 }}>
-          <div style={ui.panel}>
-            <div style={ui.section}>
-              <div>
-                <div style={ui.sectionTitle}>Trends</div>
-                <div style={ui.sectionSub}>
-                  Historical view over time. Bucketed by your selection (Daily/Weekly/Monthly/Quarterly).
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                <span style={ui.badge("rgba(124,92,255,0.16)")}>
-                  Range: {toISODateOnlyUTC(start)} → {toISODateOnlyUTC(end)}
-                </span>
-                <span style={ui.badge("rgba(90,166,255,0.16)")}>
-                  {g === "day" ? "Daily" : g === "week" ? "Weekly" : g === "month" ? "Monthly" : "Quarterly"} •{" "}
-                  {chartType === "line" ? "Line" : "Bars"}
-                </span>
-              </div>
-            </div>
-
-            <div style={{ padding: "0 16px 16px" }}>
-              <Controls />
-            </div>
-
-            <div style={ui.grid}>
-              <div className="span4" style={{ gridColumn: "span 4" }}>
-                <SparkLine
-                  title="Quote leak"
-                  subtitle="Cumulative total of leaked quotes (as-of each point)"
-                  points={points.leak}
-                  formatY={(v) => moneyForChart(v)}
-                  chartType={chartType}
-                  color="#ef4444"
-                />
-              </div>
-
-              <div className="span4" style={{ gridColumn: "span 4" }}>
-                <SparkLine
-                  title="AR 15+"
-                  subtitle="Cumulative AR overdue 15+ days (as-of each point)"
-                  points={points.ar15}
-                  formatY={(v) => moneyForChart(v)}
-                  chartType={chartType}
-                  color="#f59e0b"
-                />
-              </div>
-
-              <div className="span4" style={{ gridColumn: "span 4" }}>
-                <SparkLine
-                  title="Unscheduled jobs"
-                  subtitle="Cumulative backlog count (as-of each point)"
-                  points={points.unsched}
-                  formatY={(v) => `${Math.round(v)}`}
-                  chartType={chartType}
-                  color="#5aa6ff"
-                />
-              </div>
-            </div>
+        {/* Action Lists */}
+        <div className="panel animate-in delay-5" style={{ marginTop: 20 }}>
+          <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Action Lists</h2>
+            <p style={{ fontSize: 12, color: theme.mut, marginTop: 2 }}>
+              Collect AR, schedule backlog, close sales leaks
+            </p>
           </div>
 
-          {/* Action Lists */}
-          <div style={{ ...ui.panel, marginTop: 14 }}>
-            <div style={ui.section}>
-              <div>
-                <div style={ui.sectionTitle}>Action Lists</div>
-                <div style={ui.sectionSub}>Lists that drive weekly wins: collect AR, schedule backlog, close sales leaks.</div>
+          <div style={{ padding: 16 }}>
+            {/* Aged AR */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
+                <div>
+                  <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Aged Receivables (15+ Days)</h3>
+                  <p style={{ fontSize: 12, color: theme.mut, marginTop: 2 }}>Oldest first</p>
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {agedARInvoices.length > 0 && (
+                    <ExportCSV data={agedARExportData} filename="aged-ar-15plus" />
+                  )}
+                </div>
               </div>
+
+              {agedARInvoices.length === 0 ? (
+                <div style={{ padding: 24, textAlign: "center", color: theme.sub, fontSize: 13 }}>
+                  ✨ No aged AR 15+ days!
+                </div>
+              ) : (
+                <div className="table-container">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 70 }}>Age</th>
+                        <th>Invoice</th>
+                        <th style={{ width: 100 }}>Due</th>
+                        <th style={{ width: 100 }}>Amount</th>
+                        <th style={{ width: 120 }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {agedARInvoices
+                        .sort((a, b) => b.days_overdue - a.days_overdue)
+                        .slice(0, 5)
+                        .map((inv, idx) => (
+                          <tr key={idx}>
+                            <td>
+                              <span className={`age-badge ${inv.days_overdue > 30 ? "critical" : inv.days_overdue > 20 ? "warning" : "good"}`}>
+                                {inv.days_overdue}d
+                              </span>
+                            </td>
+                            <td>
+                              <div style={{ fontWeight: 600 }}>#{inv.invoice_number}</div>
+                              {inv.client_name && (
+                                <div style={{ fontSize: 11, color: theme.mut, marginTop: 2 }}>{inv.client_name}</div>
+                              )}
+                            </td>
+                            <td style={{ color: theme.sub }}>
+                              {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "—"}
+                            </td>
+                            <td style={{ fontWeight: 600 }}>{money(inv.amount_cents)}</td>
+                            <td>
+                              {inv.jobber_url ? (
+                                <a href={inv.jobber_url} target="_blank" rel="noreferrer" className="btn">
+                                  Open →
+                                </a>
+                              ) : (
+                                <span style={{ color: theme.mut }}>—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
-            <div style={{ padding: 16 }}>
-              {/* Aged AR */}
-              <div style={{ ...ui.card, marginBottom: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
-                  <div>
-                    <div style={{ fontWeight: 1000, letterSpacing: -0.2 }}>Aged AR (15+ Days)</div>
-                    <div style={{ marginTop: 3, fontSize: 12, color: theme.mut }}>
-                      Invoices overdue 15+ days - oldest first
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span style={ui.badge("rgba(239,68,68,0.16)")}>Receivables</span>
-                    {agedARInvoices.length > 0 && (
-                      <ExportCSV data={agedARExportData} filename="aged-ar-15plus" />
-                    )}
-                  </div>
+            {/* Unscheduled Jobs */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
+                <div>
+                  <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Unscheduled Jobs</h3>
+                  <p style={{ fontSize: 12, color: theme.mut, marginTop: 2 }}>Oldest first</p>
                 </div>
-
-                {agedARInvoices.length === 0 ? (
-                  <div style={{ fontSize: 12, color: theme.sub }}>No aged AR 15+ days! 🎉</div>
-                ) : (
-                  <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-                    <table style={ui.table}>
-                      <colgroup>
-                        <col style={{ width: colW.age }} />
-                        <col style={{ width: colW.title }} />
-                        <col style={{ width: colW.date }} />
-                        <col style={{ width: colW.amount }} />
-                        <col style={{ width: colW.open }} />
-                      </colgroup>
-                      <thead>
-                        <tr>
-                          <th style={ui.th}>Age</th>
-                          <th style={ui.th}>Invoice # + Client</th>
-                          <th style={ui.th}>Due Date</th>
-                          <th style={ui.th}>Amount</th>
-                          <th style={ui.th}>Open</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {agedARInvoices
-                          .sort((a, b) => b.days_overdue - a.days_overdue)
-                          .map((inv, idx) => (
-                            <tr key={idx}>
-                              <td style={ui.td}>{inv.days_overdue}d</td>
-                              <td style={ui.td}>
-                                <div style={{ fontWeight: 950 }}>
-                                  <span style={{ color: theme.sub }}>#{inv.invoice_number}</span>
-                                  {inv.client_name && (
-                                    <span style={{ color: theme.text }}> • {inv.client_name}</span>
-                                  )}
-                                </div>
-                              </td>
-                              <td style={ui.td}>
-                                {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "—"}
-                              </td>
-                              <td style={ui.td}>{money(inv.amount_cents)}</td>
-                              <td style={ui.td}>
-                                {inv.jobber_url ? (
-                                  <a href={inv.jobber_url} target="_blank" rel="noreferrer" style={ui.btn}>
-                                    Open in Jobber →
-                                  </a>
-                                ) : (
-                                  <span style={{ fontSize: 12, color: theme.mut }}>—</span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <a href={toggleUnscheduledHref} className="btn">
+                    {minDays >= 7 ? "Show all" : "7+ days only"}
+                  </a>
+                  {unscheduledRows.length > 0 && (
+                    <ExportCSV data={unscheduledExportData} filename="unscheduled-jobs" />
+                  )}
+                </div>
               </div>
 
-              {/* Unscheduled Jobs */}
-              <div style={ui.card}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
-                  <div>
-                    <div style={{ fontWeight: 1000, letterSpacing: -0.2 }}>Top Unscheduled Jobs</div>
-                    <div style={{ marginTop: 3, fontSize: 12, color: theme.mut }}>
-                      Oldest first. Shows Job # and Title.
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span style={ui.badge("rgba(90,166,255,0.16)")}>Scheduling</span>
-                    <a href={toggleUnscheduledHref} style={ui.btn} title="Filter unscheduled jobs">
-                      {minDays >= 7 ? "Show all" : "Show 7+ days only"}
-                    </a>
-                    {unscheduledRows.length > 0 && (
-                      <ExportCSV data={unscheduledExportData} filename="unscheduled-jobs" />
-                    )}
-                  </div>
+              {unscheduledRows.length === 0 ? (
+                <div style={{ padding: 24, textAlign: "center", color: theme.sub, fontSize: 13 }}>
+                  ✨ No unscheduled jobs!
                 </div>
+              ) : (
+                <div className="table-container">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 70 }}>Age</th>
+                        <th>Job</th>
+                        <th style={{ width: 100 }}>Created</th>
+                        <th style={{ width: 100 }}>Amount</th>
+                        <th style={{ width: 120 }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {unscheduledRows.slice(0, 5).map((r: any, idx: number) => {
+                        const age = ageDays(r.created_at_jobber);
+                        return (
+                          <tr key={idx}>
+                            <td>
+                              <span className={`age-badge ${age > 14 ? "critical" : age > 7 ? "warning" : "good"}`}>
+                                {age}d
+                              </span>
+                            </td>
+                            <td>
+                              <div style={{ fontWeight: 600 }}>
+                                {r.job_number ? `#${r.job_number}` : "—"}
+                              </div>
+                              {r.job_title && (
+                                <div style={{ fontSize: 11, color: theme.mut, marginTop: 2 }}>{r.job_title}</div>
+                              )}
+                            </td>
+                            <td style={{ color: theme.sub }}>
+                              {r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "—"}
+                            </td>
+                            <td style={{ fontWeight: 600 }}>
+                              {r.total_amount_cents ? money(r.total_amount_cents) : "—"}
+                            </td>
+                            <td>
+                              {r.jobber_url ? (
+                                <a href={r.jobber_url} target="_blank" rel="noreferrer" className="btn">
+                                  Open →
+                                </a>
+                              ) : (
+                                <span style={{ color: theme.mut }}>—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
 
-                {unscheduledRows.length === 0 ? (
-                  <div style={{ fontSize: 12, color: theme.sub }}>No unscheduled jobs found 🎉</div>
-                ) : (
-                  <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-                    <table style={ui.table}>
-                      <colgroup>
-                        <col style={{ width: colW.age }} />
-                        <col style={{ width: colW.title }} />
-                        <col style={{ width: colW.date }} />
-                        <col style={{ width: colW.amount }} />
-                        <col style={{ width: colW.open }} />
-                      </colgroup>
-                      <thead>
-                        <tr>
-                          <th style={ui.th}>Age</th>
-                          <th style={ui.th}>Job # + Title</th>
-                          <th style={ui.th}>Created</th>
-                          <th style={ui.th}>Amount</th>
-                          <th style={ui.th}>Open</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {unscheduledRows.map((r: any, idx: number) => {
-                          const age = ageDays(r.created_at_jobber);
-                          const jobNum = r.job_number ? `#${r.job_number}` : "—";
-                          const title = r.job_title ? r.job_title : "Untitled job";
+            {/* Leaking Quotes */}
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
+                <div>
+                  <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Leaking Quotes</h3>
+                  <p style={{ fontSize: 12, color: theme.mut, marginTop: 2 }}>Highest value first</p>
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {leakCandidates.length > 0 && (
+                    <ExportCSV data={leakingQuotesExportData} filename="leaking-quotes" />
+                  )}
+                </div>
+              </div>
+
+              {leakCandidates.length === 0 ? (
+                <div style={{ padding: 24, textAlign: "center", color: theme.sub, fontSize: 13 }}>
+                  ✨ No leaking quotes!
+                </div>
+              ) : (
+                <div className="table-container">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 70 }}>Age</th>
+                        <th>Quote</th>
+                        <th style={{ width: 100 }}>Sent</th>
+                        <th style={{ width: 100 }}>Amount</th>
+                        <th style={{ width: 120 }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leakCandidates
+                        .slice()
+                        .sort((a: any, b: any) => Number(b.quote_total_cents ?? 0) - Number(a.quote_total_cents ?? 0))
+                        .slice(0, 5)
+                        .map((q: any, idx: number) => {
+                          const sent = safeDate(q.sent_at);
+                          const age = sent ? Math.max(0, Math.round((Date.now() - sent.getTime()) / 86400000)) : 0;
                           return (
-                            <tr key={`${jobNum}-${idx}`}>
-                              <td style={ui.td}>{age}d</td>
-                              <td style={ui.td}>
-                                <div style={{ fontWeight: 950 }}>
-                                  <span style={{ color: theme.sub }}>{jobNum}</span>{" "}
-                                  <span style={{ color: theme.text }}>• {title}</span>
+                            <tr key={idx}>
+                              <td>
+                                <span className={`age-badge ${age > 14 ? "critical" : age > 7 ? "warning" : "good"}`}>
+                                  {age}d
+                                </span>
+                              </td>
+                              <td>
+                                <div style={{ fontWeight: 600 }}>
+                                  {q.quote_number ? `#${q.quote_number}` : "—"}
                                 </div>
+                                {q.quote_title && (
+                                  <div style={{ fontSize: 11, color: theme.mut, marginTop: 2 }}>{q.quote_title}</div>
+                                )}
                               </td>
-                              <td style={ui.td}>
-                                {r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "—"}
+                              <td style={{ color: theme.sub }}>
+                                {sent ? sent.toLocaleDateString() : "—"}
                               </td>
-                              <td style={ui.td}>
-                                {r.total_amount_cents ? money(r.total_amount_cents) : "—"}
-                              </td>
-                              <td style={ui.td}>
-                                {r.jobber_url ? (
-                                  <a href={r.jobber_url} target="_blank" rel="noreferrer" style={ui.btn}>
-                                    Open in Jobber →
+                              <td style={{ fontWeight: 600 }}>{money(Number(q.quote_total_cents ?? 0))}</td>
+                              <td>
+                                {q.quote_url ? (
+                                  <a href={q.quote_url} target="_blank" rel="noreferrer" className="btn">
+                                    Open →
                                   </a>
                                 ) : (
-                                  <span style={{ fontSize: 12, color: theme.mut }}>—</span>
+                                  <span style={{ color: theme.mut }}>—</span>
                                 )}
                               </td>
                             </tr>
                           );
                         })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              {/* Leaking Quotes */}
-              <div style={{ ...ui.card, marginTop: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
-                  <div>
-                    <div style={{ fontWeight: 1000, letterSpacing: -0.2 }}>Top Leaking Quotes</div>
-                    <div style={{ marginTop: 3, fontSize: 12, color: theme.mut }}>
-                      Quotes sent that are not won/converted. Highest value first.
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span style={ui.badge("rgba(124,92,255,0.16)")}>Sales follow-up</span>
-                    {leakCandidates.length > 0 && (
-                      <ExportCSV data={leakingQuotesExportData} filename="leaking-quotes" />
-                    )}
-                  </div>
+                    </tbody>
+                  </table>
                 </div>
-
-                {leakCandidates.length === 0 ? (
-                  <div style={{ fontSize: 12, color: theme.sub }}>No leaking quotes ✅</div>
-                ) : (
-                  <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-                    <table style={ui.table}>
-                      <colgroup>
-                        <col style={{ width: colW.age }} />
-                        <col style={{ width: colW.title }} />
-                        <col style={{ width: colW.date }} />
-                        <col style={{ width: colW.amount }} />
-                        <col style={{ width: colW.open }} />
-                      </colgroup>
-                      <thead>
-                        <tr>
-                          <th style={ui.th}>Age</th>
-                          <th style={ui.th}>Quote # + Title</th>
-                          <th style={ui.th}>Sent</th>
-                          <th style={ui.th}>Amount</th>
-                          <th style={ui.th}>Open</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {leakCandidates
-                          .slice()
-                          .sort((a: any, b: any) => Number(b.quote_total_cents ?? 0) - Number(a.quote_total_cents ?? 0))
-                          .slice(0, 10)
-                          .map((q: any, idx: number) => {
-                            const sent = safeDate(q.sent_at);
-                            const age = sent ? Math.max(0, Math.round((Date.now() - sent.getTime()) / 86400000)) : 0;
-                            const quoteNum = q.quote_number ? `#${q.quote_number}` : "—";
-                            const title = q.quote_title ? q.quote_title : "Untitled quote";
-                            return (
-                              <tr key={`${quoteNum}-${idx}`}>
-                                <td style={ui.td}>{age}d</td>
-                                <td style={ui.td}>
-                                  <div style={{ fontWeight: 950 }}>
-                                    <span style={{ color: theme.sub }}>{quoteNum}</span>{" "}
-                                    <span style={{ color: theme.text }}>• {title}</span>
-                                  </div>
-                                </td>
-                                <td style={ui.td}>{sent ? sent.toLocaleDateString() : "—"}</td>
-                                <td style={ui.td}>{money(Number(q.quote_total_cents ?? 0))}</td>
-                                <td style={ui.td}>
-                                  {q.quote_url ? (
-                                    <a href={q.quote_url} target="_blank" rel="noreferrer" style={ui.btn}>
-                                      Open in Jobber →
-                                    </a>
-                                  ) : (
-                                    <span style={{ fontSize: 12, color: theme.mut }}>—</span>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           </div>
         </div>
+
+        {/* Footer spacing */}
+        <div style={{ height: 40 }} />
       </div>
     </main>
   );
 }
 
-/* -------------------------------- Subscribe Button -------------------------------- */
+/* -------------------------------- Buttons -------------------------------- */
 function SubscribeButton() {
   return (
     <form action="/api/billing/checkout" method="POST">
-      <button
-        type="submit"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 10,
-          padding: "10px 14px",
-          borderRadius: 12,
-          fontWeight: 1000,
-          fontSize: 13,
-          textDecoration: "none",
-          border: "1px solid rgba(255,255,255,0.16)",
-          background: "linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95))",
-          color: "white",
-          boxShadow: "0 18px 48px rgba(90,166,255,0.22)",
-          cursor: "pointer",
-        }}
-      >
-        Subscribe — $29/mo →
+      <button type="submit" className="btn btn-primary" style={{ fontWeight: 700 }}>
+        Subscribe →
       </button>
     </form>
   );
 }
 
-/* -------------------------------- Manage Subscription Button -------------------------------- */
 function ManageSubscriptionButton() {
   return (
     <form action="/api/billing/portal" method="POST">
-      <button
-        type="submit"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          padding: "9px 12px",
-          borderRadius: 12,
-          fontWeight: 950,
-          fontSize: 13,
-          textDecoration: "none",
-          border: "1px solid rgba(255,255,255,0.10)",
-          background: "rgba(255,255,255,0.06)",
-          color: "#EAF1FF",
-          cursor: "pointer",
-        }}
-      >
-        Manage Subscription
+      <button type="submit" className="btn">
+        Manage
       </button>
     </form>
   );
 }
 
-/* -------------------------------- Logout Button -------------------------------- */
 function LogoutButton() {
   return (
     <form action="/api/auth/logout" method="POST">
-      <button
-        type="submit"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "9px 12px",
-          borderRadius: 12,
-          fontWeight: 950,
-          fontSize: 13,
-          border: "1px solid rgba(255,255,255,0.10)",
-          background: "transparent",
-          color: "rgba(234,241,255,0.6)",
-          cursor: "pointer",
-        }}
-      >
+      <button type="submit" className="btn" style={{ color: "rgba(234,241,255,0.5)" }}>
         Log out
       </button>
     </form>
