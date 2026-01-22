@@ -261,7 +261,7 @@ const globalStyles = `
   
   @media (min-width: 640px) {
     .kpi-grid-primary {
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 16px;
     }
   }
@@ -288,7 +288,7 @@ const globalStyles = `
   
   @media (min-width: 1024px) {
     .kpi-grid-secondary {
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 16px;
     }
   }
@@ -932,8 +932,8 @@ function SparkLine(props: {
   const glowColor = props.color ? `${props.color}30` : "rgba(90,166,255,0.2)";
 
   const vals = props.points.map((p) => p.value);
-  const min = vals.length ? Math.min(...vals) : 0;
-  const max = vals.length ? Math.max(...vals) : 1;
+  const min = 0; // Always start Y-axis at 0
+  const max = vals.length ? Math.max(...vals, 1) : 1;
   const maxWithBuffer = max * 1.15;
   const span = Math.max(1e-9, maxWithBuffer - min);
 
@@ -1686,7 +1686,7 @@ export default async function DashboardPage({
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
               <span style={{ fontSize: 14 }}>📅</span>
-              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Days Ahead</span>
+              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Days Scheduled Ahead</span>
             </div>
             <div className={`kpi-value-medium ${
               daysBookedAhead < TARGET_LOW ? "text-critical" : 
@@ -1715,7 +1715,7 @@ export default async function DashboardPage({
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
               <span style={{ fontSize: 14 }}>✏️</span>
-              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Changes Req.</span>
+              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Changes Requested</span>
             </div>
             <div className={`kpi-value-medium ${
               changesRequestedCount > 5 ? "text-critical" : 
