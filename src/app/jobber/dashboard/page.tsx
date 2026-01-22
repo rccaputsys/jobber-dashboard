@@ -5,6 +5,7 @@ import { Controls } from "./controls";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { SyncButton } from "./SyncButton";
 import { ThemeToggle } from "./ThemeToggle";
+import { ActionListTabs } from "./ActionListTabs";
 import { getUser } from "@/lib/supabaseAuth";
 import { redirect } from "next/navigation";
 
@@ -753,13 +754,120 @@ const globalStyles = `
     color: #059669 !important;
   }
   
-  /* SVG Charts */
+  /* SVG Charts - Default (dark mode) */
+  svg text {
+    fill: rgba(234,241,255,0.5);
+  }
+  
+  svg line {
+    stroke: rgba(255,255,255,0.06);
+  }
+  
+  /* SVG Charts - Light mode */
   html[data-theme="light"] svg text {
     fill: #64748b !important;
   }
   
   html[data-theme="light"] svg line {
     stroke: #e2e8f0 !important;
+  }
+  
+  /* Controls component - Light mode */
+  html[data-theme="light"] .controls-wrapper select,
+  html[data-theme="light"] .controls-wrapper button {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #334155 !important;
+  }
+  
+  html[data-theme="light"] .controls-wrapper select:hover,
+  html[data-theme="light"] .controls-wrapper button:hover {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+  }
+  
+  html[data-theme="light"] .controls-wrapper label,
+  html[data-theme="light"] .controls-wrapper span {
+    color: #475569 !important;
+  }
+  
+  /* Action List Tabs */
+  .action-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .action-tab {
+    flex: 1;
+    padding: 10px 16px;
+    border: none;
+    background: transparent;
+    color: rgba(234,241,255,0.6);
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  
+  .action-tab:hover {
+    background: rgba(255,255,255,0.06);
+    color: rgba(234,241,255,0.8);
+  }
+  
+  .action-tab.active {
+    background: rgba(255,255,255,0.1);
+    color: #EAF1FF;
+  }
+  
+  .action-tab .badge {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(255,255,255,0.1);
+  }
+  
+  .action-tab.active .badge {
+    background: rgba(90,166,255,0.3);
+    color: #5aa6ff;
+  }
+  
+  html[data-theme="light"] .action-tabs {
+    background: #f1f5f9 !important;
+  }
+  
+  html[data-theme="light"] .action-tab {
+    color: #64748b !important;
+  }
+  
+  html[data-theme="light"] .action-tab:hover {
+    background: #e2e8f0 !important;
+    color: #334155 !important;
+  }
+  
+  html[data-theme="light"] .action-tab.active {
+    background: #ffffff !important;
+    color: #1e293b !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  
+  html[data-theme="light"] .action-tab .badge {
+    background: #e2e8f0 !important;
+    color: #475569 !important;
+  }
+  
+  html[data-theme="light"] .action-tab.active .badge {
+    background: rgba(90,166,255,0.2) !important;
+    color: #2563eb !important;
   }
   
   /* Chart text */
@@ -1617,17 +1725,6 @@ export default async function DashboardPage({
             </div>
             <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Quotes to revise</div>
           </div>
-
-          <div className="kpi-secondary">
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-              <span style={{ fontSize: 14 }}>✅</span>
-              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Completed</span>
-            </div>
-            <div className="kpi-value-medium text-success">
-              {completedCount}
-            </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Jobs in range</div>
-          </div>
         </div>
 
         {/* Trends */}
@@ -1685,223 +1782,19 @@ export default async function DashboardPage({
           </div>
 
           <div style={{ padding: 16 }}>
-            {/* Aged AR */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
-                <div>
-                  <h3 className="text-primary" style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Aged Receivables (15+ Days)</h3>
-                  <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>Oldest first</p>
-                </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  {agedARInvoices.length > 0 && (
-                    <ExportCSV data={agedARExportData} filename="aged-ar-15plus" />
-                  )}
-                </div>
-              </div>
-
-              {agedARInvoices.length === 0 ? (
-                <div className="empty-state" style={{ padding: 24, textAlign: "center", fontSize: 13 }}>
-                  ✨ No aged AR 15+ days!
-                </div>
-              ) : (
-                <div className="table-container">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th style={{ width: 70 }}>Age</th>
-                        <th>Invoice</th>
-                        <th style={{ width: 100 }}>Due</th>
-                        <th style={{ width: 100 }}>Amount</th>
-                        <th style={{ width: 120 }}>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {agedARInvoices
-                        .sort((a, b) => b.days_overdue - a.days_overdue)
-                        .slice(0, 5)
-                        .map((inv, idx) => (
-                          <tr key={idx}>
-                            <td>
-                              <span className={`age-badge ${inv.days_overdue > 30 ? "critical" : inv.days_overdue > 20 ? "warning" : "good"}`}>
-                                {inv.days_overdue}d
-                              </span>
-                            </td>
-                            <td>
-                              <div className="cell-primary">#{inv.invoice_number}</div>
-                              {inv.client_name && (
-                                <div className="cell-secondary" style={{ fontSize: 11, marginTop: 2 }}>{inv.client_name}</div>
-                              )}
-                            </td>
-                            <td className="cell-muted">
-                              {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "—"}
-                            </td>
-                            <td className="cell-primary">{money(inv.amount_cents)}</td>
-                            <td>
-                              {inv.jobber_url ? (
-                                <a href={inv.jobber_url} target="_blank" rel="noreferrer" className="btn">
-                                  Open →
-                                </a>
-                              ) : (
-                                <span className="cell-secondary">—</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            {/* Unscheduled Jobs */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
-                <div>
-                  <h3 className="text-primary" style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Unscheduled Jobs</h3>
-                  <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>Oldest first</p>
-                </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <a href={toggleUnscheduledHref} className="btn">
-                    {minDays >= 7 ? "Show all" : "7+ days only"}
-                  </a>
-                  {unscheduledRows.length > 0 && (
-                    <ExportCSV data={unscheduledExportData} filename="unscheduled-jobs" />
-                  )}
-                </div>
-              </div>
-
-              {unscheduledRows.length === 0 ? (
-                <div className="empty-state" style={{ padding: 24, textAlign: "center", fontSize: 13 }}>
-                  ✨ No unscheduled jobs!
-                </div>
-              ) : (
-                <div className="table-container">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th style={{ width: 70 }}>Age</th>
-                        <th>Job</th>
-                        <th style={{ width: 100 }}>Created</th>
-                        <th style={{ width: 100 }}>Amount</th>
-                        <th style={{ width: 120 }}>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {unscheduledRows.slice(0, 5).map((r: any, idx: number) => {
-                        const age = ageDays(r.created_at_jobber);
-                        return (
-                          <tr key={idx}>
-                            <td>
-                              <span className={`age-badge ${age > 14 ? "critical" : age > 7 ? "warning" : "good"}`}>
-                                {age}d
-                              </span>
-                            </td>
-                            <td>
-                              <div className="cell-primary">
-                                {r.job_number ? `#${r.job_number}` : "—"}
-                              </div>
-                              {r.job_title && (
-                                <div className="cell-secondary" style={{ fontSize: 11, marginTop: 2 }}>{r.job_title}</div>
-                              )}
-                            </td>
-                            <td className="cell-muted">
-                              {r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "—"}
-                            </td>
-                            <td className="cell-primary">
-                              {r.total_amount_cents ? money(r.total_amount_cents) : "—"}
-                            </td>
-                            <td>
-                              {r.jobber_url ? (
-                                <a href={r.jobber_url} target="_blank" rel="noreferrer" className="btn">
-                                  Open →
-                                </a>
-                              ) : (
-                                <span className="cell-secondary">—</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            {/* Leaking Quotes */}
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
-                <div>
-                  <h3 className="text-primary" style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Leaking Quotes</h3>
-                  <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>Highest value first</p>
-                </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  {leakCandidates.length > 0 && (
-                    <ExportCSV data={leakingQuotesExportData} filename="leaking-quotes" />
-                  )}
-                </div>
-              </div>
-
-              {leakCandidates.length === 0 ? (
-                <div className="empty-state" style={{ padding: 24, textAlign: "center", fontSize: 13 }}>
-                  ✨ No leaking quotes!
-                </div>
-              ) : (
-                <div className="table-container">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th style={{ width: 70 }}>Age</th>
-                        <th>Quote</th>
-                        <th style={{ width: 100 }}>Sent</th>
-                        <th style={{ width: 100 }}>Amount</th>
-                        <th style={{ width: 120 }}>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {leakCandidates
-                        .slice()
-                        .sort((a: any, b: any) => Number(b.quote_total_cents ?? 0) - Number(a.quote_total_cents ?? 0))
-                        .slice(0, 5)
-                        .map((q: any, idx: number) => {
-                          const sent = safeDate(q.sent_at);
-                          const age = sent ? Math.max(0, Math.round((Date.now() - sent.getTime()) / 86400000)) : 0;
-                          return (
-                            <tr key={idx}>
-                              <td>
-                                <span className={`age-badge ${age > 14 ? "critical" : age > 7 ? "warning" : "good"}`}>
-                                  {age}d
-                                </span>
-                              </td>
-                              <td>
-                                <div className="cell-primary">
-                                  {q.quote_number ? `#${q.quote_number}` : "—"}
-                                </div>
-                                {q.quote_title && (
-                                  <div className="cell-secondary" style={{ fontSize: 11, marginTop: 2 }}>{q.quote_title}</div>
-                                )}
-                              </td>
-                              <td className="cell-muted">
-                                {sent ? sent.toLocaleDateString() : "—"}
-                              </td>
-                              <td className="cell-primary">{money(Number(q.quote_total_cents ?? 0))}</td>
-                              <td>
-                                {q.quote_url ? (
-                                  <a href={q.quote_url} target="_blank" rel="noreferrer" className="btn">
-                                    Open →
-                                  </a>
-                                ) : (
-                                  <span className="cell-secondary">—</span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            <ActionListTabs
+              agedARInvoices={agedARInvoices}
+              agedARExportData={agedARExportData}
+              unscheduledRows={unscheduledRows}
+              unscheduledExportData={unscheduledExportData}
+              leakCandidates={leakCandidates}
+              leakingQuotesExportData={leakingQuotesExportData}
+              toggleUnscheduledHref={toggleUnscheduledHref}
+              minDays={minDays}
+              money={money}
+              ageDays={ageDays}
+              safeDate={safeDate}
+            />
           </div>
         </div>
 
