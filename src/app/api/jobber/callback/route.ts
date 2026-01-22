@@ -45,14 +45,11 @@ async function tokenExchange(code: string) {
 
 async function jobberGraphQL<T>(
   accessToken: string,
-  query: string,
-  variables?: Record<string, unknown>
-) {
+  query: string
+): Promise<{ data: T | null; errors: unknown[]; raw: unknown }> {
   const version = process.env.JOBBER_GRAPHQL_VERSION!;
   if (!version) {
-    throw new Error(
-      "Missing JOBBER_GRAPHQL_VERSION in .env.local (example: 2025-04-16)"
-    );
+    throw new Error("Missing JOBBER_GRAPHQL_VERSION");
   }
 
   const res = await fetch(process.env.JOBBER_GRAPHQL_URL!, {
@@ -62,11 +59,11 @@ async function jobberGraphQL<T>(
       Authorization: `Bearer ${accessToken}`,
       "X-JOBBER-GRAPHQL-VERSION": version,
     },
-    body: JSON.stringify({ query, variables }),
+    body: JSON.stringify({ query }),
   });
 
   const json = await res.json();
-  return { data: json.data as T | null, errors: json.errors || [] };
+  return { data: json.data as T | null, errors: json.errors || [], raw: json };
 }
 
 export async function GET(req: Request) {
@@ -109,25 +106,27 @@ export async function GET(req: Request) {
     );
   }
 
-  // Fetch account info from Jobber
-  const acctResult = await jobberGraphQL<{ account: { id: string; name: string; billingEmail?: string } }>(
+  // Simple query - just account id and name
+  const acctResult = await jobberGraphQL<{ account: { id: string; name: string } }>(
     token.access_token,
-    `query { account { id name billingEmail } }`
+    `query { account { id name } }`
   );
 
+  // Log the full response for debugging
+  console.log("Jobber GraphQL response:", JSON.stringify(acctResult.raw, null, 2));
+
+  if (acctResult.errors.length > 0) {
+    console.error("Jobber GraphQL errors:", acctResult.errors);
+  }
+
   if (!acctResult.data?.account) {
-    throw new Error("Could not get account from Jobber");
+    throw new Error(`Could not get account from Jobber. Response: ${JSON.stringify(acctResult.raw)}`);
   }
 
   const acct = acctResult.data.account;
   
-  // Try to get email - use billingEmail or generate one from account
-  let userEmail = acct.billingEmail;
-  
-  if (!userEmail) {
-    // Generate a unique email based on Jobber account ID
-    userEmail = `jobber-${acct.id}@ownerview.io`;
-  }
+  // Generate email from Jobber account ID
+  const userEmail = `jobber-${acct.id}@ownerview.io`;
 
   // Check if this Jobber account already has a connection
   const { data: existingConn } = await supabaseAdmin
