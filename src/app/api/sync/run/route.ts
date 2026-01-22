@@ -48,6 +48,11 @@ type QuoteNode = {
   amounts?: QuoteAmounts | null;
 };
 
+type PageInfo = {
+  hasNextPage: boolean;
+  endCursor: string | null;
+};
+
 function dollarsToCents(n: number | null | undefined): number {
   if (n === null || n === undefined) return 0;
   if (Number.isNaN(n)) return 0;
@@ -80,6 +85,56 @@ async function jobberGraphQLWithPartialErrors<T>(
   };
 }
 
+// Paginated fetch helper
+async function fetchAllPages<T>(
+  accessToken: string,
+  resourceName: string,
+  nodeFields: string,
+  maxPages: number = 50 // Safety limit to prevent infinite loops
+): Promise<{ nodes: T[]; errors: unknown[] }> {
+  const allNodes: T[] = [];
+  const allErrors: unknown[] = [];
+  let cursor: string | null = null;
+  let pageCount = 0;
+
+  type PageResponse = {
+    [key: string]: { nodes: (T | null)[]; pageInfo: PageInfo } | undefined;
+  };
+
+  while (pageCount < maxPages) {
+    const afterClause: string = cursor ? `, after: "${cursor}"` : "";
+    const query: string = `query {
+      ${resourceName}(first: 100${afterClause}) {
+        nodes {
+          ${nodeFields}
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }`;
+
+    const result = await jobberGraphQLWithPartialErrors<PageResponse>(accessToken, query);
+
+    if (result.errors.length > 0) {
+      allErrors.push(...result.errors);
+    }
+
+    const data = result.data?.[resourceName];
+    if (!data) break;
+
+    const validNodes = (data.nodes || []).filter((n: T | null): n is T => n !== null);
+    allNodes.push(...validNodes);
+
+    if (!data.pageInfo.hasNextPage) break;
+    cursor = data.pageInfo.endCursor;
+    pageCount++;
+  }
+
+  return { nodes: allNodes, errors: allErrors };
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const connectionId = searchParams.get("connection_id");
@@ -89,73 +144,57 @@ export async function GET(req: Request) {
 
   const token = await getValidAccessToken(connectionId);
 
-  // Jobs
-  const jobResult = await jobberGraphQLWithPartialErrors<{ jobs: { nodes: (JobNode | null)[] } }>(
+  // Fetch all Jobs with pagination
+  const jobResult = await fetchAllPages<JobNode>(
     token,
-    `query {
-      jobs(first: 100) {
-        nodes {
-          id
-          createdAt
-          updatedAt
-          jobStatus
-          startAt
-          endAt
-          jobNumber
-          jobberWebUri
-          title
-          total
-        }
-      }
-    }`
+    "jobs",
+    `id
+     createdAt
+     updatedAt
+     jobStatus
+     startAt
+     endAt
+     jobNumber
+     jobberWebUri
+     title
+     total`
   );
 
-  // Invoices
-  const invoiceResult = await jobberGraphQLWithPartialErrors<{ invoices: { nodes: (InvoiceNode | null)[] } }>(
+  // Fetch all Invoices with pagination
+  const invoiceResult = await fetchAllPages<InvoiceNode>(
     token,
-    `query {
-      invoices(first: 100) {
-        nodes {
-          id
-          invoiceNumber
-          createdAt
-          dueDate
-          updatedAt
-          total
-          jobberWebUri
-          subject
-          client {
-            name
-          }
-        }
-      }
-    }`
+    "invoices",
+    `id
+     invoiceNumber
+     createdAt
+     dueDate
+     updatedAt
+     total
+     jobberWebUri
+     subject
+     client {
+       name
+     }`
   );
 
-  // Quotes
-  const quoteResult = await jobberGraphQLWithPartialErrors<{ quotes: { nodes: (QuoteNode | null)[] } }>(
+  // Fetch all Quotes with pagination
+  const quoteResult = await fetchAllPages<QuoteNode>(
     token,
-    `query {
-      quotes(first: 200) {
-        nodes {
-          id
-          quoteNumber
-          title
-          createdAt
-          updatedAt
-          sentAt
-          quoteStatus
-          jobberWebUri
-          amounts { total }
-        }
-      }
-    }`
+    "quotes",
+    `id
+     quoteNumber
+     title
+     createdAt
+     updatedAt
+     sentAt
+     quoteStatus
+     jobberWebUri
+     amounts { total }`
   );
 
-  // Filter out null nodes (hidden due to permissions)
-  const jobs = (jobResult.data?.jobs?.nodes ?? []).filter((j): j is JobNode => j !== null);
-  const invoices = (invoiceResult.data?.invoices?.nodes ?? []).filter((i): i is InvoiceNode => i !== null);
-  const quotes = (quoteResult.data?.quotes?.nodes ?? []).filter((q): q is QuoteNode => q !== null);
+  const jobs = jobResult.nodes;
+  const invoices = invoiceResult.nodes;
+  const quotes = quoteResult.nodes;
 
   // Log any permission errors (optional)
   const allErrors = [...jobResult.errors, ...invoiceResult.errors, ...quoteResult.errors];
