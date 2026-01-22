@@ -131,11 +131,17 @@ export async function GET(req: Request) {
       .eq("id", connectionId);
   } else {
     // Create new connection (without user_id - will be set after signup)
+    const now = new Date();
+    const trialEnds = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 days from now
+    
     const { data: conn, error: connErr } = await supabaseAdmin
       .from("jobber_connections")
       .insert({
         jobber_account_id: acct.account.id,
         jobber_account_name: acct.account.name,
+        billing_status: 'trialing',
+        trial_started_at: now.toISOString(),
+        trial_ends_at: trialEnds.toISOString(),
       })
       .select("id")
       .single();
