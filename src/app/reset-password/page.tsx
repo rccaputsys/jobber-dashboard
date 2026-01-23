@@ -1,16 +1,18 @@
 // src/app/reset-password/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
 
   const supabase = createBrowserClient(
@@ -18,21 +20,42 @@ export default function ResetPasswordPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
+  // Handle the token from the URL (Supabase adds it as a hash fragment)
   useEffect(() => {
-    // Check if we have a valid session from the reset link
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setReady(true);
-      }
-    });
-  }, [supabase.auth]);
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const accessToken = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token");
+    const type = hashParams.get("type");
+
+    if (accessToken && refreshToken && type === "recovery") {
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      }).then(({ error }) => {
+        if (error) {
+          setError("Invalid or expired reset link. Please request a new one.");
+        } else {
+          setReady(true);
+        }
+      });
+    } else {
+      // Check if already in a session (user clicked link while logged in)
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) {
+          setReady(true);
+        } else {
+          setError("Invalid or expired reset link. Please request a new one.");
+        }
+      });
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError("Passwords don't match");
       return;
     }
 
@@ -43,9 +66,7 @@ export default function ResetPasswordPage() {
 
     setLoading(true);
 
-    const { error } = await supabase.auth.updateUser({
-      password: password,
-    });
+    const { error } = await supabase.auth.updateUser({ password });
 
     if (error) {
       setError(error.message);
@@ -53,51 +74,92 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    // Redirect to dashboard
-    router.push("/jobber/dashboard");
+    // Sign out and redirect to login
+    await supabase.auth.signOut();
+    router.push("/login?message=password_reset");
+  }
+
+  if (error && !ready) {
+    return (
+      <div style={styles.card}>
+        <div style={styles.iconWrapper}>
+          <span style={{ fontSize: 28 }}>❌</span>
+        </div>
+        <h1 style={styles.title}>Link Expired</h1>
+        <p style={styles.subtitle}>{error}</p>
+        <a href="/forgot-password" style={styles.button as any}>
+          Request New Link
+        </a>
+      </div>
+    );
+  }
+
+  if (!ready) {
+    return (
+      <div style={styles.card}>
+        <div style={styles.iconWrapper}>
+          <span style={{ fontSize: 28 }}>⏳</span>
+        </div>
+        <h1 style={styles.title}>Verifying...</h1>
+        <p style={styles.subtitle}>Please wait while we verify your reset link.</p>
+      </div>
+    );
   }
 
   return (
-    <main style={styles.page}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>Set new password</h1>
-        <p style={styles.subtitle}>
-          Enter your new password below
-        </p>
-
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div>
-            <label style={styles.label}>New Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              style={styles.input}
-              placeholder="At least 8 characters"
-            />
-          </div>
-
-          <div>
-            <label style={styles.label}>Confirm Password</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              style={styles.input}
-              placeholder="Confirm your password"
-            />
-          </div>
-
-          {error && <div style={styles.error}>{error}</div>}
-
-          <button type="submit" disabled={loading} style={styles.button}>
-            {loading ? "Updating..." : "Update password"}
-          </button>
-        </form>
+    <div style={styles.card}>
+      <div style={styles.iconWrapper}>
+        <span style={{ fontSize: 28 }}>🔐</span>
       </div>
+      
+      <h1 style={styles.title}>Set New Password</h1>
+      <p style={styles.subtitle}>
+        Enter your new password below
+      </p>
+
+      <form onSubmit={handleSubmit} style={styles.form}>
+        <div>
+          <label style={styles.label}>New Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+            style={styles.input}
+            placeholder="At least 8 characters"
+          />
+        </div>
+
+        <div>
+          <label style={styles.label}>Confirm Password</label>
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            minLength={8}
+            style={styles.input}
+            placeholder="Confirm your password"
+          />
+        </div>
+
+        {error && <div style={styles.error}>{error}</div>}
+
+        <button type="submit" disabled={loading} style={styles.button}>
+          {loading ? "Updating..." : "Update Password"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <main style={styles.page}>
+      <Suspense fallback={<div style={styles.card}>Loading...</div>}>
+        <ResetPasswordForm />
+      </Suspense>
     </main>
   );
 }
@@ -108,67 +170,93 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background: "linear-gradient(180deg, #060811 0%, #0A1222 100%)",
+    background: `
+      radial-gradient(ellipse 80% 60% at 50% -20%, rgba(124,92,255,0.15), transparent),
+      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(90,166,255,0.1), transparent),
+      linear-gradient(180deg, #060811 0%, #0a1020 100%)
+    `,
     padding: 20,
   },
   card: {
     width: "100%",
     maxWidth: 400,
-    background: "rgba(255,255,255,0.06)",
+    background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)",
     border: "1px solid rgba(255,255,255,0.10)",
-    borderRadius: 16,
-    padding: 32,
+    borderRadius: 24,
+    padding: "40px 32px",
+    boxShadow: "0 32px 64px rgba(0,0,0,0.4)",
+    textAlign: "center",
+  },
+  iconWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    background: "linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.05))",
+    border: "1px solid rgba(16,185,129,0.3)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    margin: "0 auto 20px",
   },
   title: {
-    fontSize: 24,
-    fontWeight: 700,
+    fontSize: 26,
+    fontWeight: 800,
     color: "#EAF1FF",
     marginBottom: 8,
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 14,
     color: "rgba(234,241,255,0.6)",
-    marginBottom: 24,
+    marginBottom: 28,
+    lineHeight: 1.5,
   },
   form: {
     display: "flex",
     flexDirection: "column",
-    gap: 16,
+    gap: 18,
+    textAlign: "left",
   },
   label: {
     display: "block",
     fontSize: 13,
     fontWeight: 600,
     color: "rgba(234,241,255,0.8)",
-    marginBottom: 6,
+    marginBottom: 8,
   },
   input: {
     width: "100%",
-    padding: "12px 14px",
-    fontSize: 14,
-    borderRadius: 10,
-    border: "1px solid rgba(255,255,255,0.15)",
+    padding: "14px 16px",
+    fontSize: 15,
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.12)",
     background: "rgba(0,0,0,0.3)",
     color: "#EAF1FF",
     outline: "none",
   },
   button: {
     marginTop: 8,
-    padding: "14px 20px",
+    padding: "16px 24px",
     fontSize: 15,
     fontWeight: 700,
-    borderRadius: 10,
+    borderRadius: 14,
     border: "none",
     background: "linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95))",
     color: "white",
     cursor: "pointer",
+    boxShadow: "0 8px 24px rgba(90,166,255,0.25)",
+    display: "block",
+    width: "100%",
+    textAlign: "center",
+    textDecoration: "none",
   },
   error: {
-    padding: "10px 14px",
-    borderRadius: 8,
+    padding: "12px 16px",
+    borderRadius: 10,
     background: "rgba(239,68,68,0.15)",
     border: "1px solid rgba(239,68,68,0.3)",
     color: "#fca5a5",
     fontSize: 13,
+    textAlign: "center",
   },
 };
