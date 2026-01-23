@@ -1553,14 +1553,26 @@ export default async function DashboardPage({
       <div className="dashboard-container">
         {/* Header */}
         <header className="dashboard-header animate-in">
-          <div>
-            <h1 className="text-primary" style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5, margin: 0 }}>
-              {companyName}
-            </h1>
-            <p className="header-subtitle" style={{ fontSize: 13, marginTop: 4 }}>
-              Last sync: <span>{lastSyncPretty}</span> • {currencyCode}
-            </p>
-          </div>
+  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+    <svg width="40" height="40" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#7c5cff" />
+          <stop offset="100%" stopColor="#5aa6ff" />
+        </linearGradient>
+      </defs>
+      <circle cx="25" cy="25" r="22" fill="none" stroke="url(#logoGrad)" strokeWidth="3"/>
+      <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#logoGrad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+    <div>
+      <h1 className="text-primary" style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5, margin: 0 }}>
+        {companyName}
+      </h1>
+      <p className="header-subtitle" style={{ fontSize: 13, marginTop: 4 }}>
+        Last sync: <span>{lastSyncPretty}</span> • {currencyCode}
+      </p>
+    </div>
+  </div>
 
           <div className="header-actions">
             <SyncButton connectionId={connectionId} />
