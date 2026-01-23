@@ -1805,7 +1805,47 @@ export default async function DashboardPage({
   );
 }
 
+/* -------------------------------- Subscription Status -------------------------------- */
+function SubscriptionStatus({ billingStatus, trialEndsAt }: { billingStatus: string; trialEndsAt: number }) {
+  if (billingStatus === "active") {
+    return (
+      <div className="status-pill" style={{
+        borderRadius: 10,
+        fontWeight: 600,
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        background: "rgba(16,185,129,0.15)",
+        border: "1px solid rgba(16,185,129,0.4)",
+      }}>
+        <span style={{ fontSize: 10 }}>⭐</span>
+        Pro
+      </div>
+    );
+  }
+
+  const now = Date.now();
+  const daysLeft = Math.max(0, Math.ceil((trialEndsAt - now) / (1000 * 60 * 60 * 24)));
+
+  return (
+    <div className="status-pill" style={{
+      borderRadius: 10,
+      fontWeight: 600,
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
+      background: daysLeft <= 3 ? "rgba(239,68,68,0.15)" : "rgba(90,166,255,0.15)",
+      border: `1px solid ${daysLeft <= 3 ? "rgba(239,68,68,0.4)" : "rgba(90,166,255,0.4)"}`,
+    }}>
+      <span style={{ fontSize: 10 }}>⏱️</span>
+      {daysLeft} day{daysLeft !== 1 ? "s" : ""} left
+    </div>
+  );
+}
+
 /* -------------------------------- Buttons -------------------------------- */
+
+
 function SubscribeButton() {
   return (
     <form action="/api/billing/checkout" method="POST">
