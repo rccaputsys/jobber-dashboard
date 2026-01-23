@@ -60,10 +60,10 @@ function CompleteSignupForm() {
       <div style={styles.card}>
         <h1 style={styles.title}>Invalid Link</h1>
         <p style={styles.subtitle}>
-          This signup link is invalid or has expired. Please connect your Jobber account again.
+          This signup link is invalid or has expired. Please try again.
         </p>
         <a href="/jobber" style={styles.button as any}>
-          Connect Jobber →
+          See Your Numbers Now →
         </a>
       </div>
     );
