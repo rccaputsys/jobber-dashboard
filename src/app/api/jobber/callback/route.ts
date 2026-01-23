@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server";
 import { decryptText, encryptText } from "@/lib/crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
 
 async function tokenExchange(code: string) {
   const body = new URLSearchParams({
@@ -66,6 +68,26 @@ async function jobberGraphQL<T>(
   return { data: json.data as T | null, errors: json.errors || [], raw: json };
 }
 
+async function getLoggedInUser() {
+  const cookieStore = await cookies();
+  
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll() {},
+      },
+    }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
@@ -122,6 +144,9 @@ export async function GET(req: Request) {
 
   const acct = acctResult.data.account;
 
+  // Check if user is already logged in
+  const loggedInUser = await getLoggedInUser();
+
   // Check if this Jobber account already has a connection
   const { data: existingConn } = await supabaseAdmin
     .from("jobber_connections")
@@ -139,20 +164,26 @@ export async function GET(req: Request) {
       .update({ jobber_account_name: acct.name })
       .eq("id", connectionId);
 
-    // If user already exists, redirect to login
+    // Update tokens
+    const encAccess = await encryptText(token.access_token);
+    const encRefresh = await encryptText(token.refresh_token);
+
+    await supabaseAdmin
+      .from("jobber_tokens")
+      .upsert({
+        connection_id: connectionId,
+        access_token: encAccess,
+        refresh_token: encRefresh,
+        expires_at: expiresAt,
+      }, { onConflict: "connection_id" });
+
+    // If user exists on this connection
     if (existingConn.user_id) {
-      const encAccess = await encryptText(token.access_token);
-      const encRefresh = await encryptText(token.refresh_token);
-
-      await supabaseAdmin
-        .from("jobber_tokens")
-        .upsert({
-          connection_id: connectionId,
-          access_token: encAccess,
-          refresh_token: encRefresh,
-          expires_at: expiresAt,
-        }, { onConflict: "connection_id" });
-
+      // If user is already logged in, go straight to dashboard
+      if (loggedInUser && loggedInUser.id === existingConn.user_id) {
+        return NextResponse.redirect(new URL("/jobber/dashboard", req.url));
+      }
+      // If not logged in, redirect to login
       return NextResponse.redirect(new URL("/login?message=jobber_reconnected", req.url));
     }
   } else {
@@ -176,22 +207,22 @@ export async function GET(req: Request) {
       throw new Error(connErr?.message || "Failed to create connection");
     }
     connectionId = conn.id;
+
+    const encAccess = await encryptText(token.access_token);
+    const encRefresh = await encryptText(token.refresh_token);
+
+    // Insert token for new connection
+    const { error: tokErr } = await supabaseAdmin
+      .from("jobber_tokens")
+      .upsert({
+        connection_id: connectionId,
+        access_token: encAccess,
+        refresh_token: encRefresh,
+        expires_at: expiresAt,
+      }, { onConflict: "connection_id" });
+
+    if (tokErr) throw new Error(tokErr.message);
   }
-
-  const encAccess = await encryptText(token.access_token);
-  const encRefresh = await encryptText(token.refresh_token);
-
-  // Upsert token
-  const { error: tokErr } = await supabaseAdmin
-    .from("jobber_tokens")
-    .upsert({
-      connection_id: connectionId,
-      access_token: encAccess,
-      refresh_token: encRefresh,
-      expires_at: expiresAt,
-    }, { onConflict: "connection_id" });
-
-  if (tokErr) throw new Error(tokErr.message);
 
   // Redirect to complete signup (email/password collection)
   return NextResponse.redirect(new URL(`/complete-signup?connection_id=${connectionId}`, req.url));
