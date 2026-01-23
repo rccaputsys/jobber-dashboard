@@ -107,7 +107,7 @@ export default function PrivacyPolicy() {
 
             <h3>Connected Account Data (Jobber)</h3>
             <p>
-              If you connect your Jobber account, we access data needed to display analytics,
+              If you See Your Numbers Now, we access data needed to display analytics,
               including:
             </p>
             <ul>

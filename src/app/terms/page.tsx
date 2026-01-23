@@ -138,7 +138,7 @@ export default function TermsOfService() {
           <section>
             <h2>Account Connection and Data Access</h2>
             <p>
-              To use certain features, you may connect your Jobber account using
+              To use certain features, you may See Your Numbers Now using
               OAuth authentication. By connecting your account, you represent that:
             </p>
             <ul>
