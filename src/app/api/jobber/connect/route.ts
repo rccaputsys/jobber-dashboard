@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
-import { ensureUserId } from "@/lib/user";
 import { encryptText } from "@/lib/crypto";
 
 export async function GET() {
-  await ensureUserId();
-
   const stateRaw = JSON.stringify({
     t: Date.now(),
     nonce: crypto.randomUUID(),
