@@ -395,7 +395,7 @@ export default function JobberLanding() {
             <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 16, padding: 28, border: "1px solid rgba(255,255,255,0.08)" }}>
               <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(16,185,129,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 16 }}>⏱️</div>
               <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Save Hours Weekly</h3>
-              <p style={{ fontSize: 14, color: "rgba(234,241,255,0.6)", lineHeight: 1.6 }}>No more digging through Jobber reports. See everything that needs attention in one glance.</p>
+              <p style={{ fontSize: 14, color: "rgba(234,241,255,0.6)", lineHeight: 1.6 }}>No more digging through reports. See everything that needs attention in one glance.</p>
             </div>
             
             <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 16, padding: 28, border: "1px solid rgba(255,255,255,0.08)" }}>
