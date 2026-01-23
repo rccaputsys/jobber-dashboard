@@ -42,7 +42,7 @@ export default function JobberLanding() {
             style={{
               fontSize: "clamp(32px, 5vw, 56px)",
               fontWeight: 800,
-              lineHeight: 1.1,
+              lineHeight: 1.3,
               marginBottom: 20,
               background: "linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%)",
               WebkitBackgroundClip: "text",
