@@ -4,6 +4,7 @@
 import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
+
 function CompleteSignupForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -14,6 +15,7 @@ function CompleteSignupForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -119,7 +121,27 @@ function CompleteSignupForm() {
 
         {error && <div style={styles.error}>{error}</div>}
 
-        <button type="submit" disabled={loading} style={styles.button}>
+        <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13, color: "rgba(234,241,255,0.7)", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)}
+            required
+            style={{ marginTop: 2, accentColor: "#7c5cff" }}
+          />
+          <span>
+            I agree to the{" "}
+            <a href="/terms" target="_blank" style={{ color: "#a5b4fc", textDecoration: "none" }}>Terms of Service</a>
+            {" "}and{" "}
+            <a href="/privacy" target="_blank" style={{ color: "#a5b4fc", textDecoration: "none" }}>Privacy Policy</a>
+          </span>
+        </label>
+
+        <button type="submit" disabled={loading || !agreed} style={{
+          ...styles.button,
+          opacity: agreed ? 1 : 0.5,
+          cursor: agreed ? "pointer" : "not-allowed",
+        }}>
           {loading ? "Creating account..." : "Create Account & View Dashboard"}
         </button>
       </form>

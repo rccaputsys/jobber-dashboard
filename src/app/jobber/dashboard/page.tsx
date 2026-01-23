@@ -1811,8 +1811,22 @@ export default async function DashboardPage({
           </div>
         </div>
 
-        {/* Footer spacing */}
-        <div style={{ height: 40 }} />
+        {/* Footer */}
+        <footer style={{
+          marginTop: 40,
+          paddingTop: 24,
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          textAlign: "center",
+          fontSize: 12,
+          color: "rgba(234,241,255,0.4)",
+        }}>
+          <p style={{ margin: 0 }}>© 2026 OwnerView. All rights reserved.</p>
+          <p style={{ margin: "8px 0 0" }}>
+            <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms</a>
+            {" · "}
+            <a href="/privacy" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Privacy</a>
+          </p>
+        </footer>
       </div>
     </main>
   );
