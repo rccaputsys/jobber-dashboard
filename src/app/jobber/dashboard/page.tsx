@@ -1603,6 +1603,7 @@ export default async function DashboardPage({
               {capState}
             </div>
 
+            <SubscriptionStatus billingStatus={billingStatus} trialEndsAt={trialEndsAt} />
             {subscriptionActive ? <ManageSubscriptionButton /> : <SubscribeButton />}
             <LogoutButton />
           </div>
