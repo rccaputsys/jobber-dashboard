@@ -1074,7 +1074,7 @@ export default async function DashboardPage({
     return (
       <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100vh", background: "#060811" }}>
         <h2>No Jobber account connected</h2>
-        <p style={{ marginTop: 8, color: theme.sub }}>Please connect your Jobber account first.</p>
+        <p style={{ marginTop: 8, color: theme.sub }}>See Your Numbers Now.</p>
         <a href="/jobber" style={{ color: "#5aa6ff", marginTop: 16, display: "inline-block" }}>Connect Jobber →</a>
       </div>
     );
@@ -1618,6 +1618,7 @@ export default async function DashboardPage({
             <SubscriptionStatus billingStatus={billingStatus} trialEndsAt={trialEndsAt} />
             {subscriptionActive ? <ManageSubscriptionButton /> : <SubscribeButton />}
             <LogoutButton />
+            <DisconnectJobberButton />
           </div>
         </header>
 
@@ -1898,6 +1899,20 @@ function LogoutButton() {
     <form action="/api/auth/logout" method="POST">
       <button type="submit" className="btn btn-muted">
         Log out
+      </button>
+    </form>
+  );
+}
+
+function DisconnectJobberButton() {
+  return (
+    <form action="/api/jobber/disconnect" method="POST" onSubmit={(e) => {
+      if (!confirm("Are you sure you want to disconnect Jobber? This will delete all your synced data.")) {
+        e.preventDefault();
+      }
+    }}>
+      <button type="submit" className="btn btn-muted" style={{ color: "#ef4444" }}>
+        Disconnect Jobber
       </button>
     </form>
   );
