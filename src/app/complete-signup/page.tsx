@@ -124,7 +124,7 @@ function CompleteSignupForm() {
         </button>
       </form>
 
-      <div style={styles.features}>
+   <div style={styles.features}>
         <div style={styles.feature}>
           <span>✓</span> 14-day free trial
         </div>
@@ -135,6 +135,13 @@ function CompleteSignupForm() {
           <span>✓</span> Cancel anytime
         </div>
       </div>
+
+      <p style={{ marginTop: 24, fontSize: 12, color: "rgba(234,241,255,0.5)", textAlign: "center" }}>
+        By signing up, you agree to our{" "}
+        <a href="/terms" style={{ color: "#a5b4fc", textDecoration: "none" }}>Terms of Service</a>
+        {" "}and{" "}
+        <a href="/privacy" style={{ color: "#a5b4fc", textDecoration: "none" }}>Privacy Policy</a>
+      </p>
     </div>
   );
 }

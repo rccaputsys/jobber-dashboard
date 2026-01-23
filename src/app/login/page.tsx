@@ -105,6 +105,12 @@ function LoginForm() {
           Connect new Jobber account
         </a>
       </div>
+
+      <p style={{ marginTop: 20, fontSize: 12, color: "rgba(234,241,255,0.4)", textAlign: "center" }}>
+        <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms</a>
+        {" · "}
+        <a href="/privacy" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Privacy</a>
+      </p>
     </div>
   );
 }

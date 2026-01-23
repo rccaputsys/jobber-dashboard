@@ -90,6 +90,11 @@ function ResetPasswordForm() {
         <a href="/forgot-password" style={styles.button as any}>
           Request New Link
         </a>
+        <p style={{ marginTop: 24, fontSize: 12, color: "rgba(234,241,255,0.4)" }}>
+          <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms</a>
+          {" · "}
+          <a href="/privacy" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Privacy</a>
+        </p>
       </div>
     );
   }
@@ -102,6 +107,11 @@ function ResetPasswordForm() {
         </div>
         <h1 style={styles.title}>Verifying...</h1>
         <p style={styles.subtitle}>Please wait while we verify your reset link.</p>
+        <p style={{ marginTop: 24, fontSize: 12, color: "rgba(234,241,255,0.4)" }}>
+          <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms</a>
+          {" · "}
+          <a href="/privacy" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Privacy</a>
+        </p>
       </div>
     );
   }
@@ -150,6 +160,12 @@ function ResetPasswordForm() {
           {loading ? "Updating..." : "Update Password"}
         </button>
       </form>
+
+      <p style={{ marginTop: 24, fontSize: 12, color: "rgba(234,241,255,0.4)", textAlign: "center" }}>
+        <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms</a>
+        {" · "}
+        <a href="/privacy" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Privacy</a>
+      </p>
     </div>
   );
 }

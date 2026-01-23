@@ -47,6 +47,11 @@ export default function ForgotPasswordPage() {
           <p style={{ ...styles.subtitle, marginTop: 24 }}>
             <a href="/login" style={styles.link}>Back to login</a>
           </p>
+          <p style={{ marginTop: 20, fontSize: 12, color: "rgba(234,241,255,0.4)", textAlign: "center" }}>
+            <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms</a>
+            {" · "}
+            <a href="/privacy" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Privacy</a>
+          </p>
         </div>
       </main>
     );
@@ -80,9 +85,15 @@ export default function ForgotPasswordPage() {
           </button>
         </form>
 
-        <p style={styles.footer}>
+  <p style={styles.footer}>
           Remember your password?{" "}
           <a href="/login" style={styles.link}>Log in</a>
+        </p>
+
+        <p style={{ marginTop: 20, fontSize: 12, color: "rgba(234,241,255,0.4)", textAlign: "center" }}>
+          <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms</a>
+          {" · "}
+          <a href="/privacy" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Privacy</a>
         </p>
       </div>
     </main>
