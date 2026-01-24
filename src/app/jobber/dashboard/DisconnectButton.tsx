@@ -28,8 +28,14 @@ export function DisconnectJobberButton() {
     <button 
       onClick={handleDisconnect}
       disabled={loading}
-      className="btn btn-muted" 
-      style={{ color: "#ef4444" }}
+      style={{ 
+        background: "none",
+        border: "none",
+        color: "rgba(234,241,255,0.5)",
+        fontSize: 12,
+        cursor: "pointer",
+        padding: 0,
+      }}
     >
       {loading ? "Disconnecting..." : "Disconnect Jobber"}
     </button>
