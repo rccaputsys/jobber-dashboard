@@ -1619,7 +1619,6 @@ export default async function DashboardPage({
             <SubscriptionStatus billingStatus={billingStatus} trialEndsAt={trialEndsAt} />
             {subscriptionActive ? <ManageSubscriptionButton /> : <SubscribeButton />}
             <LogoutButton />
-            <DisconnectJobberButton />
           </div>
         </header>
 
@@ -1827,6 +1826,8 @@ export default async function DashboardPage({
             <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms</a>
             {" · "}
             <a href="/privacy" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Privacy</a>
+            {" · "}
+            <DisconnectJobberButton />
           </p>
         </footer>
       </div>
