@@ -62,7 +62,7 @@ export default function JobberLanding() {
               lineHeight: 1.6,
             }}
           >
-            Stop digging through Jobber reports. Get instant visibility into AR aging, 
+            Stop digging through reports. Get instant visibility into AR aging, 
             sales leaks, and scheduling gaps — all in one dashboard.
           </p>
 
