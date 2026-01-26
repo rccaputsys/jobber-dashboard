@@ -88,6 +88,31 @@ async function getLoggedInUser() {
   return user;
 }
 
+async function saveToken(connectionId: string, accessToken: string, refreshToken: string, expiresAt: string) {
+  const encAccess = await encryptText(accessToken);
+  const encRefresh = await encryptText(refreshToken);
+
+  // First, delete any existing token for this connection
+  await supabaseAdmin
+    .from("jobber_tokens")
+    .delete()
+    .eq("connection_id", connectionId);
+
+  // Then insert the new token
+  const { error } = await supabaseAdmin
+    .from("jobber_tokens")
+    .insert({
+      connection_id: connectionId,
+      access_token: encAccess,
+      refresh_token: encRefresh,
+      expires_at: expiresAt,
+    });
+
+  if (error) {
+    throw new Error(`Failed to save token: ${error.message}`);
+  }
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
@@ -176,18 +201,8 @@ export async function GET(req: Request) {
         .eq("id", connectionId);
     }
 
-    // Update tokens
-    const encAccess = await encryptText(token.access_token);
-    const encRefresh = await encryptText(token.refresh_token);
-
-    await supabaseAdmin
-      .from("jobber_tokens")
-      .upsert({
-        connection_id: connectionId,
-        access_token: encAccess,
-        refresh_token: encRefresh,
-        expires_at: expiresAt,
-      }, { onConflict: "connection_id" });
+    // Save token (delete + insert to avoid unique constraint issues)
+    await saveToken(connectionId, token.access_token, token.refresh_token, expiresAt);
 
     // If user exists on this connection
     if (existingConn.user_id) {
@@ -232,20 +247,8 @@ export async function GET(req: Request) {
     }
     connectionId = conn.id;
 
-    const encAccess = await encryptText(token.access_token);
-    const encRefresh = await encryptText(token.refresh_token);
-
-    // Insert token for new connection
-    const { error: tokErr } = await supabaseAdmin
-      .from("jobber_tokens")
-      .upsert({
-        connection_id: connectionId,
-        access_token: encAccess,
-        refresh_token: encRefresh,
-        expires_at: expiresAt,
-      }, { onConflict: "connection_id" });
-
-    if (tokErr) throw new Error(tokErr.message);
+    // Save token
+    await saveToken(connectionId, token.access_token, token.refresh_token, expiresAt);
     
     // If user was logged in, go straight to dashboard
     if (loggedInUser) {
