@@ -1,4 +1,4 @@
-﻿// src/app/jobber/dashboard/page.tsx
+// src/app/jobber/dashboard/page.tsx
 import { ExportCSV } from "./ExportCSV";
 import React from "react";
 import { Controls } from "./controls";
@@ -1076,7 +1076,7 @@ export default async function DashboardPage({
       <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100vh", background: "#060811" }}>
         <h2>No Jobber account connected</h2>
         <p style={{ marginTop: 8, color: theme.sub }}>See Your Numbers Now.</p>
-        <a href="/jobber" style={{ color: "#5aa6ff", marginTop: 16, display: "inline-block" }}>Connect Jobber â†’</a>
+        <a href="/jobber" style={{ color: "#5aa6ff", marginTop: 16, display: "inline-block" }}>Connect Jobber →</a>
       </div>
     );
   }
@@ -1132,7 +1132,7 @@ export default async function DashboardPage({
             justifyContent: "center",
             boxShadow: "0 20px 40px rgba(90,166,255,0.3)",
           }}>
-            <span style={{ fontSize: 32 }}>ðŸ”’</span>
+            <span style={{ fontSize: 32 }}>🔒</span>
           </div>
           
           <h1 style={{ fontSize: 28, fontWeight: 800, color: "#EAF1FF", marginBottom: 12 }}>
@@ -1153,12 +1153,12 @@ export default async function DashboardPage({
               border: "none",
               cursor: "pointer",
             }}>
-              Subscribe â€” $29/month
+              Subscribe — $29/month
             </button>
           </form>
           
           <p style={{ marginTop: 20, fontSize: 13, color: "rgba(234,241,255,0.4)" }}>
-            Cancel anytime â€¢ Instant access
+            Cancel anytime • Instant access
           </p>
         </div>
       </main>
@@ -1325,7 +1325,7 @@ export default async function DashboardPage({
       return daysOverdue >= 15;
     })
     .map((inv) => ({
-      invoice_number: inv.invoice_number || "â€”",
+      invoice_number: inv.invoice_number || "—",
       client_name: inv.client_name || "",
       amount_cents: inv.total_amount_cents || 0,
       days_overdue: Math.max(0, Math.round((Date.now() - (safeDate(inv.due_at)?.getTime() || Date.now())) / 86400000)),
@@ -1429,13 +1429,13 @@ export default async function DashboardPage({
     const agedCount = agedARInvoices.length;
     if (pct15 > 0.15) {
       recommendations.push({
-        icon: "ðŸ”´",
+        icon: "🔴",
         text: `${money(b15p)} overdue 15+ days (${agedCount} invoices). Priority: Call top 3 oldest accounts today.`,
         priority: "high"
       });
     } else if (pct15 > 0.08) {
       recommendations.push({
-        icon: "âš ï¸",
+        icon: "⚠️",
         text: `${money(b15p)} aging past 15 days (${agedCount} invoices). Send payment reminders this week.`,
         priority: "medium"
       });
@@ -1444,19 +1444,19 @@ export default async function DashboardPage({
 
   if (daysBookedAhead < 5) {
     recommendations.push({
-      icon: "ðŸ”´",
+      icon: "🔴",
       text: `Only ${daysBookedAhead} days scheduled ahead. Book ${Math.min(5, unscheduledCount)} jobs from backlog by Friday.`,
       priority: "high"
     });
   } else if (daysBookedAhead < 7) {
     recommendations.push({
-      icon: "ðŸ“…",
+      icon: "📅",
       text: `${daysBookedAhead} days booked (target: 7-14). Schedule ${Math.min(3, unscheduledCount)} more jobs this week.`,
       priority: "medium"
     });
   } else if (daysBookedAhead > 21) {
     recommendations.push({
-      icon: "âš ï¸",
+      icon: "⚠️",
       text: `${daysBookedAhead} days ahead (overbooked). Push lower-margin work or add crew capacity.`,
       priority: "medium"
     });
@@ -1466,7 +1466,7 @@ export default async function DashboardPage({
     const winRate = 0.25;
     const potentialWin = Math.round(leakDollars * winRate);
     recommendations.push({
-      icon: "ðŸ’°",
+      icon: "💰",
       text: `${leakCount} quotes pending (${money(leakDollars)} total). Follow up on top 5 - potential ${money(potentialWin)} recovery.`,
       priority: "medium"
     });
@@ -1474,7 +1474,7 @@ export default async function DashboardPage({
 
   if (changesRequestedCount > 0) {
     recommendations.push({
-      icon: "âœï¸",
+      icon: "✏️",
       text: `${changesRequestedCount} quote${changesRequestedCount > 1 ? 's' : ''} waiting for revisions. Hot leads - respond within 24hrs.`,
       priority: "high"
     });
@@ -1484,7 +1484,7 @@ export default async function DashboardPage({
     const marginPct = profitSum / revSum;
     if (marginPct < 0.20) {
       recommendations.push({
-        icon: "ðŸ“Š",
+        icon: "📊",
         text: `Margins at ${pct(marginPct)} (target: 25%+). Review pricing or reduce material/labor costs.`,
         priority: "medium"
       });
@@ -1570,7 +1570,7 @@ export default async function DashboardPage({
         {companyName}
       </h1>
       <p className="header-subtitle" style={{ fontSize: 13, marginTop: 4 }}>
-        Last sync: <span>{lastSyncPretty}</span> â€¢ {currencyCode}
+        Last sync: <span>{lastSyncPretty}</span> • {currencyCode}
       </p>
     </div>
   </div>
@@ -1626,7 +1626,7 @@ export default async function DashboardPage({
         {recommendations.length > 0 && (
           <div className="recommendation-banner animate-in delay-1" style={{ marginTop: 20 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <span style={{ fontSize: 16 }}>ðŸ’¡</span>
+              <span style={{ fontSize: 16 }}>💡</span>
               <span className="focus-title" style={{ fontSize: 13, fontWeight: 700 }}>This Week&apos;s Focus</span>
             </div>
             {recommendations.slice(0, 3).map((rec, i) => (
@@ -1643,9 +1643,9 @@ export default async function DashboardPage({
           <div className="kpi-primary gradient-purple hover-lift">
             <div style={{ position: "relative", zIndex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 20 }}>ðŸ’°</span>
+                <span style={{ fontSize: 20 }}>💰</span>
                 <span className="kpi-label" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  Total AR
+                  Total AR Past Due
                 </span>
               </div>
               <div className="kpi-value-large text-primary">{money(totalAR)}</div>
@@ -1661,7 +1661,7 @@ export default async function DashboardPage({
           }}>
             <div style={{ position: "relative", zIndex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 20 }}>âš ï¸</span>
+                <span style={{ fontSize: 20 }}>⚠️</span>
                 <span className="kpi-label" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
                   AR 15+ Days
                 </span>
@@ -1670,7 +1670,7 @@ export default async function DashboardPage({
                 {money(b15p)}
               </div>
               <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
-                {totalAR > 0 ? pct(b15p / totalAR) : "0%"} of total â€¢ {agedARInvoices.length} invoices
+                {totalAR > 0 ? pct(b15p / totalAR) : "0%"} of total • {agedARInvoices.length} invoices
               </div>
             </div>
           </div>
@@ -1681,7 +1681,7 @@ export default async function DashboardPage({
           }}>
             <div style={{ position: "relative", zIndex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 20 }}>ðŸ“‹</span>
+                <span style={{ fontSize: 20 }}>📋</span>
                 <span className="kpi-label" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
                   Quote Leak
                 </span>
@@ -1700,7 +1700,7 @@ export default async function DashboardPage({
         <div className="kpi-grid-secondary animate-in delay-3" style={{ marginTop: 16 }}>
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-              <span style={{ fontSize: 14 }}>ðŸ“…</span>
+              <span style={{ fontSize: 14 }}>📅</span>
               <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Days Scheduled Ahead</span>
             </div>
             <div className={`kpi-value-medium ${
@@ -1715,7 +1715,7 @@ export default async function DashboardPage({
 
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-              <span style={{ fontSize: 14 }}>ðŸ“¦</span>
+              <span style={{ fontSize: 14 }}>📦</span>
               <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Unscheduled</span>
             </div>
             <div className={`kpi-value-medium ${
@@ -1729,7 +1729,7 @@ export default async function DashboardPage({
 
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-              <span style={{ fontSize: 14 }}>âœï¸</span>
+              <span style={{ fontSize: 14 }}>✏️</span>
               <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Changes Requested</span>
             </div>
             <div className={`kpi-value-medium ${
@@ -1750,7 +1750,7 @@ export default async function DashboardPage({
               <div>
                 <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Trends</h2>
                 <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
-                  {toISODateOnlyUTC(start)} â†’ {toISODateOnlyUTC(end)} â€¢ {g === "day" ? "Daily" : g === "week" ? "Weekly" : g === "month" ? "Monthly" : "Quarterly"}
+                  {toISODateOnlyUTC(start)} → {toISODateOnlyUTC(end)} • {g === "day" ? "Daily" : g === "week" ? "Weekly" : g === "month" ? "Monthly" : "Quarterly"}
                 </p>
               </div>
             </div>
@@ -1821,12 +1821,12 @@ export default async function DashboardPage({
           fontSize: 12,
           color: "rgba(234,241,255,0.4)",
         }}>
-          <p style={{ margin: 0 }}>Â© 2026 OwnerView. All rights reserved.</p>
+          <p style={{ margin: 0 }}>© 2026 OwnerView. All rights reserved.</p>
           <p style={{ margin: "8px 0 0" }}>
             <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms</a>
-            {" Â· "}
+            {" · "}
             <a href="/privacy" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Privacy</a>
-            {" Â· "}
+            {" · "}
             <DisconnectJobberButton />
           </p>
         </footer>
@@ -1848,7 +1848,7 @@ function SubscriptionStatus({ billingStatus, trialEndsAt }: { billingStatus: str
         background: "rgba(16,185,129,0.15)",
         border: "1px solid rgba(16,185,129,0.4)",
       }}>
-        <span style={{ fontSize: 10 }}>â­</span>
+        <span style={{ fontSize: 10 }}>⭐</span>
         Pro
       </div>
     );
@@ -1867,7 +1867,7 @@ function SubscriptionStatus({ billingStatus, trialEndsAt }: { billingStatus: str
       background: daysLeft <= 3 ? "rgba(239,68,68,0.15)" : "rgba(90,166,255,0.15)",
       border: `1px solid ${daysLeft <= 3 ? "rgba(239,68,68,0.4)" : "rgba(90,166,255,0.4)"}`,
     }}>
-      <span style={{ fontSize: 10 }}>â±ï¸</span>
+      <span style={{ fontSize: 10 }}>⏱️</span>
       {daysLeft} day{daysLeft !== 1 ? "s" : ""} left
     </div>
   );
@@ -1880,7 +1880,7 @@ function SubscribeButton() {
   return (
     <form action="/api/billing/checkout" method="POST">
       <button type="submit" className="btn btn-primary" style={{ fontWeight: 700 }}>
-        Subscribe â†’
+        Subscribe →
       </button>
     </form>
   );
@@ -1905,5 +1905,4 @@ function LogoutButton() {
     </form>
   );
 }
-
 
