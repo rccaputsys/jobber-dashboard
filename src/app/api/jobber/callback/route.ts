@@ -21,7 +21,7 @@ async function tokenExchange(code: string) {
   });
 
   const text = await res.text();
-  
+
   let json;
   try {
     json = JSON.parse(text);
@@ -70,7 +70,7 @@ async function jobberGraphQL<T>(
 
 async function getLoggedInUser() {
   const cookieStore = await cookies();
-  
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -159,10 +159,22 @@ export async function GET(req: Request) {
   if (existingConn) {
     // Update existing connection
     connectionId = existingConn.id;
-    await supabaseAdmin
-      .from("jobber_connections")
-      .update({ jobber_account_name: acct.name })
-      .eq("id", connectionId);
+    
+    // If logged in user exists but connection has no user_id, link them
+    if (loggedInUser && !existingConn.user_id) {
+      await supabaseAdmin
+        .from("jobber_connections")
+        .update({ 
+          jobber_account_name: acct.name,
+          user_id: loggedInUser.id 
+        })
+        .eq("id", connectionId);
+    } else {
+      await supabaseAdmin
+        .from("jobber_connections")
+        .update({ jobber_account_name: acct.name })
+        .eq("id", connectionId);
+    }
 
     // Update tokens
     const encAccess = await encryptText(token.access_token);
@@ -186,20 +198,32 @@ export async function GET(req: Request) {
       // If not logged in, redirect to login
       return NextResponse.redirect(new URL("/login?message=jobber_reconnected", req.url));
     }
+    
+    // If we just linked a logged-in user to an orphaned connection, go to dashboard
+    if (loggedInUser) {
+      return NextResponse.redirect(new URL("/jobber/dashboard", req.url));
+    }
   } else {
     // Create new connection
     const now = new Date();
     const trialEnds = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
 
+    // If user is logged in, link the connection to them immediately
+    const insertData: any = {
+      jobber_account_id: acct.id,
+      jobber_account_name: acct.name,
+      billing_status: 'trialing',
+      trial_started_at: now.toISOString(),
+      trial_ends_at: trialEnds.toISOString(),
+    };
+    
+    if (loggedInUser) {
+      insertData.user_id = loggedInUser.id;
+    }
+
     const { data: conn, error: connErr } = await supabaseAdmin
       .from("jobber_connections")
-      .insert({
-        jobber_account_id: acct.id,
-        jobber_account_name: acct.name,
-        billing_status: 'trialing',
-        trial_started_at: now.toISOString(),
-        trial_ends_at: trialEnds.toISOString(),
-      })
+      .insert(insertData)
       .select("id")
       .single();
 
@@ -222,6 +246,11 @@ export async function GET(req: Request) {
       }, { onConflict: "connection_id" });
 
     if (tokErr) throw new Error(tokErr.message);
+    
+    // If user was logged in, go straight to dashboard
+    if (loggedInUser) {
+      return NextResponse.redirect(new URL("/jobber/dashboard", req.url));
+    }
   }
 
   // Redirect to complete signup (email/password collection)
