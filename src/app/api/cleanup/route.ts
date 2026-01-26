@@ -4,21 +4,15 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization");
   
-  // Temporarily hardcode for testing
-  const cronSecret = process.env.CRON_SECRET || "test123";
+  // Use env var or fallback
+  const cronSecret = process.env.CRON_SECRET || "f869d50f-2b07-4974-9440-c5863ba968aa";
   const expectedHeader = `Bearer ${cronSecret}`;
   
   const isVercelCron = authHeader === expectedHeader;
   const isVercelCronHeader = req.headers.get("x-vercel-cron") === "1";
 
   if (!isVercelCron && !isVercelCronHeader) {
-    return NextResponse.json({ 
-      error: "Unauthorized",
-      debug: {
-        secretExists: !!process.env.CRON_SECRET,
-        usingFallback: !process.env.CRON_SECRET
-      }
-    }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
