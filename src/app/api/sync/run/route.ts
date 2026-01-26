@@ -60,11 +60,19 @@ function dollarsToCents(n: number | null | undefined): number {
   return Math.round(n * 100);
 }
 
-// Get date 12 months ago in ISO format
-function getTwelveMonthsAgo(): string {
+// Get date 12 months ago
+function getTwelveMonthsAgoMs(): number {
   const date = new Date();
   date.setMonth(date.getMonth() - 12);
-  return date.toISOString();
+  return date.getTime();
+}
+
+// Check if a date string is within the last 12 months
+function isWithinTwelveMonths(dateStr: string | null | undefined, cutoffMs: number): boolean {
+  if (!dateStr) return false;
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return false;
+  return date.getTime() >= cutoffMs;
 }
 
 // Custom GraphQL function that handles partial errors
@@ -92,12 +100,11 @@ async function jobberGraphQLWithPartialErrors<T>(
   };
 }
 
-// Paginated fetch helper with optional date filter
+// Paginated fetch helper
 async function fetchAllPages<T>(
   accessToken: string,
   resourceName: string,
   nodeFields: string,
-  filterClause: string = "",
   maxPages: number = 50
 ): Promise<{ nodes: T[]; errors: unknown[] }> {
   const allNodes: T[] = [];
@@ -112,7 +119,7 @@ async function fetchAllPages<T>(
   while (pageCount < maxPages) {
     const afterClause: string = cursor ? `, after: "${cursor}"` : "";
     const query: string = `query {
-      ${resourceName}(first: 100${afterClause}${filterClause}) {
+      ${resourceName}(first: 100${afterClause}) {
         nodes {
           ${nodeFields}
         }
@@ -156,9 +163,9 @@ export async function GET(req: Request) {
   }
 
   const token = await getValidAccessToken(connectionId);
-  const twelveMonthsAgo = getTwelveMonthsAgo();
+  const twelveMonthsAgoMs = getTwelveMonthsAgoMs();
 
-  // Fetch Jobs created in last 12 months
+  // Fetch all Jobs
   const jobResult = await fetchAllPages<JobNode>(
     token,
     "jobs",
@@ -171,11 +178,10 @@ export async function GET(req: Request) {
      jobNumber
      jobberWebUri
      title
-     total`,
-    `, filter: { createdAt: { gte: "${twelveMonthsAgo}" } }`
+     total`
   );
 
-  // Fetch Invoices created in last 12 months
+  // Fetch all Invoices
   const invoiceResult = await fetchAllPages<InvoiceNode>(
     token,
     "invoices",
@@ -190,11 +196,10 @@ export async function GET(req: Request) {
      invoiceStatus
      client {
        name
-     }`,
-    `, filter: { createdAt: { gte: "${twelveMonthsAgo}" } }`
+     }`
   );
 
-  // Fetch Quotes created in last 12 months
+  // Fetch all Quotes
   const quoteResult = await fetchAllPages<QuoteNode>(
     token,
     "quotes",
@@ -206,17 +211,19 @@ export async function GET(req: Request) {
      sentAt
      quoteStatus
      jobberWebUri
-     amounts { total }`,
-    `, filter: { createdAt: { gte: "${twelveMonthsAgo}" } }`
+     amounts { total }`
   );
 
-  const jobs = jobResult.nodes;
-  const quotes = quoteResult.nodes;
+  // Filter to last 12 months client-side
+  const jobs = jobResult.nodes.filter(j => isWithinTwelveMonths(j.createdAt, twelveMonthsAgoMs));
+  const quotes = quoteResult.nodes.filter(q => isWithinTwelveMonths(q.createdAt, twelveMonthsAgoMs));
 
-  // Filter invoices to only past_due (these are AR)
+  // Filter invoices to only past_due AND within 12 months
   const invoices = invoiceResult.nodes.filter((inv) => {
     const status = (inv.invoiceStatus || '').toLowerCase();
-    return status === 'past_due';
+    const isPastDue = status === 'past_due';
+    const isRecent = isWithinTwelveMonths(inv.createdAt, twelveMonthsAgoMs);
+    return isPastDue && isRecent;
   });
 
   // Log any permission errors (optional)
