@@ -76,25 +76,28 @@ export async function POST(req: Request) {
       break;
     }
 
-    case "customer.subscription.deleted": {
-      const subscription = event.data.object as Stripe.Subscription;
+   case "customer.subscription.deleted": {
+  const subscription = event.data.object as Stripe.Subscription;
 
-      const { data: conn } = await supabaseAdmin
-        .from("jobber_connections")
-        .select("id")
-        .eq("stripe_subscription_id", subscription.id)
-        .maybeSingle();
+  const { data: conn } = await supabaseAdmin
+    .from("jobber_connections")
+    .select("id")
+    .eq("stripe_subscription_id", subscription.id)
+    .maybeSingle();
 
-      if (conn) {
-        await supabaseAdmin
-          .from("jobber_connections")
-          .update({ billing_status: "canceled" })
-          .eq("id", conn.id);
+  if (conn) {
+    await supabaseAdmin
+      .from("jobber_connections")
+      .update({ 
+        billing_status: "canceled",
+        canceled_at: new Date().toISOString()  
+      })
+      .eq("id", conn.id);
 
-        console.log(`Subscription ${subscription.id} canceled`);
-      }
-      break;
-    }
+    console.log(`Subscription ${subscription.id} canceled`);
+  }
+  break;
+}
 
     case "invoice.payment_failed": {
       const invoice = event.data.object as unknown as Record<string, unknown>;
