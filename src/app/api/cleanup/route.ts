@@ -2,18 +2,27 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function GET(req: Request) {
-  // Vercel Cron sends this header to verify the request
   const authHeader = req.headers.get("authorization");
-  const isVercelCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  const expectedHeader = `Bearer ${process.env.CRON_SECRET}`;
   
-  // Also check for Vercel's cron header as backup
+  // Debug logging
+  console.log("Received auth header:", authHeader);
+  console.log("Expected auth header:", expectedHeader);
+  console.log("CRON_SECRET exists:", !!process.env.CRON_SECRET);
+  
+  const isVercelCron = authHeader === expectedHeader;
   const isVercelCronHeader = req.headers.get("x-vercel-cron") === "1";
 
   if (!isVercelCron && !isVercelCronHeader) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ 
+      error: "Unauthorized",
+      debug: {
+        receivedHeader: authHeader?.substring(0, 20) + "...",
+        secretExists: !!process.env.CRON_SECRET
+      }
+    }, { status: 401 });
   }
 
-  // Find connections canceled more than 30 days ago
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: expiredConnections, error } = await supabaseAdmin
