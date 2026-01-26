@@ -1,4 +1,4 @@
-// src/app/api/auth/complete-signup/route.ts
+﻿// src/app/api/auth/complete-signup/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { cookies } from "next/headers";
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   }
 
   if (connection.user_id) {
-    return NextResponse.json({ error: "Account already exists. Please log in." }, { status: 400 });
+    return NextResponse.json({ error: "Email already registered. Please log in." }, { status: 400 });
   }
 
   // Create the user with email and password
@@ -57,6 +57,7 @@ export async function POST(req: Request) {
 
   // Sign in the user
   const cookieStore = await cookies();
+  
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
