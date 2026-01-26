@@ -1,4 +1,4 @@
-// src/lib/jobberAuth.ts
+﻿// src/lib/jobberAuth.ts
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { decryptText, encryptText } from "@/lib/crypto";
 
@@ -10,7 +10,11 @@ type TokenRow = {
   expires_at: string;
 };
 
-async function refreshToken(refreshTokenPlain: string) {
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function refreshToken(refreshTokenPlain: string, maxRetries: number = 3) {
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     client_id: process.env.JOBBER_CLIENT_ID!,
@@ -18,30 +22,54 @@ async function refreshToken(refreshTokenPlain: string) {
     refresh_token: refreshTokenPlain,
   });
 
-  const res = await fetch(process.env.JOBBER_OAUTH_TOKEN_URL!, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
+  let lastError: Error | null = null;
 
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`Refresh failed: ${res.status} ${t}`);
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const res = await fetch(process.env.JOBBER_OAUTH_TOKEN_URL!, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+
+    // Handle rate limiting
+    if (res.status === 429) {
+      const retryAfter = res.headers.get("Retry-After");
+      const waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : attempt * 2000;
+      console.warn(`Rate limited on token refresh. Waiting ${waitTime}ms before retry ${attempt}/${maxRetries}`);
+      await delay(waitTime);
+      continue;
+    }
+
+    // Handle server errors with retry
+    if (res.status >= 500) {
+      const waitTime = attempt * 1000;
+      console.warn(`Server error ${res.status} on token refresh. Waiting ${waitTime}ms before retry ${attempt}/${maxRetries}`);
+      await delay(waitTime);
+      continue;
+    }
+
+    if (!res.ok) {
+      const t = await res.text();
+      lastError = new Error(`Refresh failed: ${res.status} ${t}`);
+      break; // Don't retry on 4xx errors (except 429)
+    }
+
+    const json = (await res.json()) as {
+      access_token?: string;
+      refresh_token?: string;
+      expires_in?: number | string;
+      expires_at?: string;
+      token_type?: string;
+    };
+
+    if (!json.access_token || !json.refresh_token) {
+      throw new Error(`Refresh response missing tokens. keys=${Object.keys(json).join(",")}`);
+    }
+
+    return json;
   }
 
-  const json = (await res.json()) as {
-    access_token?: string;
-    refresh_token?: string;
-    expires_in?: number | string;
-    expires_at?: string;
-    token_type?: string;
-  };
-
-  if (!json.access_token || !json.refresh_token) {
-    throw new Error(`Refresh response missing tokens. keys=${Object.keys(json).join(",")}`);
-  }
-
-  return json;
+  throw lastError || new Error("Max retries exceeded on token refresh");
 }
 
 function computeExpiresAt(token: { expires_at?: string; expires_in?: number | string }) {
@@ -66,8 +94,6 @@ function computeExpiresAt(token: { expires_at?: string; expires_in?: number | st
 }
 
 export async function getValidAccessToken(connectionId: string): Promise<string> {
-  // IMPORTANT: tokens table can have multiple rows per connection_id (history)
-  // So: fetch the most recent by expires_at descending.
   const { data, error } = await supabaseAdmin
     .from("jobber_tokens")
     .select("id,connection_id,access_token,refresh_token,expires_at")
@@ -83,7 +109,6 @@ export async function getValidAccessToken(connectionId: string): Promise<string>
   const expiresAtMs = new Date(row.expires_at).getTime();
   const now = Date.now();
 
-  // If invalid date somehow, force refresh
   const isExpired = Number.isNaN(expiresAtMs) ? true : expiresAtMs - now < 60_000;
 
   if (!isExpired) {
@@ -101,7 +126,6 @@ export async function getValidAccessToken(connectionId: string): Promise<string>
   const encAccess = await encryptText(refreshed.access_token!);
   const encRefresh = await encryptText(refreshed.refresh_token!);
 
-  // Insert a new row (keep history)
   const { error: insErr } = await supabaseAdmin.from("jobber_tokens").insert({
     connection_id: connectionId,
     access_token: encAccess,
