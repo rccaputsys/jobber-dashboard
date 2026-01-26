@@ -1,4 +1,4 @@
-// src/app/complete-signup/page.tsx
+﻿// src/app/complete-signup/page.tsx
 "use client";
 
 import { useState, Suspense } from "react";
@@ -54,6 +54,10 @@ function CompleteSignupForm() {
       setLoading(false);
     }
   }
+
+  const isEmailExistsError = error.toLowerCase().includes("already registered") || 
+                              error.toLowerCase().includes("already exists") ||
+                              error.toLowerCase().includes("email already");
 
   if (!connectionId) {
     return (
@@ -119,7 +123,16 @@ function CompleteSignupForm() {
           />
         </div>
 
-        {error && <div style={styles.error}>{error}</div>}
+        {error && (
+          <div style={styles.error}>
+            {error}
+            {isEmailExistsError && (
+              <a href="/login" style={styles.loginLink}>
+                Go to Login →
+              </a>
+            )}
+          </div>
+        )}
 
         <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13, color: "rgba(234,241,255,0.7)", cursor: "pointer" }}>
           <input
@@ -146,7 +159,12 @@ function CompleteSignupForm() {
         </button>
       </form>
 
-   <div style={styles.features}>
+      <p style={styles.loginPrompt}>
+        Already have an account?{" "}
+        <a href="/login" style={styles.loginLinkAlt}>Log in</a>
+      </p>
+
+      <div style={styles.features}>
         <div style={styles.feature}>
           <span>✓</span> 14-day free trial
         </div>
@@ -272,6 +290,24 @@ const styles: { [key: string]: React.CSSProperties } = {
     border: "1px solid rgba(239,68,68,0.3)",
     color: "#fca5a5",
     fontSize: 13,
+  },
+  loginLink: {
+    display: "block",
+    marginTop: 8,
+    color: "#a5b4fc",
+    textDecoration: "none",
+    fontWeight: 600,
+  },
+  loginPrompt: {
+    marginTop: 20,
+    fontSize: 14,
+    color: "rgba(234,241,255,0.6)",
+    textAlign: "center",
+  },
+  loginLinkAlt: {
+    color: "#a5b4fc",
+    textDecoration: "none",
+    fontWeight: 600,
   },
   features: {
     display: "flex",
