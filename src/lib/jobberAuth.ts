@@ -126,14 +126,15 @@ export async function getValidAccessToken(connectionId: string): Promise<string>
   const encAccess = await encryptText(refreshed.access_token!);
   const encRefresh = await encryptText(refreshed.refresh_token!);
 
-  const { error: insErr } = await supabaseAdmin.from("jobber_tokens").insert({
+  const { error: insErr } = await supabaseAdmin.from("jobber_tokens").upsert({
     connection_id: connectionId,
     access_token: encAccess,
     refresh_token: encRefresh,
     expires_at: newExpiresAt,
-  });
+  }, { onConflict: "connection_id" });
 
   if (insErr) throw new Error(insErr.message);
 
   return refreshed.access_token!;
 }
+
