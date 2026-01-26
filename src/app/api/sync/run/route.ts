@@ -60,13 +60,20 @@ function dollarsToCents(n: number | null | undefined): number {
   return Math.round(n * 100);
 }
 
+// Get date 12 months ago in ISO format
+function getTwelveMonthsAgo(): string {
+  const date = new Date();
+  date.setMonth(date.getMonth() - 12);
+  return date.toISOString();
+}
+
 // Custom GraphQL function that handles partial errors
 async function jobberGraphQLWithPartialErrors<T>(
   accessToken: string,
   query: string
 ): Promise<{ data: T | null; errors: unknown[] }> {
   const version = process.env.JOBBER_GRAPHQL_VERSION!;
-  
+
   const res = await fetch(process.env.JOBBER_GRAPHQL_URL!, {
     method: "POST",
     headers: {
@@ -78,18 +85,19 @@ async function jobberGraphQLWithPartialErrors<T>(
   });
 
   const json = await res.json();
-  
+
   return {
     data: json.data as T | null,
     errors: json.errors || [],
   };
 }
 
-// Paginated fetch helper
+// Paginated fetch helper with optional date filter
 async function fetchAllPages<T>(
   accessToken: string,
   resourceName: string,
   nodeFields: string,
+  filterClause: string = "",
   maxPages: number = 50
 ): Promise<{ nodes: T[]; errors: unknown[] }> {
   const allNodes: T[] = [];
@@ -104,7 +112,7 @@ async function fetchAllPages<T>(
   while (pageCount < maxPages) {
     const afterClause: string = cursor ? `, after: "${cursor}"` : "";
     const query: string = `query {
-      ${resourceName}(first: 100${afterClause}) {
+      ${resourceName}(first: 100${afterClause}${filterClause}) {
         nodes {
           ${nodeFields}
         }
@@ -148,8 +156,9 @@ export async function GET(req: Request) {
   }
 
   const token = await getValidAccessToken(connectionId);
+  const twelveMonthsAgo = getTwelveMonthsAgo();
 
-  // Fetch all Jobs with pagination
+  // Fetch Jobs created in last 12 months
   const jobResult = await fetchAllPages<JobNode>(
     token,
     "jobs",
@@ -162,10 +171,11 @@ export async function GET(req: Request) {
      jobNumber
      jobberWebUri
      title
-     total`
+     total`,
+    `, filter: { createdAt: { gte: "${twelveMonthsAgo}" } }`
   );
 
-  // Fetch all Invoices with pagination
+  // Fetch Invoices created in last 12 months
   const invoiceResult = await fetchAllPages<InvoiceNode>(
     token,
     "invoices",
@@ -180,10 +190,11 @@ export async function GET(req: Request) {
      invoiceStatus
      client {
        name
-     }`
+     }`,
+    `, filter: { createdAt: { gte: "${twelveMonthsAgo}" } }`
   );
 
-  // Fetch all Quotes with pagination
+  // Fetch Quotes created in last 12 months
   const quoteResult = await fetchAllPages<QuoteNode>(
     token,
     "quotes",
@@ -195,12 +206,13 @@ export async function GET(req: Request) {
      sentAt
      quoteStatus
      jobberWebUri
-     amounts { total }`
+     amounts { total }`,
+    `, filter: { createdAt: { gte: "${twelveMonthsAgo}" } }`
   );
 
   const jobs = jobResult.nodes;
   const quotes = quoteResult.nodes;
-  
+
   // Filter invoices to only past_due (these are AR)
   const invoices = invoiceResult.nodes.filter((inv) => {
     const status = (inv.invoiceStatus || '').toLowerCase();
