@@ -1,4 +1,4 @@
-﻿// src/app/jobber/page.tsx
+// src/app/jobber/page.tsx
 import React from "react";
 
 export default function JobberLanding() {
@@ -35,7 +35,7 @@ export default function JobberLanding() {
               marginBottom: 24,
             }}
           >
-            <span>âš¡</span> Built for Jobber Users
+            <span>⚡</span> Built for Jobber Users
           </div>
           
           <h1
@@ -63,7 +63,7 @@ export default function JobberLanding() {
             }}
           >
             Stop digging through reports. Get instant visibility into AR aging, 
-            sales leaks, and scheduling gaps â€” all in one dashboard.
+            sales leaks, and scheduling gaps — all in one dashboard.
           </p>
 
           <a
@@ -89,7 +89,7 @@ export default function JobberLanding() {
           </a>
           
           <p style={{ fontSize: 13, color: "rgba(234,241,255,0.5)", marginTop: 16 }}>
-            Free 14-day trial â€¢ No credit card required â€¢ 2-minute setup
+            Free 14-day trial • No credit card required • 2-minute setup
           </p>
         </div>
 
@@ -126,7 +126,7 @@ export default function JobberLanding() {
           >
             <div>
               <div style={{ fontSize: 18, fontWeight: 800 }}>AccuInsight Dashboard</div>
-              <div style={{ fontSize: 12, color: "rgba(234,241,255,0.5)" }}>Last sync: 2 hours ago â€¢ USD</div>
+              <div style={{ fontSize: 12, color: "rgba(234,241,255,0.5)" }}>Last sync: 2 hours ago • USD</div>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <span
@@ -169,7 +169,7 @@ export default function JobberLanding() {
           {/* Mock KPI Cards - Financial Metrics */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, color: "rgba(234,241,255,0.7)" }}>
-              ðŸ’° Financial Metrics
+              💰 Financial Metrics
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
               <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 12, padding: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -190,7 +190,7 @@ export default function JobberLanding() {
           {/* Mock KPI Cards - Operations */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, color: "rgba(234,241,255,0.7)" }}>
-              ðŸ“Š Operations Metrics
+              📊 Operations Metrics
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
               <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 12, padding: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -211,7 +211,7 @@ export default function JobberLanding() {
           {/* Mock Line Charts */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, color: "rgba(234,241,255,0.7)" }}>
-              ðŸ“ˆ Trends
+              📈 Trends
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
               <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 12, padding: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -292,15 +292,15 @@ export default function JobberLanding() {
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "45px 1fr 70px 70px", gap: 8, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                   <div style={{ color: "rgba(234,241,255,0.7)" }}>32d</div>
-                  <div><span style={{ color: "rgba(234,241,255,0.5)" }}>#1042</span> <span style={{ color: "#fff" }}>â€¢ Smith Residence</span></div>
+                  <div><span style={{ color: "rgba(234,241,255,0.5)" }}>#1042</span> <span style={{ color: "#fff" }}>• Smith Residence</span></div>
                   <div style={{ fontWeight: 600 }}>$1,250</div>
-                  <div><span style={{ color: "#a5b4fc", fontSize: 11 }}>Open â†’</span></div>
+                  <div><span style={{ color: "#a5b4fc", fontSize: 11 }}>Open →</span></div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "45px 1fr 70px 70px", gap: 8, padding: "8px 0" }}>
                   <div style={{ color: "rgba(234,241,255,0.7)" }}>19d</div>
-                  <div><span style={{ color: "rgba(234,241,255,0.5)" }}>#1035</span> <span style={{ color: "#fff" }}>â€¢ Oak Properties</span></div>
+                  <div><span style={{ color: "rgba(234,241,255,0.5)" }}>#1035</span> <span style={{ color: "#fff" }}>• Oak Properties</span></div>
                   <div style={{ fontWeight: 600 }}>$2,100</div>
-                  <div><span style={{ color: "#a5b4fc", fontSize: 11 }}>Open â†’</span></div>
+                  <div><span style={{ color: "#a5b4fc", fontSize: 11 }}>Open →</span></div>
                 </div>
               </div>
             </div>
@@ -322,15 +322,15 @@ export default function JobberLanding() {
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "45px 1fr 70px 70px", gap: 8, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                   <div style={{ color: "rgba(234,241,255,0.7)" }}>14d</div>
-                  <div><span style={{ color: "rgba(234,241,255,0.5)" }}>#2051</span> <span style={{ color: "#fff" }}>â€¢ Spring cleanup</span></div>
+                  <div><span style={{ color: "rgba(234,241,255,0.5)" }}>#2051</span> <span style={{ color: "#fff" }}>• Spring cleanup</span></div>
                   <div style={{ fontWeight: 600 }}>$450</div>
-                  <div><span style={{ color: "#a5b4fc", fontSize: 11 }}>Open â†’</span></div>
+                  <div><span style={{ color: "#a5b4fc", fontSize: 11 }}>Open →</span></div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "45px 1fr 70px 70px", gap: 8, padding: "8px 0" }}>
                   <div style={{ color: "rgba(234,241,255,0.7)" }}>9d</div>
-                  <div><span style={{ color: "rgba(234,241,255,0.5)" }}>#2048</span> <span style={{ color: "#fff" }}>â€¢ Fence repair</span></div>
+                  <div><span style={{ color: "rgba(234,241,255,0.5)" }}>#2048</span> <span style={{ color: "#fff" }}>• Fence repair</span></div>
                   <div style={{ fontWeight: 600 }}>$1,200</div>
-                  <div><span style={{ color: "#a5b4fc", fontSize: 11 }}>Open â†’</span></div>
+                  <div><span style={{ color: "#a5b4fc", fontSize: 11 }}>Open →</span></div>
                 </div>
               </div>
             </div>
@@ -352,15 +352,15 @@ export default function JobberLanding() {
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "45px 1fr 70px 70px", gap: 8, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                   <div style={{ color: "rgba(234,241,255,0.7)" }}>21d</div>
-                  <div><span style={{ color: "rgba(234,241,255,0.5)" }}>#Q-892</span> <span style={{ color: "#fff" }}>â€¢ Patio installation</span></div>
+                  <div><span style={{ color: "rgba(234,241,255,0.5)" }}>#Q-892</span> <span style={{ color: "#fff" }}>• Patio installation</span></div>
                   <div style={{ fontWeight: 600 }}>$4,500</div>
-                  <div><span style={{ color: "#a5b4fc", fontSize: 11 }}>Open â†’</span></div>
+                  <div><span style={{ color: "#a5b4fc", fontSize: 11 }}>Open →</span></div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "45px 1fr 70px 70px", gap: 8, padding: "8px 0" }}>
                   <div style={{ color: "rgba(234,241,255,0.7)" }}>12d</div>
-                  <div><span style={{ color: "rgba(234,241,255,0.5)" }}>#Q-887</span> <span style={{ color: "#fff" }}>â€¢ Deck refinish</span></div>
+                  <div><span style={{ color: "rgba(234,241,255,0.5)" }}>#Q-887</span> <span style={{ color: "#fff" }}>• Deck refinish</span></div>
                   <div style={{ fontWeight: 600 }}>$2,800</div>
-                  <div><span style={{ color: "#a5b4fc", fontSize: 11 }}>Open â†’</span></div>
+                  <div><span style={{ color: "#a5b4fc", fontSize: 11 }}>Open →</span></div>
                 </div>
               </div>
             </div>
@@ -375,38 +375,38 @@ export default function JobberLanding() {
           
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24 }}>
             <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 16, padding: 28, border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(239,68,68,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 16 }}>ðŸ’°</div>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(239,68,68,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 16 }}>💰</div>
               <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>AR Aging Alerts</h3>
               <p style={{ fontSize: 14, color: "rgba(234,241,255,0.6)", lineHeight: 1.6 }}>See exactly which invoices are 15+ days overdue. One-click to open in Jobber and collect.</p>
             </div>
             
             <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 16, padding: 28, border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(124,92,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 16 }}>ðŸ“Š</div>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(124,92,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 16 }}>📊</div>
               <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Quote Leak Detection</h3>
               <p style={{ fontSize: 14, color: "rgba(234,241,255,0.6)", lineHeight: 1.6 }}>Track sent quotes that haven&apos;t converted. Follow up before they go cold.</p>
             </div>
             
             <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 16, padding: 28, border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(90,166,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 16 }}>ðŸ“…</div>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(90,166,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 16 }}>📅</div>
               <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Scheduling Gaps</h3>
               <p style={{ fontSize: 14, color: "rgba(234,241,255,0.6)", lineHeight: 1.6 }}>Find unscheduled jobs that are slipping through the cracks. Stay on top of your backlog.</p>
             </div>
             
             <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 16, padding: 28, border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(16,185,129,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 16 }}>â±ï¸</div>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(16,185,129,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 16 }}>⏱️</div>
               <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Save Hours Weekly</h3>
               <p style={{ fontSize: 14, color: "rgba(234,241,255,0.6)", lineHeight: 1.6 }}>No more digging through reports. See everything that needs attention in one glance.</p>
             </div>
             
             <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 16, padding: 28, border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(245,158,11,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 16 }}>âš¡</div>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(245,158,11,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 16 }}>⚡</div>
               <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>One-Click Actions</h3>
               <p style={{ fontSize: 14, color: "rgba(234,241,255,0.6)", lineHeight: 1.6 }}>Every item links directly to Jobber. Export to CSV for your weekly team meeting.</p>
             </div>
             
             <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 16, padding: 28, border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 16 }}>ðŸŒ“</div>
-              <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Dark & Light Mode</h3>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 16 }}>🌓</div>
+              <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Dark &amp; Light Mode</h3>
               <p style={{ fontSize: 14, color: "rgba(234,241,255,0.6)", lineHeight: 1.6 }}>Easy on the eyes in the office or out in the field. Your choice.</p>
             </div>
           </div>
@@ -442,13 +442,13 @@ export default function JobberLanding() {
           <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 16 }}>Ready to See Your Numbers?</h2>
           <p style={{ fontSize: 16, color: "rgba(234,241,255,0.7)", marginBottom: 24, maxWidth: 500, margin: "0 auto 24px" }}>Join other service businesses who stopped guessing and started knowing.</p>
           <a href="/api/jobber/connect" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "16px 32px", background: "linear-gradient(135deg, #5a67d8 0%, #667eea 100%)", color: "#ffffff", fontSize: 17, fontWeight: 700, borderRadius: 12, textDecoration: "none", boxShadow: "0 4px 24px rgba(90,103,216,0.4)" }}>
-            Start Free Trial â†’
+            Start Free Trial →
           </a>
         </div>
 
         {/* Footer */}
         <footer style={{ marginTop: 80, paddingTop: 32, borderTop: "1px solid rgba(255,255,255,0.08)", textAlign: "center", color: "rgba(234,241,255,0.4)", fontSize: 13 }}>
-          <p>Â© 2025 OwnerView. All rights reserved.</p>
+          <p>© 2025 OwnerView. All rights reserved.</p>
           <p style={{ marginTop: 8 }}>
             <a href="/privacy" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none", marginRight: 16 }}>Privacy Policy</a>
             <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms of Service</a>
@@ -458,4 +458,3 @@ export default function JobberLanding() {
     </main>
   );
 }
-
