@@ -44,10 +44,10 @@ export function Controls() {
       setIsLight(document.documentElement.getAttribute("data-theme") === "light");
     };
     checkTheme();
-    
+
     const observer = new MutationObserver(checkTheme);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    
+
     return () => observer.disconnect();
   }, []);
 
@@ -276,6 +276,21 @@ export function Controls() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Data note */}
+      <div
+        style={{
+          width: "100%",
+          marginTop: 8,
+          paddingTop: 10,
+          borderTop: isLight ? "1px solid #e2e8f0" : "1px solid rgba(255,255,255,0.08)",
+          fontSize: 11,
+          color: isLight ? "#94a3b8" : "rgba(234,241,255,0.4)",
+          textAlign: "center",
+        }}
+      >
+        📊 Showing data from the last 12 months
       </div>
     </div>
   );
