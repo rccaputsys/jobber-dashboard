@@ -4,8 +4,8 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization");
   
-  // Check if CRON_SECRET specifically exists
-  const cronSecret = process.env.CRON_SECRET;
+  // Temporarily hardcode for testing
+  const cronSecret = process.env.CRON_SECRET || "test123";
   const expectedHeader = `Bearer ${cronSecret}`;
   
   const isVercelCron = authHeader === expectedHeader;
@@ -15,9 +15,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ 
       error: "Unauthorized",
       debug: {
-        receivedHeader: authHeader?.substring(0, 20) + "...",
-        secretExists: !!cronSecret,
-        secretLength: cronSecret?.length || 0
+        secretExists: !!process.env.CRON_SECRET,
+        usingFallback: !process.env.CRON_SECRET
       }
     }, { status: 401 });
   }
