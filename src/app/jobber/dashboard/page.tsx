@@ -1865,7 +1865,7 @@ export default async function DashboardPage({
               agedARExportData={agedARExportData}
               unscheduledRows={unscheduledRows}
               unscheduledExportData={unscheduledExportData}
-              leakCandidates={leakCandidatesInRange}
+              leakCandidates={leakCandidatesInRange.slice().sort((a: any, b: any) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime())}
               leakingQuotesExportData={leakingQuotesExportData}
               toggleUnscheduledHref={toggleUnscheduledHref}
               minDays={minDays}
