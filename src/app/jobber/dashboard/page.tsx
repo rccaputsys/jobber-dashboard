@@ -1,4 +1,4 @@
-// src/app/jobber/dashboard/page.tsx
+﻿// src/app/jobber/dashboard/page.tsx
 import { ExportCSV } from "./ExportCSV";
 import React from "react";
 import { Controls } from "./controls";
@@ -918,7 +918,7 @@ function SparkLine(props: {
   const vbH = 140;
 
   const padL = 48;
-  const padR = 20;
+  const padR = 40; // Increased from 20 to fix x-axis label cutoff
   const padT = 20;
   const padB = 32;
 
@@ -1211,7 +1211,7 @@ export default async function DashboardPage({
 
   const { data: quotesData } = await supabaseAdmin
     .from("fact_quotes")
-    .select("jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,sent_at")
+    .select("jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,sent_at,updated_at_jobber")
     .eq("connection_id", connectionId);
   const quotes = (quotesData ?? []) as any[];
 
@@ -1291,14 +1291,9 @@ export default async function DashboardPage({
 
   const marginPerJob = completedCount ? Math.round(profitSum / completedCount) : 0;
 
-  // Quote leak
+  // Quote leak - quotes that are sent but not won
   const leakCandidates = quotes
     .filter((q) => q.sent_at)
-    .filter((q) => {
-      const dt = safeDate(q.sent_at);
-      if (!dt) return false;
-      return dt.getTime() >= start.getTime() && dt.getTime() < endExclusive.getTime();
-    })
     .filter((q) => {
       const st = String(q.quote_status ?? "").toLowerCase().trim();
       if (!st) return true;
@@ -1306,8 +1301,15 @@ export default async function DashboardPage({
       return !statusLooksWon(st);
     });
 
-  const leakCount = leakCandidates.length;
-  const leakDollars = leakCandidates.reduce((sum, q) => sum + Number(q.quote_total_cents ?? 0), 0);
+  // Filter leak candidates to range for the KPI card
+  const leakCandidatesInRange = leakCandidates.filter((q) => {
+    const dt = safeDate(q.sent_at);
+    if (!dt) return false;
+    return dt.getTime() >= start.getTime() && dt.getTime() < endExclusive.getTime();
+  });
+
+  const leakCount = leakCandidatesInRange.length;
+  const leakDollars = leakCandidatesInRange.reduce((sum, q) => sum + Number(q.quote_total_cents ?? 0), 0);
 
   // Quotes with changes requested
   const changesRequestedQuotes = quotes.filter((q) => {
@@ -1336,7 +1338,7 @@ export default async function DashboardPage({
   // Unscheduled list
   const { data: unsched } = await supabaseAdmin
     .from("fact_jobs")
-    .select("job_number,job_title,created_at_jobber,jobber_url,total_amount_cents")
+    .select("job_number,job_title,created_at_jobber,jobber_url,total_amount_cents,scheduled_start_at")
     .eq("connection_id", connectionId)
     .is("scheduled_start_at", null)
     .order("created_at_jobber", { ascending: true })
@@ -1365,39 +1367,99 @@ export default async function DashboardPage({
     if (bucketStarts.length > 200) break;
   }
 
+  // POINT-IN-TIME Quote Leak by bucket
+  // A quote enters leak when sent_at is reached (if not won)
+  // A quote exits leak when it becomes won (use updated_at_jobber as proxy)
   const leakByBucket = bucketStarts.map((bs) => {
-    const be = nextBucketUTC(bs, g);
-    const endTs = be.getTime();
+    const bucketEndTs = nextBucketUTC(bs, g).getTime();
     let sum = 0;
-    for (const q of leakCandidates) {
-      const dt = safeDate(q.sent_at);
-      if (!dt) continue;
-      const t = dt.getTime();
-      if (t < endTs) sum += Number(q.quote_total_cents ?? 0);
+    
+    for (const q of quotes) {
+      const sentAt = safeDate(q.sent_at);
+      if (!sentAt) continue;
+      
+      const amt = Number(q.quote_total_cents ?? 0);
+      const st = String(q.quote_status ?? "").toLowerCase().trim();
+      const isWon = statusLooksWon(st);
+      const wonAt = isWon ? safeDate(q.updated_at_jobber) : null;
+      
+      // Skip archived/draft
+      if (st === "archived" || st === "draft") continue;
+      
+      // Quote enters leak when sent
+      const enterTs = sentAt.getTime();
+      
+      // Quote exits leak when won
+      const exitTs = wonAt ? wonAt.getTime() : null;
+      
+      // Is it in leak at bucket end?
+      const enteredBeforeBucketEnd = enterTs < bucketEndTs;
+      const exitedBeforeBucketEnd = exitTs && exitTs < bucketEndTs;
+      
+      if (enteredBeforeBucketEnd && !exitedBeforeBucketEnd) {
+        sum += amt;
+      }
     }
     return sum;
   });
 
+  // POINT-IN-TIME AR 15+ by bucket
+  // Invoice enters AR 15+ when due_at + 15 days is reached
+  // Invoice exits AR 15+ when paid (paid_at is set)
   const ar15ByBucket = bucketStarts.map((bs) => {
-    const be = nextBucketUTC(bs, g);
-    const endTs = be.getTime();
+    const bucketEndTs = nextBucketUTC(bs, g).getTime();
     let sum = 0;
+    
     for (const inv of invoices) {
       const due = safeDate(inv.due_at ?? inv.dueDate ?? inv.due_date);
       if (!due) continue;
-      const daysLate = (endTs - due.getTime()) / 86400000;
-      if (daysLate > 15) sum += Number(inv.total_amount_cents ?? inv.total_cents ?? inv.total_amount ?? 0);
+      
+      const amt = Number(inv.total_amount_cents ?? inv.total_cents ?? inv.total_amount ?? 0);
+      const paidAt = safeDate(inv.paid_at);
+      
+      // Invoice enters AR 15+ at due_at + 15 days
+      const enterTs = due.getTime() + (15 * 24 * 60 * 60 * 1000);
+      
+      // Invoice exits AR 15+ when paid
+      const exitTs = paidAt ? paidAt.getTime() : null;
+      
+      // Is it in AR 15+ at bucket end?
+      const enteredBeforeBucketEnd = enterTs < bucketEndTs;
+      const exitedBeforeBucketEnd = exitTs && exitTs < bucketEndTs;
+      
+      if (enteredBeforeBucketEnd && !exitedBeforeBucketEnd) {
+        sum += amt;
+      }
     }
     return sum;
   });
 
+  // POINT-IN-TIME Unscheduled by bucket
+  // Job enters backlog when created (created_at_jobber)
+  // Job exits backlog when scheduled (scheduled_start_at is set)
   const unschedByBucket = bucketStarts.map((bs) => {
-    const be = nextBucketUTC(bs, g).getTime();
+    const bucketEndTs = nextBucketUTC(bs, g).getTime();
     let cnt = 0;
-    for (const j of rawUn) {
-      const dt = safeDate(j.created_at_jobber);
-      if (!dt) continue;
-      if (dt.getTime() < be) cnt += 1;
+    
+    for (const j of jobs) {
+      const createdAt = safeDate(j.created_at_jobber);
+      if (!createdAt) continue;
+      
+      const scheduledAt = safeDate(j.scheduled_start_at);
+      
+      // Job enters backlog when created
+      const enterTs = createdAt.getTime();
+      
+      // Job exits backlog when scheduled
+      const exitTs = scheduledAt ? scheduledAt.getTime() : null;
+      
+      // Is it unscheduled at bucket end?
+      const enteredBeforeBucketEnd = enterTs < bucketEndTs;
+      const exitedBeforeBucketEnd = exitTs && exitTs < bucketEndTs;
+      
+      if (enteredBeforeBucketEnd && !exitedBeforeBucketEnd) {
+        cnt += 1;
+      }
     }
     return cnt;
   });
@@ -1406,7 +1468,7 @@ export default async function DashboardPage({
     leak: bucketStarts.map((bs, i) => {
       const label = labelForBucket(bs, g);
       const v = leakByBucket[i];
-      return { xLabel: label, value: v, tooltip: `${label}: ${money(v)} total leaked quotes` };
+      return { xLabel: label, value: v, tooltip: `${label}: ${money(v)} quote leak balance` };
     }),
     ar15: bucketStarts.map((bs, i) => {
       const label = labelForBucket(bs, g);
@@ -1510,7 +1572,7 @@ export default async function DashboardPage({
     "Jobber URL": r.jobber_url || "",
   }));
 
-  const leakingQuotesExportData = leakCandidates
+  const leakingQuotesExportData = leakCandidatesInRange
     .slice()
     .sort((a: any, b: any) => Number(b.quote_total_cents ?? 0) - Number(a.quote_total_cents ?? 0))
     .slice(0, 10)
@@ -1554,26 +1616,26 @@ export default async function DashboardPage({
       <div className="dashboard-container">
         {/* Header */}
         <header className="dashboard-header animate-in">
-  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-    <svg width="40" height="40" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#7c5cff" />
-          <stop offset="100%" stopColor="#5aa6ff" />
-        </linearGradient>
-      </defs>
-      <circle cx="25" cy="25" r="22" fill="none" stroke="url(#logoGrad)" strokeWidth="3"/>
-      <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#logoGrad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-    <div>
-      <h1 className="text-primary" style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5, margin: 0 }}>
-        {companyName}
-      </h1>
-      <p className="header-subtitle" style={{ fontSize: 13, marginTop: 4 }}>
-        Last sync: <span>{lastSyncPretty}</span> • {currencyCode}
-      </p>
-    </div>
-  </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <svg width="40" height="40" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#7c5cff" />
+                  <stop offset="100%" stopColor="#5aa6ff" />
+                </linearGradient>
+              </defs>
+              <circle cx="25" cy="25" r="22" fill="none" stroke="url(#logoGrad)" strokeWidth="3"/>
+              <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#logoGrad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <div>
+              <h1 className="text-primary" style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5, margin: 0 }}>
+                {companyName}
+              </h1>
+              <p className="header-subtitle" style={{ fontSize: 13, marginTop: 4 }}>
+                Last sync: <span>{lastSyncPretty}</span> • {currencyCode}
+              </p>
+            </div>
+          </div>
 
           <div className="header-actions">
             <SyncButton connectionId={connectionId} />
@@ -1763,7 +1825,7 @@ export default async function DashboardPage({
           <div className="chart-grid" style={{ padding: "0 16px 16px" }}>
             <SparkLine
               title="Quote Leak"
-              subtitle="Cumulative leaked quotes"
+              subtitle="Point-in-time balance"
               points={points.leak}
               formatY={moneyForChart}
               chartType={chartType}
@@ -1771,7 +1833,7 @@ export default async function DashboardPage({
             />
             <SparkLine
               title="AR 15+ Days"
-              subtitle="Cumulative overdue balance"
+              subtitle="Point-in-time balance"
               points={points.ar15}
               formatY={moneyForChart}
               chartType={chartType}
@@ -1779,7 +1841,7 @@ export default async function DashboardPage({
             />
             <SparkLine
               title="Unscheduled"
-              subtitle="Cumulative backlog"
+              subtitle="Point-in-time backlog"
               points={points.unsched}
               formatY={(v) => `${Math.round(v)}`}
               chartType={chartType}
@@ -1803,7 +1865,7 @@ export default async function DashboardPage({
               agedARExportData={agedARExportData}
               unscheduledRows={unscheduledRows}
               unscheduledExportData={unscheduledExportData}
-              leakCandidates={leakCandidates}
+              leakCandidates={leakCandidatesInRange}
               leakingQuotesExportData={leakingQuotesExportData}
               toggleUnscheduledHref={toggleUnscheduledHref}
               minDays={minDays}
@@ -1905,4 +1967,3 @@ function LogoutButton() {
     </form>
   );
 }
-
