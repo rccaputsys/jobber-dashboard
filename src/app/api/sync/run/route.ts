@@ -25,7 +25,6 @@ type InvoiceNode = {
   invoiceNumber?: string | null;
   createdAt?: string | null;
   dueDate?: string | null;
-  paidAt?: string | null;
   updatedAt?: string | null;
   total?: number | null;
   jobberWebUri?: string | null;
@@ -190,7 +189,6 @@ export async function GET(req: Request) {
      invoiceNumber
      createdAt
      dueDate
-     paidAt
      updatedAt
      total
      jobberWebUri
@@ -255,7 +253,11 @@ export async function GET(req: Request) {
   }
 
   // Upsert ALL Invoices (for proper AR tracking with paid dates)
+  // Use updatedAt as paid_at when status is 'paid'
   for (const inv of invoices) {
+    const isPaid = (inv.invoiceStatus || '').toLowerCase() === 'paid';
+    const paidAtValue = isPaid ? inv.updatedAt : null;
+
     const { error } = await supabaseAdmin
       .from("fact_invoices")
       .upsert(
@@ -265,7 +267,7 @@ export async function GET(req: Request) {
           invoice_number: inv.invoiceNumber ?? null,
           created_at_jobber: inv.createdAt ?? null,
           due_at: inv.dueDate ?? null,
-          paid_at: inv.paidAt ?? null,
+          paid_at: paidAtValue,
           updated_at_jobber: inv.updatedAt ?? null,
           total_amount_cents: dollarsToCents(inv.total),
           jobber_url: inv.jobberWebUri ?? null,
