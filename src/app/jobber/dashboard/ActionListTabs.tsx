@@ -107,7 +107,7 @@ export function ActionListTabs({
 
   // Sorted data
   const sortedAR = [...agedARInvoices].sort((a, b) => b.days_overdue - a.days_overdue);
-  const sortedQuotes = [...leakCandidates].sort((a, b) => Number(b.quote_total_cents ?? 0) - Number(a.quote_total_cents ?? 0));
+  const sortedQuotes = [...leakCandidates].sort((a, b) => new Date(a.sent_at ?? 0).getTime() - new Date(b.sent_at ?? 0).getTime());
 
   const ShowMoreButton = ({ 
     currentCount, 
@@ -313,7 +313,7 @@ export function ActionListTabs({
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
             <div>
               <h3 className="text-primary" style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Leaking Quotes</h3>
-              <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>Highest value first</p>
+              <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>Oldest first</p>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               {leakCandidates.length > 0 && (
