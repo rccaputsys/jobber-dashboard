@@ -25,6 +25,7 @@ type InvoiceNode = {
   invoiceNumber?: string | null;
   createdAt?: string | null;
   dueDate?: string | null;
+  paidAt?: string | null;
   updatedAt?: string | null;
   total?: number | null;
   jobberWebUri?: string | null;
@@ -181,7 +182,7 @@ export async function GET(req: Request) {
      total`
   );
 
-  // Fetch all Invoices
+  // Fetch all Invoices (including paid ones for AR tracking)
   const invoiceResult = await fetchAllPages<InvoiceNode>(
     token,
     "invoices",
@@ -189,6 +190,7 @@ export async function GET(req: Request) {
      invoiceNumber
      createdAt
      dueDate
+     paidAt
      updatedAt
      total
      jobberWebUri
@@ -218,12 +220,9 @@ export async function GET(req: Request) {
   const jobs = jobResult.nodes.filter(j => isWithinTwelveMonths(j.createdAt, twelveMonthsAgoMs));
   const quotes = quoteResult.nodes.filter(q => isWithinTwelveMonths(q.createdAt, twelveMonthsAgoMs));
 
-  // Filter invoices to only past_due AND within 12 months
+  // Filter invoices to last 12 months (but keep ALL statuses for AR tracking)
   const invoices = invoiceResult.nodes.filter((inv) => {
-    const status = (inv.invoiceStatus || '').toLowerCase();
-    const isPastDue = status === 'past_due';
-    const isRecent = isWithinTwelveMonths(inv.createdAt, twelveMonthsAgoMs);
-    return isPastDue && isRecent;
+    return isWithinTwelveMonths(inv.createdAt, twelveMonthsAgoMs);
   });
 
   // Log any permission errors (optional)
@@ -255,7 +254,7 @@ export async function GET(req: Request) {
     if (error) throw new Error(`fact_jobs upsert failed: ${error.message}`);
   }
 
-  // Upsert Invoices (only past_due)
+  // Upsert ALL Invoices (for proper AR tracking with paid dates)
   for (const inv of invoices) {
     const { error } = await supabaseAdmin
       .from("fact_invoices")
@@ -266,6 +265,7 @@ export async function GET(req: Request) {
           invoice_number: inv.invoiceNumber ?? null,
           created_at_jobber: inv.createdAt ?? null,
           due_at: inv.dueDate ?? null,
+          paid_at: inv.paidAt ?? null,
           updated_at_jobber: inv.updatedAt ?? null,
           total_amount_cents: dollarsToCents(inv.total),
           jobber_url: inv.jobberWebUri ?? null,
