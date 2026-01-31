@@ -294,7 +294,7 @@ const globalStyles = `
   
   @media (min-width: 1024px) {
     .kpi-grid-secondary {
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 16px;
     }
   }
@@ -1792,6 +1792,20 @@ export default async function DashboardPage({
               {approvedNoJobCount}
             </div>
             <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Quotes to schedule</div>
+          </div>
+
+          <div className="kpi-secondary">
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+              <span style={{ fontSize: 14 }}>✏️</span>
+              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Changes Requested</span>
+            </div>
+            <div className={`kpi-value-medium ${
+              changesRequestedCount > 5 ? "text-critical" : 
+              changesRequestedCount > 2 ? "text-warning" : "text-success"
+            }`}>
+              {changesRequestedCount}
+            </div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Quotes to revise</div>
           </div>
 
           <div className="kpi-secondary">
