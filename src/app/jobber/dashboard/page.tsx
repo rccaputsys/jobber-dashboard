@@ -23,7 +23,7 @@ function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n));
 }
 function pct(x: number) {
-  return (x * 100).toFixed(1) + "%";
+  return Math.round(x * 100) + "%";
 }
 
 function parseISODateOnly(s: string): Date | null {
@@ -1298,8 +1298,8 @@ export default async function DashboardPage({
   const changesRequestedCount = changesRequestedQuotes.length;
 
   // Quote Won % (last 30 days)
-  // Denominator: quotes sent in last 30 days
-  // Numerator: quotes marked won in last 30 days (based on updated_at_jobber)
+  // Numerator: quotes marked won in last 30 days
+  // Denominator: ALL quotes sent in last 30 days (including outstanding)
   const thirtyDaysAgo = addDaysUTC(todayUTC, -30);
   
   const quotesSentLast30Days = quotes.filter((q) => {
@@ -1311,10 +1311,10 @@ export default async function DashboardPage({
   const quotesWonLast30Days = quotes.filter((q) => {
     const st = String(q.quote_status ?? "").toLowerCase().trim();
     if (!statusLooksWon(st)) return false;
-    // Use updated_at_jobber as proxy for when it was marked won
-    const wonAt = safeDate(q.updated_at_jobber);
-    if (!wonAt) return false;
-    return wonAt.getTime() >= thirtyDaysAgo.getTime();
+    // Quote must have been sent in last 30 days
+    const sent = safeDate(q.sent_at);
+    if (!sent) return false;
+    return sent.getTime() >= thirtyDaysAgo.getTime();
   });
   
   const quoteWonPct = quotesSentLast30Days.length > 0 
