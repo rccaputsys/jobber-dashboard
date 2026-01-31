@@ -1,326 +1,98 @@
-﻿// src/app/complete-signup/page.tsx
-"use client";
+﻿// src/app/api/auth/complete-signup/route.ts
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
+import { sendWelcomeEmail } from "@/lib/resend";
 
-import { useState, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+export async function POST(req: Request) {
+  const { email, password, connectionId } = await req.json();
 
-
-function CompleteSignupForm() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const connectionId = searchParams.get("connection_id");
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [agreed, setAgreed] = useState(false);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-
-    if (password !== confirmPassword) {
-      setError("Passwords don't match");
-      return;
-    }
-
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/auth/complete-signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, connectionId }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Signup failed");
-        setLoading(false);
-        return;
-      }
-
-      router.push("/jobber/dashboard");
-    } catch (err) {
-      setError("Something went wrong");
-      setLoading(false);
-    }
+  if (!email || !password) {
+    return NextResponse.json({ error: "Email and password required" }, { status: 400 });
   }
-
-  const isEmailExistsError = error.toLowerCase().includes("already registered") || 
-                              error.toLowerCase().includes("already exists") ||
-                              error.toLowerCase().includes("email already");
 
   if (!connectionId) {
-    return (
-      <div style={styles.card}>
-        <h1 style={styles.title}>Invalid Link</h1>
-        <p style={styles.subtitle}>
-          This signup link is invalid or has expired. Please try again.
-        </p>
-        <a href="/jobber" style={styles.button as any}>
-          See Your Numbers Now →
-        </a>
-      </div>
-    );
+    return NextResponse.json({ error: "Connection ID required" }, { status: 400 });
   }
 
-  return (
-    <div style={styles.card}>
-      <div style={styles.iconWrapper}>
-        <span style={{ fontSize: 32 }}>🎉</span>
-      </div>
-      
-      <h1 style={styles.title}>Jobber Connected!</h1>
-      <p style={styles.subtitle}>
-        Create your AccuInsight login to access your dashboard anytime.
-      </p>
+  // Verify the connection exists and doesn't have a user yet
+  const { data: connection } = await supabaseAdmin
+    .from("jobber_connections")
+    .select("id, user_id")
+    .eq("id", connectionId)
+    .maybeSingle();
 
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <div>
-          <label style={styles.label}>Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={styles.input}
-            placeholder="you@company.com"
-          />
-        </div>
+  if (!connection) {
+    return NextResponse.json({ error: "Invalid connection" }, { status: 400 });
+  }
 
-        <div>
-          <label style={styles.label}>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={8}
-            style={styles.input}
-            placeholder="At least 8 characters"
-          />
-        </div>
+  if (connection.user_id) {
+    return NextResponse.json({ error: "Email already registered. Please log in." }, { status: 400 });
+  }
 
-        <div>
-          <label style={styles.label}>Confirm Password</label>
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-            minLength={8}
-            style={styles.input}
-            placeholder="Confirm your password"
-          />
-        </div>
+  // Create the user with email and password
+  const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
 
-        {error && (
-          <div style={styles.error}>
-            {error}
-            {isEmailExistsError && (
-              <a href="/login" style={styles.loginLink}>
-                Go to Login →
-              </a>
-            )}
-          </div>
-        )}
+  if (createError || !newUser.user) {
+    // Check if user already exists
+    if (createError?.message?.includes("already been registered")) {
+      return NextResponse.json({ error: "Email already registered. Please log in." }, { status: 400 });
+    }
+    return NextResponse.json({ error: createError?.message || "Failed to create account" }, { status: 400 });
+  }
 
-        <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13, color: "rgba(234,241,255,0.7)", cursor: "pointer" }}>
-          <input
-            type="checkbox"
-            checked={agreed}
-            onChange={(e) => setAgreed(e.target.checked)}
-            required
-            style={{ marginTop: 2, accentColor: "#7c5cff" }}
-          />
-          <span>
-            I agree to the{" "}
-            <a href="/terms" target="_blank" style={{ color: "#a5b4fc", textDecoration: "none" }}>Terms of Service</a>
-            {" "}and{" "}
-            <a href="/privacy" target="_blank" style={{ color: "#a5b4fc", textDecoration: "none" }}>Privacy Policy</a>
-          </span>
-        </label>
+  // Link the user to the connection
+  const { error: linkError } = await supabaseAdmin
+    .from("jobber_connections")
+    .update({ user_id: newUser.user.id })
+    .eq("id", connectionId);
 
-        <button type="submit" disabled={loading || !agreed} style={{
-          ...styles.button,
-          opacity: agreed ? 1 : 0.5,
-          cursor: agreed ? "pointer" : "not-allowed",
-        }}>
-          {loading ? "Creating account..." : "Create Account & View Dashboard"}
-        </button>
-      </form>
+  if (linkError) {
+    return NextResponse.json({ error: "Failed to link account" }, { status: 500 });
+  }
 
-      <p style={styles.loginPrompt}>
-        Already have an account?{" "}
-        <a href="/login" style={styles.loginLinkAlt}>Log in</a>
-      </p>
-
-      <div style={styles.features}>
-        <div style={styles.feature}>
-          <span>✓</span> 14-day free trial
-        </div>
-        <div style={styles.feature}>
-          <span>✓</span> No credit card required
-        </div>
-        <div style={styles.feature}>
-          <span>✓</span> Cancel anytime
-        </div>
-      </div>
-
-      <p style={{ marginTop: 24, fontSize: 12, color: "rgba(234,241,255,0.5)", textAlign: "center" }}>
-        By signing up, you agree to our{" "}
-        <a href="/terms" style={{ color: "#a5b4fc", textDecoration: "none" }}>Terms of Service</a>
-        {" "}and{" "}
-        <a href="/privacy" style={{ color: "#a5b4fc", textDecoration: "none" }}>Privacy Policy</a>
-      </p>
-    </div>
+  // Sign in the user
+  const cookieStore = await cookies();
+  
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        },
+      },
+    }
   );
-}
 
-export default function CompleteSignupPage() {
-  return (
-    <main style={styles.page}>
-      <Suspense fallback={<div style={styles.card}>Loading...</div>}>
-        <CompleteSignupForm />
-      </Suspense>
-    </main>
-  );
-}
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-const styles: { [key: string]: React.CSSProperties } = {
-  page: {
-    minHeight: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: `
-      radial-gradient(ellipse 80% 60% at 50% -20%, rgba(124,92,255,0.15), transparent),
-      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(90,166,255,0.1), transparent),
-      linear-gradient(180deg, #060811 0%, #0a1020 100%)
-    `,
-    padding: 20,
-  },
-  card: {
-    width: "100%",
-    maxWidth: 420,
-    background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)",
-    border: "1px solid rgba(255,255,255,0.10)",
-    borderRadius: 24,
-    padding: "40px 32px",
-    boxShadow: "0 32px 64px rgba(0,0,0,0.4)",
-  },
-  iconWrapper: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    background: "linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.05))",
-    border: "1px solid rgba(16,185,129,0.3)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    margin: "0 auto 20px",
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: 800,
-    color: "#EAF1FF",
-    marginBottom: 8,
-    textAlign: "center",
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "rgba(234,241,255,0.6)",
-    marginBottom: 28,
-    textAlign: "center",
-    lineHeight: 1.5,
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 18,
-  },
-  label: {
-    display: "block",
-    fontSize: 13,
-    fontWeight: 600,
-    color: "rgba(234,241,255,0.8)",
-    marginBottom: 8,
-  },
-  input: {
-    width: "100%",
-    padding: "14px 16px",
-    fontSize: 15,
-    borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(0,0,0,0.3)",
-    color: "#EAF1FF",
-    outline: "none",
-    transition: "border-color 0.2s, box-shadow 0.2s",
-  },
-  button: {
-    marginTop: 8,
-    padding: "16px 24px",
-    fontSize: 15,
-    fontWeight: 700,
-    borderRadius: 14,
-    border: "none",
-    background: "linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95))",
-    color: "white",
-    cursor: "pointer",
-    boxShadow: "0 8px 24px rgba(90,166,255,0.25)",
-    transition: "transform 0.2s, box-shadow 0.2s",
-    textAlign: "center",
-    textDecoration: "none",
-    display: "block",
-  },
-  error: {
-    padding: "12px 16px",
-    borderRadius: 10,
-    background: "rgba(239,68,68,0.15)",
-    border: "1px solid rgba(239,68,68,0.3)",
-    color: "#fca5a5",
-    fontSize: 13,
-  },
-  loginLink: {
-    display: "block",
-    marginTop: 8,
-    color: "#a5b4fc",
-    textDecoration: "none",
-    fontWeight: 600,
-  },
-  loginPrompt: {
-    marginTop: 20,
-    fontSize: 14,
-    color: "rgba(234,241,255,0.6)",
-    textAlign: "center",
-  },
-  loginLinkAlt: {
-    color: "#a5b4fc",
-    textDecoration: "none",
-    fontWeight: 600,
-  },
-  features: {
-    display: "flex",
-    justifyContent: "center",
-    gap: 16,
-    marginTop: 24,
-    flexWrap: "wrap",
-  },
-  feature: {
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-    fontSize: 12,
-    color: "rgba(234,241,255,0.5)",
-  },
-};
+  if (signInError) {
+    return NextResponse.json({ error: "Account created but sign in failed. Please log in." }, { status: 500 });
+  }
+
+  // Send welcome email (don't block signup if it fails)
+  sendWelcomeEmail(email).catch((err) => {
+    console.error("Failed to send welcome email:", err);
+  });
+
+  // Trigger initial sync
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  fetch(`${appUrl}/api/sync/run?connection_id=${connectionId}`).catch(() => {});
+
+  return NextResponse.json({ success: true });
+}
