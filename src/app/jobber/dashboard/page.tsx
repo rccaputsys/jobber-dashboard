@@ -1298,26 +1298,27 @@ export default async function DashboardPage({
   const changesRequestedCount = changesRequestedQuotes.length;
 
   // Quote Won % (last 30 days)
+  // Denominator: quotes sent in last 30 days
+  // Numerator: quotes marked won in last 30 days (based on updated_at_jobber)
   const thirtyDaysAgo = addDaysUTC(todayUTC, -30);
-  const quotesLast30Days = quotes.filter((q) => {
+  
+  const quotesSentLast30Days = quotes.filter((q) => {
     const sent = safeDate(q.sent_at);
     if (!sent) return false;
     return sent.getTime() >= thirtyDaysAgo.getTime();
   });
   
-  const wonQuotesLast30Days = quotesLast30Days.filter((q) => {
+  const quotesWonLast30Days = quotes.filter((q) => {
     const st = String(q.quote_status ?? "").toLowerCase().trim();
-    return statusLooksWon(st);
+    if (!statusLooksWon(st)) return false;
+    // Use updated_at_jobber as proxy for when it was marked won
+    const wonAt = safeDate(q.updated_at_jobber);
+    if (!wonAt) return false;
+    return wonAt.getTime() >= thirtyDaysAgo.getTime();
   });
   
-  const lostQuotesLast30Days = quotesLast30Days.filter((q) => {
-    const st = String(q.quote_status ?? "").toLowerCase().trim();
-    return statusLooksLost(st);
-  });
-  
-  const decidedQuotesLast30Days = wonQuotesLast30Days.length + lostQuotesLast30Days.length;
-  const quoteWonPct = decidedQuotesLast30Days > 0 
-    ? wonQuotesLast30Days.length / decidedQuotesLast30Days 
+  const quoteWonPct = quotesSentLast30Days.length > 0 
+    ? quotesWonLast30Days.length / quotesSentLast30Days.length 
     : 0;
 
   // Aged AR - only unpaid invoices
@@ -1769,7 +1770,7 @@ export default async function DashboardPage({
             }`}>
               {pct(quoteWonPct)}
             </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Last 30 days • {wonQuotesLast30Days.length}/{decidedQuotesLast30Days} won</div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Last 30 days • {quotesWonLast30Days.length} won / {quotesSentLast30Days.length} sent</div>
           </div>
 
           <div className="kpi-secondary">
