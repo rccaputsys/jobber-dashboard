@@ -1297,6 +1297,13 @@ export default async function DashboardPage({
   });
   const changesRequestedCount = changesRequestedQuotes.length;
 
+  // Quotes approved but no job created yet (not converted)
+  const approvedNoJobQuotes = quotes.filter((q) => {
+    const st = String(q.quote_status ?? "").toLowerCase().trim();
+    return st === "approved";
+  });
+  const approvedNoJobCount = approvedNoJobQuotes.length;
+
   // Quote Won % (last 30 days)
   // Numerator: quotes marked won in last 30 days
   // Denominator: ALL quotes sent in last 30 days (including outstanding)
@@ -1761,20 +1768,6 @@ export default async function DashboardPage({
         <div className="kpi-grid-secondary animate-in delay-3" style={{ marginTop: 16 }}>
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-              <span style={{ fontSize: 14 }}>🎯</span>
-              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Quote Won %</span>
-            </div>
-            <div className={`kpi-value-medium ${
-              quoteWonPct >= 0.30 ? "text-success" : 
-              quoteWonPct >= 0.20 ? "text-warning" : "text-critical"
-            }`}>
-              {pct(quoteWonPct)}
-            </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Last 30 days • {quotesWonLast30Days.length} won / {quotesSentLast30Days.length} sent</div>
-          </div>
-
-          <div className="kpi-secondary">
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
               <span style={{ fontSize: 14 }}>📦</span>
               <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Unscheduled</span>
             </div>
@@ -1789,16 +1782,30 @@ export default async function DashboardPage({
 
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-              <span style={{ fontSize: 14 }}>✏️</span>
-              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Changes Requested</span>
+              <span style={{ fontSize: 14 }}>✅</span>
+              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Approved, No Job</span>
             </div>
             <div className={`kpi-value-medium ${
-              changesRequestedCount > 5 ? "text-critical" : 
-              changesRequestedCount > 2 ? "text-warning" : "text-success"
+              approvedNoJobCount > 5 ? "text-critical" : 
+              approvedNoJobCount > 2 ? "text-warning" : "text-success"
             }`}>
-              {changesRequestedCount}
+              {approvedNoJobCount}
             </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Quotes to revise</div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Quotes to schedule</div>
+          </div>
+
+          <div className="kpi-secondary">
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+              <span style={{ fontSize: 14 }}>🎯</span>
+              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Quote Won %</span>
+            </div>
+            <div className={`kpi-value-medium ${
+              quoteWonPct >= 0.30 ? "text-success" : 
+              quoteWonPct >= 0.20 ? "text-warning" : "text-critical"
+            }`}>
+              {pct(quoteWonPct)}
+            </div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Last 30 days • {quotesWonLast30Days.length} won / {quotesSentLast30Days.length} sent</div>
           </div>
 
         </div>
