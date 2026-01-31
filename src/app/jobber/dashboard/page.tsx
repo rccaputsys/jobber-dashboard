@@ -140,6 +140,11 @@ function statusLooksWon(status: string) {
   return s.includes("APPROV") || s.includes("ACCEPT") || s.includes("WON") || s.includes("CONVERT") || s.includes("BOOK");
 }
 
+function statusLooksLost(status: string) {
+  const s = status.toUpperCase();
+  return s.includes("REJECTED") || s.includes("DECLINED") || s.includes("LOST") || s.includes("EXPIRED") || s.includes("ARCHIVED");
+}
+
 /* ----------------------------------- Global Styles ----------------------------------- */
 const globalStyles = `
   @keyframes fadeInUp {
@@ -1242,34 +1247,8 @@ export default async function DashboardPage({
   const arScore = clamp(riskPct * 120, 0, 100);
   const arSev = severityFromScore(arScore);
 
-  // Capacity
-  const scheduledStarts = jobs.map((j) => j.scheduled_start_at).filter(Boolean) as string[];
+  // Unscheduled count
   const unscheduledCount = jobs.filter((j) => !j.scheduled_start_at).length;
-
-  const daysBookedAhead = (() => {
-    if (!scheduledStarts.length) return 0;
-    const maxTs = Math.max(...scheduledStarts.map((x) => new Date(x).getTime()));
-    const days = (maxTs - Date.now()) / 86400000;
-    return Math.max(0, Math.round(days));
-  })();
-
-  const TARGET_LOW = 7;
-  const TARGET_HIGH = 14;
-  const underbooked = daysBookedAhead < TARGET_LOW;
-  const balanced = daysBookedAhead >= TARGET_LOW && daysBookedAhead <= TARGET_HIGH;
-  const overbookedMild = daysBookedAhead > TARGET_HIGH && daysBookedAhead <= 21;
-  const overbookedHard = daysBookedAhead > 21;
-
-  const capScore = clamp(
-    (underbooked ? (TARGET_LOW - daysBookedAhead) * 14 : 0) + 
-    (overbookedMild ? 60 : 0) +
-    (overbookedHard ? 90 : 0) +
-    clamp(unscheduledCount * 4, 0, 30),
-    0,
-    100
-  );
-  const capSev = severityFromScore(capScore);
-  const capState = underbooked ? "Underbooked" : balanced ? "Balanced" : "Overbooked";
 
   // Completed & profitability
   const completedDateKeys = ["completed_at_jobber", "completed_at", "completedAt", "completedAtJobber"];
@@ -1318,6 +1297,29 @@ export default async function DashboardPage({
   });
   const changesRequestedCount = changesRequestedQuotes.length;
 
+  // Quote Won % (last 30 days)
+  const thirtyDaysAgo = addDaysUTC(todayUTC, -30);
+  const quotesLast30Days = quotes.filter((q) => {
+    const sent = safeDate(q.sent_at);
+    if (!sent) return false;
+    return sent.getTime() >= thirtyDaysAgo.getTime();
+  });
+  
+  const wonQuotesLast30Days = quotesLast30Days.filter((q) => {
+    const st = String(q.quote_status ?? "").toLowerCase().trim();
+    return statusLooksWon(st);
+  });
+  
+  const lostQuotesLast30Days = quotesLast30Days.filter((q) => {
+    const st = String(q.quote_status ?? "").toLowerCase().trim();
+    return statusLooksLost(st);
+  });
+  
+  const decidedQuotesLast30Days = wonQuotesLast30Days.length + lostQuotesLast30Days.length;
+  const quoteWonPct = decidedQuotesLast30Days > 0 
+    ? wonQuotesLast30Days.length / decidedQuotesLast30Days 
+    : 0;
+
   // Aged AR - only unpaid invoices
   const agedARInvoices = unpaidInvoices
     .filter((inv: any) => {
@@ -1335,6 +1337,29 @@ export default async function DashboardPage({
       jobber_url: inv.jobber_url || (inv.jobber_invoice_id ? `https://secure.getjobber.com/invoices/${inv.jobber_invoice_id}` : null),
     }));
 
+  // Invoices hitting 7 days overdue this week (for recommendations)
+  const sevenDaysFromNow = addDaysUTC(todayUTC, 7);
+  const invoicesHitting7DaysThisWeek = unpaidInvoices.filter((inv: any) => {
+    const due = safeDate(inv.due_at);
+    if (!due) return false;
+    const daysOverdue = Math.round((nowMs - due.getTime()) / 86400000);
+    // Currently 0-6 days overdue, will hit 7 within next 7 days
+    return daysOverdue >= 0 && daysOverdue < 7;
+  });
+
+  // Unscheduled jobs older than 7 days (for recommendations)
+  const ageDays = (ts: string | null) => {
+    if (!ts) return 0;
+    const d = safeDate(ts);
+    if (!d) return 0;
+    return Math.max(0, Math.round((Date.now() - d.getTime()) / 86400000));
+  };
+
+  const unscheduledOlderThan7Days = jobs.filter((j) => {
+    if (j.scheduled_start_at) return false;
+    return ageDays(j.created_at_jobber) >= 7;
+  });
+
   // Unscheduled list
   const { data: unsched } = await supabaseAdmin
     .from("fact_jobs")
@@ -1345,13 +1370,6 @@ export default async function DashboardPage({
     .limit(200);
 
   const rawUn = (unsched ?? []) as any[];
-
-  const ageDays = (ts: string | null) => {
-    if (!ts) return 0;
-    const d = safeDate(ts);
-    if (!d) return 0;
-    return Math.max(0, Math.round((Date.now() - d.getTime()) / 86400000));
-  };
 
   let unscheduledRows = minDays > 0 ? rawUn.filter((r) => ageDays(r.created_at_jobber) >= minDays) : rawUn;
   unscheduledRows = unscheduledRows.slice(0, 10);
@@ -1504,23 +1522,21 @@ export default async function DashboardPage({
     }
   }
 
-  if (daysBookedAhead < 5) {
+  // Invoices hitting 7 days overdue this week
+  if (invoicesHitting7DaysThisWeek.length > 0) {
     recommendations.push({
-      icon: "🔴",
-      text: `Only ${daysBookedAhead} days scheduled ahead. Book ${Math.min(5, unscheduledCount)} jobs from backlog by Friday.`,
-      priority: "high"
-    });
-  } else if (daysBookedAhead < 7) {
-    recommendations.push({
-      icon: "📅",
-      text: `${daysBookedAhead} days booked (target: 7-14). Schedule ${Math.min(3, unscheduledCount)} more jobs this week.`,
+      icon: "📧",
+      text: `${invoicesHitting7DaysThisWeek.length} invoice${invoicesHitting7DaysThisWeek.length > 1 ? 's' : ''} hitting 7 days overdue this week - send reminders now.`,
       priority: "medium"
     });
-  } else if (daysBookedAhead > 21) {
+  }
+
+  // Unscheduled jobs older than 7 days
+  if (unscheduledOlderThan7Days.length > 0) {
     recommendations.push({
-      icon: "⚠️",
-      text: `${daysBookedAhead} days ahead (overbooked). Push lower-margin work or add crew capacity.`,
-      priority: "medium"
+      icon: "📦",
+      text: `${unscheduledOlderThan7Days.length} unscheduled job${unscheduledOlderThan7Days.length > 1 ? 's' : ''} older than 7 days - risk of customer churn.`,
+      priority: unscheduledOlderThan7Days.length > 5 ? "high" : "medium"
     });
   }
 
@@ -1660,24 +1676,6 @@ export default async function DashboardPage({
               AR Risk <strong>{pct(riskPct)}</strong>
             </div>
 
-            <div className="status-pill" style={{
-              borderRadius: 10,
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              background: sevBg(capSev),
-              border: `1.5px solid ${sevColor(capSev)}`,
-            }}>
-              <span style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background: sevColor(capSev),
-              }} />
-              {capState}
-            </div>
-
             <SubscriptionStatus billingStatus={billingStatus} trialEndsAt={trialEndsAt} />
             {subscriptionActive ? <ManageSubscriptionButton /> : <SubscribeButton />}
             <LogoutButton />
@@ -1762,17 +1760,16 @@ export default async function DashboardPage({
         <div className="kpi-grid-secondary animate-in delay-3" style={{ marginTop: 16 }}>
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-              <span style={{ fontSize: 14 }}>📅</span>
-              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Days Scheduled Ahead</span>
+              <span style={{ fontSize: 14 }}>🎯</span>
+              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Quote Won %</span>
             </div>
             <div className={`kpi-value-medium ${
-              daysBookedAhead < TARGET_LOW ? "text-critical" : 
-              daysBookedAhead > 21 ? "text-critical" :
-              daysBookedAhead > TARGET_HIGH ? "text-warning" : "text-success"
+              quoteWonPct >= 0.30 ? "text-success" : 
+              quoteWonPct >= 0.20 ? "text-warning" : "text-critical"
             }`}>
-              {daysBookedAhead}
+              {pct(quoteWonPct)}
             </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Target: {TARGET_LOW}-{TARGET_HIGH}</div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Last 30 days • {wonQuotesLast30Days.length}/{decidedQuotesLast30Days} won</div>
           </div>
 
           <div className="kpi-secondary">
