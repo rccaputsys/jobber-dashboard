@@ -76,7 +76,7 @@ export default function TermsOfService() {
             marginBottom: 32,
           }}
         >
-          ← Back to OwnerView
+          ← Back to AccuInsight by OwnerView
         </Link>
 
         <h1 style={{ fontSize: 36, fontWeight: 800, marginBottom: 8 }}>
@@ -91,7 +91,7 @@ export default function TermsOfService() {
           <section>
             <h2>Agreement to Terms</h2>
             <p>
-              By accessing or using OwnerView ("Service"), you agree to be bound
+              By accessing or using AccuInsight by OwnerView ("Service"), you agree to be bound
               by these Terms of Service ("Terms"). If you do not agree to these Terms,
               you may not use the Service.
             </p>
@@ -104,7 +104,7 @@ export default function TermsOfService() {
           <section>
             <h2>Description of the Service</h2>
             <p>
-              OwnerView provides business analytics and dashboards derived from
+              AccuInsight provides business analytics and dashboards derived from
               third-party services, including Jobber, to help business owners
               understand and manage their operations more effectively.
             </p>

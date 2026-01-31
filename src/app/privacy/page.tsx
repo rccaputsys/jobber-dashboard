@@ -69,7 +69,7 @@ export default function PrivacyPolicy() {
             marginBottom: 32,
           }}
         >
-          ← Back to OwnerView
+          ← Back to AccuInsight by OwnerView
         </Link>
 
         <h1 style={{ fontSize: 36, fontWeight: 800, marginBottom: 8 }}>
@@ -151,7 +151,7 @@ export default function PrivacyPolicy() {
             <p>
               We may use your email address to send product updates, feature
               announcements, educational content, and other communications
-              related to OwnerView.
+              related to AccuInsight and OwnerView.
             </p>
             <p>
               You may opt out of marketing emails at any time by:
