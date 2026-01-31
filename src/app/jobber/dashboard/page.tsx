@@ -1758,7 +1758,7 @@ export default async function DashboardPage({
                 {money(leakDollars)}
               </div>
               <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
-                {leakCount} quotes not won in range
+                Quotes outstanding and not won
               </div>
             </div>
           </div>
@@ -1766,34 +1766,6 @@ export default async function DashboardPage({
 
         {/* Secondary KPIs */}
         <div className="kpi-grid-secondary animate-in delay-3" style={{ marginTop: 16 }}>
-          <div className="kpi-secondary">
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-              <span style={{ fontSize: 14 }}>📦</span>
-              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Unscheduled</span>
-            </div>
-            <div className={`kpi-value-medium ${
-              unscheduledCount > 10 ? "text-critical" : 
-              unscheduledCount > 5 ? "text-warning" : "text-success"
-            }`}>
-              {unscheduledCount}
-            </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Jobs in backlog</div>
-          </div>
-
-          <div className="kpi-secondary">
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-              <span style={{ fontSize: 14 }}>✅</span>
-              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Approved, No Job</span>
-            </div>
-            <div className={`kpi-value-medium ${
-              approvedNoJobCount > 5 ? "text-critical" : 
-              approvedNoJobCount > 2 ? "text-warning" : "text-success"
-            }`}>
-              {approvedNoJobCount}
-            </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Quotes to schedule</div>
-          </div>
-
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
               <span style={{ fontSize: 14 }}>✏️</span>
@@ -1806,6 +1778,34 @@ export default async function DashboardPage({
               {changesRequestedCount}
             </div>
             <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Quotes to revise</div>
+          </div>
+
+          <div className="kpi-secondary">
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+              <span style={{ fontSize: 14 }}>✅</span>
+              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Approved No Job Scheduled</span>
+            </div>
+            <div className={`kpi-value-medium ${
+              approvedNoJobCount > 5 ? "text-critical" : 
+              approvedNoJobCount > 2 ? "text-warning" : "text-success"
+            }`}>
+              {approvedNoJobCount}
+            </div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Quotes to schedule</div>
+          </div>
+
+          <div className="kpi-secondary">
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+              <span style={{ fontSize: 14 }}>📦</span>
+              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Unscheduled</span>
+            </div>
+            <div className={`kpi-value-medium ${
+              unscheduledCount > 10 ? "text-critical" : 
+              unscheduledCount > 5 ? "text-warning" : "text-success"
+            }`}>
+              {unscheduledCount}
+            </div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Jobs in backlog</div>
           </div>
 
           <div className="kpi-secondary">
