@@ -4,6 +4,20 @@ import { stripe } from "@/lib/stripe";
 import { getUser } from "@/lib/supabaseAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+// ============================================
+// PRICING CONFIGURATION
+// ============================================
+// When ready to raise prices:
+// 1. Create new price in Stripe ($49/mo)
+// 2. Replace CURRENT_PRICE_ID with the new price ID
+// 3. Existing subscribers stay on their original price automatically
+// ============================================
+
+const FOUNDING_PRICE_ID = "price_1SrjmhRjFeoAh97X3sJL3RC0"; // $29/mo - founding members
+const STANDARD_PRICE_ID = "price_1SvmInRjFeoAh97X6lspqnOJ"; // $49/mo - standard pricing
+
+const CURRENT_PRICE_ID = FOUNDING_PRICE_ID; // <-- Change this when ready to raise prices
+
 export async function POST(req: Request) {
   const user = await getUser();
 
@@ -52,7 +66,7 @@ export async function POST(req: Request) {
     payment_method_types: ["card"],
     line_items: [
       {
-        price: "price_1SrjmhRjFeoAh97X3sJL3RC0", // Your $29/month price ID
+        price: CURRENT_PRICE_ID,
         quantity: 1,
       },
     ],
