@@ -537,10 +537,13 @@ const globalStyles = `
     background: linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95));
     border: 1px solid rgba(255,255,255,0.2);
     box-shadow: 0 8px 24px rgba(90,166,255,0.25);
+    transition: all 0.2s ease;
   }
   
-  .btn-primary:hover {
-    box-shadow: 0 12px 32px rgba(90,166,255,0.35);
+   .btn-primary:hover {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    box-shadow: none;
     transform: translateY(-1px);
   }
   
@@ -748,9 +751,10 @@ const globalStyles = `
     transform: translateY(-1px);
   }
   
-  html[data-theme="light"] .btn-primary:hover {
-    background: linear-gradient(135deg, #8c6cff, #6ab6ff) !important;
-    color: #ffffff !important;
+ html[data-theme="light"] .btn-primary:hover {
+    background: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+    color: #334155 !important;
   }
   
   html[data-theme="light"] .btn-muted {

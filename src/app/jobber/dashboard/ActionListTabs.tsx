@@ -87,8 +87,6 @@ export function ActionListTabs({
   unscheduledExportData,
   leakCandidates,
   leakingQuotesExportData,
-  toggleUnscheduledHref,
-  minDays,
   currencyCode,
 }: Props) {
   const [activeTab, setActiveTab] = useState<"ar" | "unscheduled" | "quotes">("ar");
@@ -233,9 +231,6 @@ export function ActionListTabs({
               <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>Oldest first</p>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <a href={toggleUnscheduledHref} className="btn">
-                {minDays >= 7 ? "Show all" : "7+ days only"}
-              </a>
               {unscheduledRows.length > 0 && (
                 <ExportCSV data={unscheduledExportData} filename="unscheduled-jobs" />
               )}
