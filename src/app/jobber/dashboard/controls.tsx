@@ -85,181 +85,171 @@ export function Controls({ onLoadingChange }: { onLoadingChange?: (loading: bool
   }
 
   const rangeOptions = [
-    { key: "7d", label: "7D" },
-    { key: "30d", label: "30D" },
-    { key: "8w", label: "8W" },
-    { key: "90d", label: "90D" },
-    { key: "ytd", label: "YTD" },
+    { key: "7d", label: "7 Days" },
+    { key: "30d", label: "30 Days" },
+    { key: "8w", label: "8 Weeks" },
+    { key: "90d", label: "90 Days" },
+    { key: "ytd", label: "Year" },
   ];
 
   const bucketOptions = [
-    { key: "day", label: "D" },
-    { key: "week", label: "W" },
-    { key: "month", label: "M" },
-    { key: "quarter", label: "Q" },
+    { key: "day", label: "Daily" },
+    { key: "week", label: "Weekly" },
+    { key: "month", label: "Monthly" },
+    { key: "quarter", label: "Quarterly" },
   ];
 
+  const chartOptions = [
+    { key: "line", label: "Line" },
+    { key: "bar", label: "Bar" },
+  ];
+
+  // Premium button styles
   const pillStyle = (active: boolean, hovered: boolean): React.CSSProperties => ({
-    padding: "6px 10px",
-    borderRadius: 8,
+    padding: "8px 14px",
+    borderRadius: 10,
     border: "none",
     background: active
       ? "linear-gradient(135deg, #7c5cff, #5aa6ff)"
       : hovered
-      ? isLight ? "rgba(90,166,255,0.12)" : "rgba(255,255,255,0.12)"
+      ? isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)"
       : "transparent",
-    color: active ? "#fff" : isLight ? "#334155" : "rgba(255,255,255,0.8)",
-    fontSize: 12,
+    color: active ? "#fff" : isLight ? "#334155" : "rgba(255,255,255,0.85)",
+    fontSize: 13,
     fontWeight: 600,
     cursor: "pointer",
     transition: "all 0.15s ease",
+    boxShadow: active ? "0 4px 12px rgba(124,92,255,0.3)" : "none",
   });
 
   const segmentStyle = (active: boolean, hovered: boolean): React.CSSProperties => ({
-    padding: "5px 10px",
+    padding: "7px 12px",
     border: "none",
     background: active
-      ? isLight ? "#fff" : "rgba(255,255,255,0.15)"
+      ? isLight ? "#ffffff" : "rgba(255,255,255,0.12)"
       : "transparent",
     color: active 
-      ? isLight ? "#2563eb" : "#5aa6ff"
+      ? isLight ? "#7c5cff" : "#a78bfa"
       : hovered
       ? isLight ? "#334155" : "#fff"
-      : isLight ? "#64748b" : "rgba(255,255,255,0.5)",
-    fontSize: 12,
+      : isLight ? "#64748b" : "rgba(255,255,255,0.6)",
+    fontSize: 13,
     fontWeight: 600,
     cursor: "pointer",
     transition: "all 0.15s ease",
-    borderRadius: 6,
-    boxShadow: active ? (isLight ? "0 1px 4px rgba(0,0,0,0.08)" : "0 1px 4px rgba(0,0,0,0.3)") : "none",
+    borderRadius: 8,
+    boxShadow: active ? (isLight ? "0 2px 8px rgba(0,0,0,0.06)" : "0 2px 8px rgba(0,0,0,0.2)") : "none",
   });
 
-  const iconBtnStyle = (active: boolean, hovered: boolean): React.CSSProperties => ({
-    padding: "5px 8px",
-    border: "none",
-    background: active
-      ? isLight ? "#fff" : "rgba(255,255,255,0.15)"
-      : "transparent",
-    color: active 
-      ? isLight ? "#2563eb" : "#5aa6ff"
-      : hovered
-      ? isLight ? "#334155" : "#fff"
-      : isLight ? "#64748b" : "rgba(255,255,255,0.5)",
-    fontSize: 14,
-    cursor: "pointer",
-    transition: "all 0.15s ease",
-    borderRadius: 6,
-    boxShadow: active ? (isLight ? "0 1px 4px rgba(0,0,0,0.08)" : "0 1px 4px rgba(0,0,0,0.3)") : "none",
+  const labelStyle: React.CSSProperties = {
+    fontSize: 11,
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    color: isLight ? "#94a3b8" : "rgba(255,255,255,0.4)",
+    marginRight: 10,
+    whiteSpace: "nowrap",
+  };
+
+  const groupStyle: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
-  });
+  };
+
+  const pillGroupStyle: React.CSSProperties = {
+    display: "flex",
+    gap: 4,
+    background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.05)",
+    borderRadius: 12,
+    padding: 4,
+  };
 
   return (
     <div>
-      {/* Single row of controls */}
+      {/* Main Controls Row */}
       <div style={{ 
         display: "flex", 
         flexWrap: "wrap", 
-        gap: 8, 
+        gap: 16, 
         alignItems: "center",
       }}>
-        {/* Range pills */}
-        <div style={{ 
-          display: "flex", 
-          gap: 2,
-          background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.06)",
-          borderRadius: 10,
-          padding: 3,
-        }}>
-          {rangeOptions.map((opt) => (
+        {/* Time Range */}
+        <div style={groupStyle}>
+          <span style={labelStyle}>Range</span>
+          <div style={pillGroupStyle}>
+            {rangeOptions.map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => setParams({ range: opt.key, start: null, end: null })}
+                onMouseEnter={() => setHoveredButton(`range-${opt.key}`)}
+                onMouseLeave={() => setHoveredButton(null)}
+                style={pillStyle(rangePreset === opt.key, hoveredButton === `range-${opt.key}`)}
+              >
+                {opt.label}
+              </button>
+            ))}
             <button
-              key={opt.key}
-              onClick={() => setParams({ range: opt.key, start: null, end: null })}
-              onMouseEnter={() => setHoveredButton(`range-${opt.key}`)}
+              onClick={() => setShowCustom(!showCustom)}
+              onMouseEnter={() => setHoveredButton("custom")}
               onMouseLeave={() => setHoveredButton(null)}
-              style={pillStyle(rangePreset === opt.key, hoveredButton === `range-${opt.key}`)}
+              style={{
+                ...pillStyle(rangePreset === "custom" || showCustom, hoveredButton === "custom"),
+                padding: "8px 12px",
+              }}
             >
-              {opt.label}
+              Custom
             </button>
-          ))}
-          <button
-            onClick={() => setShowCustom(!showCustom)}
-            onMouseEnter={() => setHoveredButton("custom")}
-            onMouseLeave={() => setHoveredButton(null)}
-            style={{
-              ...pillStyle(rangePreset === "custom" || showCustom, hoveredButton === "custom"),
-              fontSize: 14,
-              padding: "5px 8px",
-            }}
-            title="Custom date range"
-          >
-            📅
-          </button>
+          </div>
         </div>
 
         {/* Divider */}
         <div style={{ 
           width: 1, 
-          height: 24, 
+          height: 32, 
           background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)",
         }} />
 
-        {/* Bucket selector */}
-        <div style={{ 
-          display: "flex", 
-          gap: 2,
-          background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.06)",
-          borderRadius: 10,
-          padding: 3,
-        }}>
-          {bucketOptions.map((opt) => (
-            <button
-              key={opt.key}
-              onClick={() => setParams({ g: opt.key })}
-              onMouseEnter={() => setHoveredButton(`bucket-${opt.key}`)}
-              onMouseLeave={() => setHoveredButton(null)}
-              style={segmentStyle(g === opt.key, hoveredButton === `bucket-${opt.key}`)}
-              title={opt.key === "day" ? "Daily" : opt.key === "week" ? "Weekly" : opt.key === "month" ? "Monthly" : "Quarterly"}
-            >
-              {opt.label}
-            </button>
-          ))}
+        {/* Group By */}
+        <div style={groupStyle}>
+          <span style={labelStyle}>Group By</span>
+          <div style={pillGroupStyle}>
+            {bucketOptions.map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => setParams({ g: opt.key })}
+                onMouseEnter={() => setHoveredButton(`bucket-${opt.key}`)}
+                onMouseLeave={() => setHoveredButton(null)}
+                style={segmentStyle(g === opt.key, hoveredButton === `bucket-${opt.key}`)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Divider */}
         <div style={{ 
           width: 1, 
-          height: 24, 
+          height: 32, 
           background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)",
         }} />
 
-        {/* Chart type */}
-        <div style={{ 
-          display: "flex", 
-          gap: 2,
-          background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.06)",
-          borderRadius: 10,
-          padding: 3,
-        }}>
-          <button
-            onClick={() => setParams({ chart: "line" })}
-            onMouseEnter={() => setHoveredButton("chart-line")}
-            onMouseLeave={() => setHoveredButton(null)}
-            style={iconBtnStyle(chart === "line", hoveredButton === "chart-line")}
-            title="Line chart"
-          >
-            📈
-          </button>
-          <button
-            onClick={() => setParams({ chart: "bar" })}
-            onMouseEnter={() => setHoveredButton("chart-bar")}
-            onMouseLeave={() => setHoveredButton(null)}
-            style={iconBtnStyle(chart === "bar", hoveredButton === "chart-bar")}
-            title="Bar chart"
-          >
-            📊
-          </button>
+        {/* Chart Type */}
+        <div style={groupStyle}>
+          <span style={labelStyle}>Chart</span>
+          <div style={pillGroupStyle}>
+            {chartOptions.map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => setParams({ chart: opt.key })}
+                onMouseEnter={() => setHoveredButton(`chart-${opt.key}`)}
+                onMouseLeave={() => setHoveredButton(null)}
+                style={segmentStyle(chart === opt.key, hoveredButton === `chart-${opt.key}`)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -268,57 +258,68 @@ export function Controls({ onLoadingChange }: { onLoadingChange?: (loading: bool
         <form 
           onSubmit={applyCustomRange} 
           style={{ 
-            marginTop: 12, 
-            paddingTop: 12, 
+            marginTop: 16, 
+            paddingTop: 16, 
             borderTop: isLight ? "1px solid #e2e8f0" : "1px solid rgba(255,255,255,0.08)",
             display: "flex",
-            gap: 10,
+            gap: 12,
             alignItems: "center",
             flexWrap: "wrap",
           }}
         >
-          <input
-            type="date"
-            value={startLocal}
-            onChange={(e) => setStartLocal(e.target.value)}
-            style={{
-              padding: "6px 10px",
-              borderRadius: 8,
-              border: isLight ? "1px solid #e2e8f0" : "1px solid rgba(255,255,255,0.12)",
-              background: isLight ? "#fff" : "rgba(255,255,255,0.06)",
-              color: isLight ? "#1e293b" : "#fff",
-              fontSize: 12,
-              fontWeight: 500,
-              colorScheme: isLight ? "light" : "dark",
-            }}
-          />
-          <span style={{ color: isLight ? "#94a3b8" : "rgba(255,255,255,0.4)", fontSize: 12 }}>to</span>
-          <input
-            type="date"
-            value={endLocal}
-            onChange={(e) => setEndLocal(e.target.value)}
-            style={{
-              padding: "6px 10px",
-              borderRadius: 8,
-              border: isLight ? "1px solid #e2e8f0" : "1px solid rgba(255,255,255,0.12)",
-              background: isLight ? "#fff" : "rgba(255,255,255,0.06)",
-              color: isLight ? "#1e293b" : "#fff",
-              fontSize: 12,
-              fontWeight: 500,
-              colorScheme: isLight ? "light" : "dark",
-            }}
-          />
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ ...labelStyle, marginRight: 0 }}>From</span>
+            <input
+              type="date"
+              value={startLocal}
+              onChange={(e) => setStartLocal(e.target.value)}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 10,
+                border: isLight ? "1px solid #e2e8f0" : "1px solid rgba(255,255,255,0.12)",
+                background: isLight ? "#fff" : "rgba(255,255,255,0.06)",
+                color: isLight ? "#1e293b" : "#fff",
+                fontSize: 13,
+                fontWeight: 500,
+                colorScheme: isLight ? "light" : "dark",
+              }}
+            />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ ...labelStyle, marginRight: 0 }}>To</span>
+            <input
+              type="date"
+              value={endLocal}
+              onChange={(e) => setEndLocal(e.target.value)}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 10,
+                border: isLight ? "1px solid #e2e8f0" : "1px solid rgba(255,255,255,0.12)",
+                background: isLight ? "#fff" : "rgba(255,255,255,0.06)",
+                color: isLight ? "#1e293b" : "#fff",
+                fontSize: 13,
+                fontWeight: 500,
+                colorScheme: isLight ? "light" : "dark",
+              }}
+            />
+          </div>
           <button
             type="submit"
+            onMouseEnter={() => setHoveredButton("apply")}
+            onMouseLeave={() => setHoveredButton(null)}
             style={{
-              padding: "6px 14px",
-              borderRadius: 8,
+              padding: "8px 20px",
+              borderRadius: 10,
               border: "none",
-              background: "linear-gradient(135deg, #7c5cff, #5aa6ff)",
+              background: hoveredButton === "apply"
+                ? "linear-gradient(135deg, #8c6cff, #6ab6ff)"
+                : "linear-gradient(135deg, #7c5cff, #5aa6ff)",
               color: "#fff",
-              fontSize: 12,
-              fontWeight: 600,
+              fontSize: 13,
+              fontWeight: 700,
               cursor: "pointer",
+              transition: "all 0.15s ease",
+              boxShadow: "0 4px 12px rgba(124,92,255,0.3)",
             }}
           >
             Apply
