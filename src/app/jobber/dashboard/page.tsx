@@ -1007,8 +1007,8 @@ function SparkLine(props: {
         <line x1={padL} y1={yOf(yBot)} x2={vbW - padR} y2={yOf(yBot)} stroke="rgba(255,255,255,0.06)" strokeDasharray="4,4" />
 
         {/* Y axis labels */}
-        <text x={padL - 6} y={yOf(yTop) + 3} fontSize="9" textAnchor="end">{props.formatY(yTop)}</text>
-        <text x={padL - 6} y={yOf(yBot) + 3} fontSize="9" textAnchor="end">{props.formatY(yBot)}</text>
+        <text x={padL - 6} y={yOf(yTop) + 3} fontSize="9" textAnchor="end" fill="#ff0000">{props.formatY(yTop)}</text>
+        <text x={padL - 6} y={yOf(yBot) + 3} fontSize="9" textAnchor="end" fill="#ff0000">{props.formatY(yBot)}</text>
 
         <g clipPath={`url(#${clipId})`}>
           {props.chartType === "line" ? (
