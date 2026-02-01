@@ -198,10 +198,10 @@ export function SparkLine(props: {
                     style={{ cursor: "pointer", transition: "r 0.15s ease" }}
                     onMouseEnter={(e) => {
                       setHoveredIndex(i);
-                      const rect = e.currentTarget.closest('.panel')?.getBoundingClientRect();
-                      if (rect) {
-                        setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-                      }
+                      setMousePos({ x: e.clientX, y: e.clientY });
+                    }}
+                    onMouseMove={(e) => {
+                      setMousePos({ x: e.clientX, y: e.clientY });
                     }}
                   />
                   {(i === props.points.length - 1 || hoveredIndex === i) && (
@@ -228,10 +228,10 @@ export function SparkLine(props: {
                   style={{ cursor: "pointer", transition: "opacity 0.15s ease" }}
                   onMouseEnter={(e) => {
                     setHoveredIndex(i);
-                    const rect = e.currentTarget.closest('.panel')?.getBoundingClientRect();
-                    if (rect) {
-                      setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-                    }
+                    setMousePos({ x: e.clientX, y: e.clientY });
+                  }}
+                  onMouseMove={(e) => {
+                    setMousePos({ x: e.clientX, y: e.clientY });
                   }}
                 />
               );
@@ -255,42 +255,41 @@ export function SparkLine(props: {
         <div
           className="chart-tooltip"
           style={{
-            position: "absolute",
-            left: Math.min(Math.max(mousePos.x, 80), 280),
-            top: Math.max(mousePos.y - 90, 10),
-            transform: "translateX(-50%)",
+            position: "fixed",
+            left: mousePos.x + 20,
+            top: mousePos.y - 40,
             background: "linear-gradient(180deg, rgba(20,25,40,0.98) 0%, rgba(15,20,35,0.98) 100%)",
             border: "1px solid rgba(255,255,255,0.12)",
             borderRadius: 12,
             padding: "12px 16px",
             boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
-            zIndex: 100,
+            zIndex: 9999,
             minWidth: 150,
             pointerEvents: "none",
             backdropFilter: "blur(8px)",
           }}
         >
-          <div style={{ fontSize: 11, color: "rgba(234,241,255,0.5)", marginBottom: 6, fontWeight: 500 }}>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 6, fontWeight: 600 }}>
             {hoveredPoint.xLabel}
           </div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: chartColor, letterSpacing: -0.5 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#ffffff", letterSpacing: -0.5 }}>
             {formatY(hoveredPoint.value)}
           </div>
-          {hoveredChange && hoveredChange.value !== 0 && (
+          {hoveredChange && (
             <div style={{ 
-              fontSize: 12, 
-              fontWeight: 600,
-              marginTop: 6,
-              paddingTop: 6,
-              borderTop: "1px solid rgba(255,255,255,0.08)",
+              fontSize: 13, 
+              fontWeight: 700,
+              marginTop: 8,
+              paddingTop: 8,
+              borderTop: "1px solid rgba(255,255,255,0.1)",
               color: hoveredChange.value > 0 ? "#ef4444" : "#10b981",
               display: "flex",
               alignItems: "center",
-              gap: 4,
+              gap: 6,
             }}>
               <span style={{ fontSize: 14 }}>{hoveredChange.value > 0 ? "↑" : "↓"}</span>
               <span>{formatY(Math.abs(hoveredChange.value))}</span>
-              <span style={{ color: "rgba(234,241,255,0.4)", marginLeft: 4 }}>
+              <span style={{ color: "rgba(255,255,255,0.5)" }}>
                 ({hoveredChange.percent > 0 ? "+" : ""}{hoveredChange.percent.toFixed(1)}%)
               </span>
             </div>
