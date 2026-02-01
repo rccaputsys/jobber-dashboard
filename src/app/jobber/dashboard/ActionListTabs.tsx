@@ -55,6 +55,23 @@ function useIsMobile() {
   return isMobile;
 }
 
+// Check theme
+function useIsLight() {
+  const [isLight, setIsLight] = useState(false);
+  
+  useEffect(() => {
+    const check = () => {
+      setIsLight(document.documentElement.getAttribute("data-theme") === "light");
+    };
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
+  
+  return isLight;
+}
+
 /* --------------------------------- types --------------------------------- */
 type AgedARInvoice = {
   invoice_number: string;
@@ -94,36 +111,6 @@ type Props = {
 const INITIAL_SHOW = 10;
 const LOAD_MORE_COUNT = 10;
 
-// Smart link component that tries Jobber app first on mobile
-function JobberLink({ url, children, isMobile }: { url: string | null | undefined; children: React.ReactNode; isMobile: boolean }) {
-  if (!url) return <span className="cell-secondary">—</span>;
-  
-  const handleClick = (e: React.MouseEvent) => {
-    if (isMobile) {
-      // Try to open Jobber app - if it fails, the web link will work as fallback
-      // Jobber's app uses universal links, so https://app.getjobber.com links may open the app
-      // We'll just use the regular link which should work with iOS/Android universal links
-    }
-  };
-  
-  return (
-    <a 
-      href={url} 
-      target="_blank" 
-      rel="noreferrer" 
-      className="btn"
-      onClick={handleClick}
-      style={{ 
-        padding: "6px 12px", 
-        fontSize: 13,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {children}
-    </a>
-  );
-}
-
 export function ActionListTabs({
   agedARInvoices,
   agedARExportData,
@@ -138,6 +125,7 @@ export function ActionListTabs({
   const [unscheduledShowCount, setUnscheduledShowCount] = useState(INITIAL_SHOW);
   const [quotesShowCount, setQuotesShowCount] = useState(INITIAL_SHOW);
   const isMobile = useIsMobile();
+  const isLight = useIsLight();
 
   const money = moneyFactory(currencyCode);
 
@@ -149,6 +137,59 @@ export function ActionListTabs({
 
   const sortedAR = [...agedARInvoices].sort((a, b) => b.days_overdue - a.days_overdue);
   const sortedQuotes = [...leakCandidates].sort((a, b) => new Date(a.sent_at ?? 0).getTime() - new Date(b.sent_at ?? 0).getTime());
+
+  // Purple gradient button style for Open buttons
+  const openButtonStyle: React.CSSProperties = {
+    padding: "6px 12px",
+    fontSize: 13,
+    fontWeight: 600,
+    borderRadius: 8,
+    border: "none",
+    background: "linear-gradient(135deg, #7c5cff, #5aa6ff)",
+    color: "#fff",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+    boxShadow: "0 2px 8px rgba(124,92,255,0.25)",
+    transition: "all 0.15s ease",
+    textDecoration: "none",
+    display: "inline-block",
+  };
+
+  // Tab button style
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    flex: 1,
+    padding: "12px 16px",
+    border: "none",
+    borderRadius: 10,
+    background: active
+      ? "linear-gradient(135deg, #7c5cff, #5aa6ff)"
+      : "transparent",
+    color: active 
+      ? "#fff" 
+      : isLight ? "#64748b" : "rgba(255,255,255,0.6)",
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: "pointer",
+    transition: "all 0.15s ease",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    boxShadow: active ? "0 4px 12px rgba(124,92,255,0.3)" : "none",
+  });
+
+  const badgeStyle = (active: boolean): React.CSSProperties => ({
+    padding: "2px 8px",
+    borderRadius: 10,
+    fontSize: 11,
+    fontWeight: 700,
+    background: active 
+      ? "rgba(255,255,255,0.2)" 
+      : isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)",
+    color: active 
+      ? "#fff" 
+      : isLight ? "#64748b" : "rgba(255,255,255,0.7)",
+  });
 
   const ShowMoreButton = ({ 
     currentCount, 
@@ -166,8 +207,10 @@ export function ActionListTabs({
       <div style={{ textAlign: "center", marginTop: 12 }}>
         <button
           onClick={onShowMore}
-          className="btn"
-          style={{ padding: "8px 20px", fontSize: 13 }}
+          style={{
+            ...openButtonStyle,
+            padding: "8px 20px",
+          }}
         >
           Show More ({remaining} remaining)
         </button>
@@ -175,7 +218,23 @@ export function ActionListTabs({
     );
   };
 
-  // Mobile card view for each item
+  // Link component for Open buttons
+  const OpenLink = ({ url }: { url: string | null | undefined }) => {
+    if (!url) return <span style={{ color: isLight ? "#94a3b8" : "rgba(255,255,255,0.3)" }}>—</span>;
+    
+    return (
+      <a 
+        href={url} 
+        target="_blank" 
+        rel="noreferrer" 
+        style={openButtonStyle}
+      >
+        Open →
+      </a>
+    );
+  };
+
+  // Mobile card view
   const MobileCard = ({ 
     age, 
     title, 
@@ -194,60 +253,90 @@ export function ActionListTabs({
     ageThresholds?: [number, number];
   }) => (
     <div style={{
-      padding: 14,
-      borderBottom: "1px solid rgba(255,255,255,0.06)",
+      padding: "10px 16px",
+      borderBottom: isLight ? "1px solid #e2e8f0" : "1px solid rgba(255,255,255,0.06)",
       display: "flex",
       alignItems: "center",
-      gap: 12,
+      gap: 10,
     }}>
       <span className={`age-badge ${age > ageThresholds[0] ? "critical" : age > ageThresholds[1] ? "warning" : "good"}`}>
         {age}d
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="cell-primary" style={{ fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div style={{ 
+          fontSize: 14, 
+          fontWeight: 600, 
+          color: isLight ? "#1e293b" : "#fff",
+          overflow: "hidden", 
+          textOverflow: "ellipsis", 
+          whiteSpace: "nowrap" 
+        }}>
           {title}
         </div>
         {subtitle && (
-          <div className="cell-secondary" style={{ fontSize: 12, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ 
+            fontSize: 12, 
+            marginTop: 1, 
+            color: isLight ? "#64748b" : "rgba(255,255,255,0.6)",
+            overflow: "hidden", 
+            textOverflow: "ellipsis", 
+            whiteSpace: "nowrap" 
+          }}>
             {subtitle}
           </div>
         )}
-        <div style={{ display: "flex", gap: 8, marginTop: 4, fontSize: 12 }}>
-          {date && <span className="cell-muted">{date}</span>}
-          {amount && <span className="cell-primary" style={{ fontWeight: 600 }}>{amount}</span>}
+        <div style={{ display: "flex", gap: 8, marginTop: 2, fontSize: 12 }}>
+          {date && <span style={{ color: isLight ? "#94a3b8" : "rgba(255,255,255,0.4)" }}>{date}</span>}
+          {amount && <span style={{ fontWeight: 600, color: isLight ? "#1e293b" : "#fff" }}>{amount}</span>}
         </div>
       </div>
-      <JobberLink url={url} isMobile={isMobile}>Open</JobberLink>
+      <OpenLink url={url} />
     </div>
   );
 
   return (
     <div>
-      {/* Tabs */}
-      <div className="action-tabs" style={{ overflowX: "auto", margin: "0 -16px", padding: "0 16px" }}>
-        <div style={{ display: "flex", minWidth: "fit-content" }}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              className={`action-tab ${activeTab === tab.id ? "active" : ""}`}
-              onClick={() => setActiveTab(tab.id)}
-              style={{ whiteSpace: "nowrap" }}
-            >
-              <span>{tab.icon}</span>
-              <span className="tab-label">{tab.label}</span>
-              <span className="badge">{tab.count}</span>
-            </button>
-          ))}
-        </div>
+      {/* Full-width horizontal tabs */}
+      <div style={{ 
+        display: "flex", 
+        gap: 6,
+        padding: 6,
+        background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.04)",
+        borderRadius: 12,
+        marginBottom: 12,
+      }}>
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={tabStyle(activeTab === tab.id)}
+          >
+            <span>{tab.icon}</span>
+            <span>{tab.label}</span>
+            <span style={badgeStyle(activeTab === tab.id)}>{tab.count}</span>
+          </button>
+        ))}
       </div>
 
       {/* Tab Content */}
       {activeTab === "ar" && (
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+          <div style={{ 
+            display: "flex", 
+            justifyContent: "space-between", 
+            alignItems: "center", 
+            flexWrap: "wrap", 
+            gap: 8, 
+            marginBottom: 8,
+            paddingTop: 4,
+          }}>
             <div>
-              <h3 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Aged Receivables</h3>
-              <p className="text-muted" style={{ fontSize: 13, marginTop: 2 }}>Oldest first</p>
+              <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: isLight ? "#1e293b" : "#fff" }}>
+                Aged Receivables
+              </h3>
+              <p style={{ fontSize: 12, marginTop: 2, color: isLight ? "#64748b" : "rgba(255,255,255,0.5)" }}>
+                Oldest first
+              </p>
             </div>
             {agedARInvoices.length > 0 && (
               <ExportCSV data={agedARExportData} filename="aged-ar" />
@@ -255,12 +344,16 @@ export function ActionListTabs({
           </div>
 
           {agedARInvoices.length === 0 ? (
-            <div className="empty-state" style={{ padding: 24, textAlign: "center", fontSize: 14 }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>✨</div>
+            <div style={{ 
+              padding: 20, 
+              textAlign: "center", 
+              fontSize: 14,
+              color: isLight ? "#64748b" : "rgba(255,255,255,0.6)",
+            }}>
+              <div style={{ fontSize: 28, marginBottom: 6 }}>✨</div>
               No past due invoices!
             </div>
           ) : isMobile ? (
-            // Mobile card view
             <div style={{ margin: "0 -16px" }}>
               {sortedAR.slice(0, arShowCount).map((inv, idx) => (
                 <MobileCard
@@ -275,38 +368,43 @@ export function ActionListTabs({
               ))}
             </div>
           ) : (
-            // Desktop table view
             <div className="table-container">
               <table className="data-table" style={{ fontSize: 14 }}>
                 <thead>
                   <tr>
-                    <th style={{ width: 60, padding: "8px 10px" }}>Age</th>
-                    <th style={{ padding: "8px 10px" }}>Invoice</th>
-                    <th style={{ width: 100, padding: "8px 10px" }}>Due</th>
-                    <th style={{ width: 100, padding: "8px 10px" }}>Amount</th>
-                    <th style={{ width: 90, padding: "8px 10px" }}>Action</th>
+                    <th style={{ width: 55, padding: "6px 8px" }}>Age</th>
+                    <th style={{ padding: "6px 8px" }}>Invoice</th>
+                    <th style={{ width: 95, padding: "6px 8px" }}>Due</th>
+                    <th style={{ width: 95, padding: "6px 8px" }}>Amount</th>
+                    <th style={{ width: 85, padding: "6px 8px" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sortedAR.slice(0, arShowCount).map((inv, idx) => (
                     <tr key={idx}>
-                      <td style={{ padding: "10px" }}>
+                      <td style={{ padding: "8px" }}>
                         <span className={`age-badge ${inv.days_overdue > 30 ? "critical" : inv.days_overdue > 15 ? "warning" : "good"}`}>
                           {inv.days_overdue}d
                         </span>
                       </td>
-                      <td style={{ padding: "10px" }}>
-                        <div className="cell-primary" style={{ fontSize: 14, fontWeight: 600 }}>#{inv.invoice_number}</div>
+                      <td style={{ padding: "8px" }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: isLight ? "#1e293b" : "#fff" }}>
+                          #{inv.invoice_number}
+                        </div>
                         {inv.client_name && (
-                          <div className="cell-secondary" style={{ fontSize: 13, marginTop: 1 }}>{inv.client_name}</div>
+                          <div style={{ fontSize: 12, marginTop: 1, color: isLight ? "#64748b" : "rgba(255,255,255,0.6)" }}>
+                            {inv.client_name}
+                          </div>
                         )}
                       </td>
-                      <td className="cell-muted" style={{ padding: "10px", fontSize: 13 }}>
+                      <td style={{ padding: "8px", fontSize: 13, color: isLight ? "#94a3b8" : "rgba(255,255,255,0.5)" }}>
                         {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "—"}
                       </td>
-                      <td className="cell-primary" style={{ padding: "10px", fontSize: 14, fontWeight: 600 }}>{money(inv.amount_cents)}</td>
-                      <td style={{ padding: "10px" }}>
-                        <JobberLink url={inv.jobber_url} isMobile={isMobile}>Open →</JobberLink>
+                      <td style={{ padding: "8px", fontSize: 14, fontWeight: 600, color: isLight ? "#1e293b" : "#fff" }}>
+                        {money(inv.amount_cents)}
+                      </td>
+                      <td style={{ padding: "8px" }}>
+                        <OpenLink url={inv.jobber_url} />
                       </td>
                     </tr>
                   ))}
@@ -324,10 +422,22 @@ export function ActionListTabs({
 
       {activeTab === "unscheduled" && (
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+          <div style={{ 
+            display: "flex", 
+            justifyContent: "space-between", 
+            alignItems: "center", 
+            flexWrap: "wrap", 
+            gap: 8, 
+            marginBottom: 8,
+            paddingTop: 4,
+          }}>
             <div>
-              <h3 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Unscheduled Jobs</h3>
-              <p className="text-muted" style={{ fontSize: 13, marginTop: 2 }}>Oldest first</p>
+              <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: isLight ? "#1e293b" : "#fff" }}>
+                Unscheduled Jobs
+              </h3>
+              <p style={{ fontSize: 12, marginTop: 2, color: isLight ? "#64748b" : "rgba(255,255,255,0.5)" }}>
+                Oldest first
+              </p>
             </div>
             {unscheduledRows.length > 0 && (
               <ExportCSV data={unscheduledExportData} filename="unscheduled-jobs" />
@@ -335,8 +445,13 @@ export function ActionListTabs({
           </div>
 
           {unscheduledRows.length === 0 ? (
-            <div className="empty-state" style={{ padding: 24, textAlign: "center", fontSize: 14 }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>✨</div>
+            <div style={{ 
+              padding: 20, 
+              textAlign: "center", 
+              fontSize: 14,
+              color: isLight ? "#64748b" : "rgba(255,255,255,0.6)",
+            }}>
+              <div style={{ fontSize: 28, marginBottom: 6 }}>✨</div>
               No unscheduled jobs!
             </div>
           ) : isMobile ? (
@@ -362,11 +477,11 @@ export function ActionListTabs({
               <table className="data-table" style={{ fontSize: 14 }}>
                 <thead>
                   <tr>
-                    <th style={{ width: 60, padding: "8px 10px" }}>Age</th>
-                    <th style={{ padding: "8px 10px" }}>Job</th>
-                    <th style={{ width: 100, padding: "8px 10px" }}>Created</th>
-                    <th style={{ width: 100, padding: "8px 10px" }}>Amount</th>
-                    <th style={{ width: 90, padding: "8px 10px" }}>Action</th>
+                    <th style={{ width: 55, padding: "6px 8px" }}>Age</th>
+                    <th style={{ padding: "6px 8px" }}>Job</th>
+                    <th style={{ width: 95, padding: "6px 8px" }}>Created</th>
+                    <th style={{ width: 95, padding: "6px 8px" }}>Amount</th>
+                    <th style={{ width: 85, padding: "6px 8px" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -374,27 +489,29 @@ export function ActionListTabs({
                     const age = ageDays(r.created_at_jobber || null);
                     return (
                       <tr key={idx}>
-                        <td style={{ padding: "10px" }}>
+                        <td style={{ padding: "8px" }}>
                           <span className={`age-badge ${age > 14 ? "critical" : age > 7 ? "warning" : "good"}`}>
                             {age}d
                           </span>
                         </td>
-                        <td style={{ padding: "10px" }}>
-                          <div className="cell-primary" style={{ fontSize: 14, fontWeight: 600 }}>
+                        <td style={{ padding: "8px" }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: isLight ? "#1e293b" : "#fff" }}>
                             {r.job_number ? `#${r.job_number}` : "—"}
                           </div>
                           {r.job_title && (
-                            <div className="cell-secondary" style={{ fontSize: 13, marginTop: 1 }}>{r.job_title}</div>
+                            <div style={{ fontSize: 12, marginTop: 1, color: isLight ? "#64748b" : "rgba(255,255,255,0.6)" }}>
+                              {r.job_title}
+                            </div>
                           )}
                         </td>
-                        <td className="cell-muted" style={{ padding: "10px", fontSize: 13 }}>
+                        <td style={{ padding: "8px", fontSize: 13, color: isLight ? "#94a3b8" : "rgba(255,255,255,0.5)" }}>
                           {r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "—"}
                         </td>
-                        <td className="cell-primary" style={{ padding: "10px", fontSize: 14, fontWeight: 600 }}>
+                        <td style={{ padding: "8px", fontSize: 14, fontWeight: 600, color: isLight ? "#1e293b" : "#fff" }}>
                           {r.total_amount_cents ? money(r.total_amount_cents) : "—"}
                         </td>
-                        <td style={{ padding: "10px" }}>
-                          <JobberLink url={r.jobber_url} isMobile={isMobile}>Open →</JobberLink>
+                        <td style={{ padding: "8px" }}>
+                          <OpenLink url={r.jobber_url} />
                         </td>
                       </tr>
                     );
@@ -413,10 +530,22 @@ export function ActionListTabs({
 
       {activeTab === "quotes" && (
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+          <div style={{ 
+            display: "flex", 
+            justifyContent: "space-between", 
+            alignItems: "center", 
+            flexWrap: "wrap", 
+            gap: 8, 
+            marginBottom: 8,
+            paddingTop: 4,
+          }}>
             <div>
-              <h3 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Leaking Quotes</h3>
-              <p className="text-muted" style={{ fontSize: 13, marginTop: 2 }}>Oldest first</p>
+              <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: isLight ? "#1e293b" : "#fff" }}>
+                Leaking Quotes
+              </h3>
+              <p style={{ fontSize: 12, marginTop: 2, color: isLight ? "#64748b" : "rgba(255,255,255,0.5)" }}>
+                Oldest first
+              </p>
             </div>
             {leakCandidates.length > 0 && (
               <ExportCSV data={leakingQuotesExportData} filename="leaking-quotes" />
@@ -424,8 +553,13 @@ export function ActionListTabs({
           </div>
 
           {leakCandidates.length === 0 ? (
-            <div className="empty-state" style={{ padding: 24, textAlign: "center", fontSize: 14 }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>✨</div>
+            <div style={{ 
+              padding: 20, 
+              textAlign: "center", 
+              fontSize: 14,
+              color: isLight ? "#64748b" : "rgba(255,255,255,0.6)",
+            }}>
+              <div style={{ fontSize: 28, marginBottom: 6 }}>✨</div>
               No leaking quotes!
             </div>
           ) : isMobile ? (
@@ -452,11 +586,11 @@ export function ActionListTabs({
               <table className="data-table" style={{ fontSize: 14 }}>
                 <thead>
                   <tr>
-                    <th style={{ width: 60, padding: "8px 10px" }}>Age</th>
-                    <th style={{ padding: "8px 10px" }}>Quote</th>
-                    <th style={{ width: 100, padding: "8px 10px" }}>Sent</th>
-                    <th style={{ width: 100, padding: "8px 10px" }}>Amount</th>
-                    <th style={{ width: 90, padding: "8px 10px" }}>Action</th>
+                    <th style={{ width: 55, padding: "6px 8px" }}>Age</th>
+                    <th style={{ padding: "6px 8px" }}>Quote</th>
+                    <th style={{ width: 95, padding: "6px 8px" }}>Sent</th>
+                    <th style={{ width: 95, padding: "6px 8px" }}>Amount</th>
+                    <th style={{ width: 85, padding: "6px 8px" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -465,25 +599,29 @@ export function ActionListTabs({
                     const age = sent ? Math.max(0, Math.round((Date.now() - sent.getTime()) / 86400000)) : 0;
                     return (
                       <tr key={idx}>
-                        <td style={{ padding: "10px" }}>
+                        <td style={{ padding: "8px" }}>
                           <span className={`age-badge ${age > 14 ? "critical" : age > 7 ? "warning" : "good"}`}>
                             {age}d
                           </span>
                         </td>
-                        <td style={{ padding: "10px" }}>
-                          <div className="cell-primary" style={{ fontSize: 14, fontWeight: 600 }}>
+                        <td style={{ padding: "8px" }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: isLight ? "#1e293b" : "#fff" }}>
                             {q.quote_number ? `#${q.quote_number}` : "—"}
                           </div>
                           {q.quote_title && (
-                            <div className="cell-secondary" style={{ fontSize: 13, marginTop: 1 }}>{q.quote_title}</div>
+                            <div style={{ fontSize: 12, marginTop: 1, color: isLight ? "#64748b" : "rgba(255,255,255,0.6)" }}>
+                              {q.quote_title}
+                            </div>
                           )}
                         </td>
-                        <td className="cell-muted" style={{ padding: "10px", fontSize: 13 }}>
+                        <td style={{ padding: "8px", fontSize: 13, color: isLight ? "#94a3b8" : "rgba(255,255,255,0.5)" }}>
                           {sent ? sent.toLocaleDateString() : "—"}
                         </td>
-                        <td className="cell-primary" style={{ padding: "10px", fontSize: 14, fontWeight: 600 }}>{money(Number(q.quote_total_cents ?? 0))}</td>
-                        <td style={{ padding: "10px" }}>
-                          <JobberLink url={q.quote_url} isMobile={isMobile}>Open →</JobberLink>
+                        <td style={{ padding: "8px", fontSize: 14, fontWeight: 600, color: isLight ? "#1e293b" : "#fff" }}>
+                          {money(Number(q.quote_total_cents ?? 0))}
+                        </td>
+                        <td style={{ padding: "8px" }}>
+                          <OpenLink url={q.quote_url} />
                         </td>
                       </tr>
                     );
