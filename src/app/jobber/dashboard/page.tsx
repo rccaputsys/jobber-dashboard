@@ -921,6 +921,56 @@ const globalStyles = `
     background: rgba(90,166,255,0.2) !important;
     color: #2563eb !important;
   }
+
+  /* Hover micro-animations */
+  .hover-lift {
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+  .kpi-primary {
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+                box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.25s ease;
+  }
+  .kpi-primary:hover {
+    transform: translateY(-3px) scale(1.005);
+  }
+  .kpi-secondary {
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                background 0.2s ease,
+                border-color 0.2s ease;
+  }
+  .kpi-secondary:hover {
+    transform: translateY(-2px);
+  }
+  .btn {
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .btn:hover {
+    transform: translateY(-1px);
+  }
+  .btn:active {
+    transform: translateY(0px) scale(0.98);
+  }
+  .age-badge.critical {
+    animation: badge-pulse 2s ease-in-out infinite;
+  }
+  @keyframes badge-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+  @keyframes skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  html[data-theme="light"] .skeleton-pulse {
+    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%) !important;
+    background-size: 200% 100%;
+  }
 `;
 
 /* ----------------------------------- UI ----------------------------------- */
@@ -1716,8 +1766,6 @@ export default async function DashboardPage({
               unscheduledExportData={unscheduledExportData}
               leakCandidates={leakCandidatesInRange.slice().sort((a: any, b: any) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime())}
               leakingQuotesExportData={leakingQuotesExportData}
-              toggleUnscheduledHref={toggleUnscheduledHref}
-              minDays={minDays}
               currencyCode={currencyCode}
             />
           </div>
