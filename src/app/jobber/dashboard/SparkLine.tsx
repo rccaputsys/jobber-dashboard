@@ -12,6 +12,7 @@ export function SparkLine(props: {
   formatType: "money" | "number";
   chartType: ChartType;
   color?: string;
+  loading?: boolean;
 }) {
   const formatY = (cents: number): string => {
     if (props.formatType === "number") {
@@ -153,6 +154,33 @@ export function SparkLine(props: {
       style={{ padding: 16, height: "100%", position: "relative", overflow: "visible" }}
       onMouseLeave={() => setHoveredIndex(null)}
     >
+      {/* Loading Overlay */}
+      {props.loading && (
+        <div style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(6,8,17,0.7)",
+          borderRadius: 16,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 10,
+          backdropFilter: "blur(2px)",
+        }}>
+          <div style={{
+            width: 32,
+            height: 32,
+            border: "3px solid rgba(255,255,255,0.1)",
+            borderTopColor: chartColor,
+            borderRadius: "50%",
+            animation: "spin 0.8s linear infinite",
+          }} />
+        </div>
+      )}
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 12 }}>
         <div>
           <div className="chart-title" style={{ fontWeight: 700, fontSize: 14 }}>{props.title}</div>
@@ -267,7 +295,7 @@ export function SparkLine(props: {
       </svg>
 
       {/* Tooltip */}
-      {hoveredPoint !== null && (
+      {hoveredPoint !== null && !props.loading && (
         <div
           style={{
             position: "absolute",

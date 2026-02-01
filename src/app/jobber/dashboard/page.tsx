@@ -1,7 +1,6 @@
 ﻿// src/app/jobber/dashboard/page.tsx
 import { ExportCSV } from "./ExportCSV";
 import React from "react";
-import { Controls } from "./controls";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { SyncButton } from "./SyncButton";
 import { ThemeToggle } from "./ThemeToggle";
@@ -9,7 +8,7 @@ import { ActionListTabs } from "./ActionListTabs";
 import { getUser } from "@/lib/supabaseAuth";
 import { redirect } from "next/navigation";
 import { DisconnectJobberButton } from "./DisconnectButton";
-import { SparkLine } from "./SparkLine";
+import { TrendsSection } from "./TrendsSection";
 
 /* --------------------------------- helpers --------------------------------- */
 type Granularity = "day" | "week" | "month" | "quarter";
@@ -1688,49 +1687,16 @@ export default async function DashboardPage({
 
         </div>
 
-        {/* Trends */}
-        <div className="panel animate-in delay-4" style={{ marginTop: 20 }}>
-          <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-              <div>
-                <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Trends</h2>
-                <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
-                  {toISODateOnlyUTC(start)} → {toISODateOnlyUTC(end)} • {g === "day" ? "Daily" : g === "week" ? "Weekly" : g === "month" ? "Monthly" : "Quarterly"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ padding: 16 }}>
-            <Controls />
-          </div>
-
-          <div className="chart-grid" style={{ padding: "0 16px 16px" }}>
-            <SparkLine
-              title="Quote Leak"
-              subtitle="Point-in-time balance"
-              points={points.leak}
-              formatType="money"
-              chartType={chartType}
-              color="#ef4444"
-            />
-            <SparkLine
-              title="AR 15+ Days"
-              subtitle="Point-in-time balance"
-              points={points.ar15}
-              formatType="money"
-              chartType={chartType}
-              color="#f59e0b"
-            />
-            <SparkLine
-              title="Unscheduled"
-              subtitle="Point-in-time backlog"
-              points={points.unsched}
-              formatType="number"
-              chartType={chartType}
-              color="#5aa6ff"
-            />
-          </div>
+       {/* Trends */}
+        <div className="animate-in delay-4" style={{ marginTop: 20 }}>
+          <TrendsSection
+            leakPoints={points.leak}
+            ar15Points={points.ar15}
+            unschedPoints={points.unsched}
+            chartType={chartType}
+            rangeLabel={`${toISODateOnlyUTC(start)} → ${toISODateOnlyUTC(end)}`}
+            granularityLabel={g === "day" ? "Daily" : g === "week" ? "Weekly" : g === "month" ? "Monthly" : "Quarterly"}
+          />
         </div>
 
         {/* Action Lists */}
