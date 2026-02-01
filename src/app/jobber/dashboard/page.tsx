@@ -1020,18 +1020,26 @@ function SparkLine(props: {
               {/* Main line */}
               <path d={d} fill="none" stroke={chartColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               {/* Points */}
-              {props.points.map((p, i) => (
-                <g key={i}>
-                  <circle cx={xOf(i)} cy={yOf(p.value)} r={i === props.points.length - 1 ? 5 : 3} fill={chartColor}>
-                    <title>{p.tooltip}</title>
-                  </circle>
-                  {i === props.points.length - 1 && (
-                    <circle cx={xOf(i)} cy={yOf(p.value)} r={8} fill={chartColor} opacity={0.2}>
+              {props.points.map((p, i) => {
+                const showLabel = props.points.length <= 8 || i % 2 === 0 || i === props.points.length - 1;
+                return (
+                  <g key={i}>
+                    <circle cx={xOf(i)} cy={yOf(p.value)} r={i === props.points.length - 1 ? 5 : 3} fill={chartColor}>
                       <title>{p.tooltip}</title>
                     </circle>
-                  )}
-                </g>
-              ))}
+                    {i === props.points.length - 1 && (
+                      <circle cx={xOf(i)} cy={yOf(p.value)} r={8} fill={chartColor} opacity={0.2}>
+                        <title>{p.tooltip}</title>
+                      </circle>
+                    )}
+                    {showLabel && (
+                      <text x={xOf(i)} y={yOf(p.value) - 8} fontSize="8" fontWeight="600" textAnchor="middle" fill={chartColor}>
+                        {props.formatY(p.value)}
+                      </text>
+                    )}
+                  </g>
+                );
+              })}
             </>
           ) : (
             props.points.map((p, i) => {
@@ -1039,9 +1047,14 @@ function SparkLine(props: {
               const y = yOf(p.value);
               const h = vbH - padB - y;
               return (
-                <rect key={i} x={x} y={y} width={barW} height={Math.max(2, h)} rx={4} fill={chartColor} opacity={0.85}>
-                  <title>{p.tooltip}</title>
-                </rect>
+                <g key={i}>
+                  <rect x={x} y={y} width={barW} height={Math.max(2, h)} rx={4} fill={chartColor} opacity={0.85}>
+                    <title>{p.tooltip}</title>
+                  </rect>
+                  <text x={x + barW / 2} y={y - 4} fontSize="7" textAnchor="middle" fill="currentColor" className="chart-label">
+                    {props.formatY(p.value)}
+                  </text>
+                </g>
               );
             })
           )}
