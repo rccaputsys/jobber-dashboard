@@ -139,10 +139,6 @@ export function SparkLine(props: {
     <div 
       className="panel hover-lift" 
       style={{ padding: 16, height: "100%", position: "relative" }}
-      onMouseLeave={() => {
-        setHoveredIndex(null);
-        setMousePos(null);
-      }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 12 }}>
         <div>
@@ -190,12 +186,13 @@ export function SparkLine(props: {
               <path d={d} fill="none" stroke={chartColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               {props.points.map((p, i) => (
                 <g key={i}>
+                  {/* Invisible larger hit area */}
                   <circle 
                     cx={xOf(i)} 
                     cy={yOf(p.value)} 
-                    r={hoveredIndex === i ? 6 : (i === props.points.length - 1 ? 5 : 3)} 
-                    fill={chartColor}
-                    style={{ cursor: "pointer", transition: "r 0.15s ease" }}
+                    r={15}
+                    fill="transparent"
+                    style={{ cursor: "pointer" }}
                     onMouseEnter={(e) => {
                       setHoveredIndex(i);
                       setMousePos({ x: e.clientX, y: e.clientY });
@@ -203,9 +200,21 @@ export function SparkLine(props: {
                     onMouseMove={(e) => {
                       setMousePos({ x: e.clientX, y: e.clientY });
                     }}
+                    onMouseLeave={() => {
+                      setHoveredIndex(null);
+                      setMousePos(null);
+                    }}
+                  />
+                  {/* Visible point */}
+                  <circle 
+                    cx={xOf(i)} 
+                    cy={yOf(p.value)} 
+                    r={hoveredIndex === i ? 6 : (i === props.points.length - 1 ? 5 : 3)} 
+                    fill={chartColor}
+                    style={{ pointerEvents: "none" }}
                   />
                   {(i === props.points.length - 1 || hoveredIndex === i) && (
-                    <circle cx={xOf(i)} cy={yOf(p.value)} r={hoveredIndex === i ? 10 : 8} fill={chartColor} opacity={0.2} />
+                    <circle cx={xOf(i)} cy={yOf(p.value)} r={hoveredIndex === i ? 10 : 8} fill={chartColor} opacity={0.2} style={{ pointerEvents: "none" }} />
                   )}
                 </g>
               ))}
@@ -216,24 +225,39 @@ export function SparkLine(props: {
               const y = yOf(p.value);
               const h = vbH - padB - y;
               return (
-                <rect 
-                  key={i} 
-                  x={x} 
-                  y={y} 
-                  width={barW} 
-                  height={Math.max(2, h)} 
-                  rx={4} 
-                  fill={chartColor} 
-                  opacity={hoveredIndex === i ? 1 : 0.85}
-                  style={{ cursor: "pointer", transition: "opacity 0.15s ease" }}
-                  onMouseEnter={(e) => {
-                    setHoveredIndex(i);
-                    setMousePos({ x: e.clientX, y: e.clientY });
-                  }}
-                  onMouseMove={(e) => {
-                    setMousePos({ x: e.clientX, y: e.clientY });
-                  }}
-                />
+                <g key={i}>
+                  {/* Invisible larger hit area */}
+                  <rect 
+                    x={x - 4} 
+                    y={padT} 
+                    width={barW + 8} 
+                    height={vbH - padT - padB}
+                    fill="transparent"
+                    style={{ cursor: "pointer" }}
+                    onMouseEnter={(e) => {
+                      setHoveredIndex(i);
+                      setMousePos({ x: e.clientX, y: e.clientY });
+                    }}
+                    onMouseMove={(e) => {
+                      setMousePos({ x: e.clientX, y: e.clientY });
+                    }}
+                    onMouseLeave={() => {
+                      setHoveredIndex(null);
+                      setMousePos(null);
+                    }}
+                  />
+                  {/* Visible bar */}
+                  <rect 
+                    x={x} 
+                    y={y} 
+                    width={barW} 
+                    height={Math.max(2, h)} 
+                    rx={4} 
+                    fill={chartColor} 
+                    opacity={hoveredIndex === i ? 1 : 0.85}
+                    style={{ pointerEvents: "none" }}
+                  />
+                </g>
               );
             })
           )}
@@ -256,41 +280,40 @@ export function SparkLine(props: {
           className="chart-tooltip"
           style={{
             position: "fixed",
-            left: mousePos.x + 20,
-            top: mousePos.y - 40,
-            background: "linear-gradient(180deg, rgba(20,25,40,0.98) 0%, rgba(15,20,35,0.98) 100%)",
-            border: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: 12,
-            padding: "12px 16px",
-            boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
-            zIndex: 9999,
-            minWidth: 150,
+            left: Math.min(mousePos.x + 15, window?.innerWidth ? window.innerWidth - 180 : mousePos.x + 15),
+            top: mousePos.y - 60,
+            background: "rgba(15,20,35,0.95)",
+            border: "1px solid rgba(255,255,255,0.15)",
+            borderRadius: 10,
+            padding: "10px 14px",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+            zIndex: 99999,
+            minWidth: 140,
             pointerEvents: "none",
-            backdropFilter: "blur(8px)",
           }}
         >
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 6, fontWeight: 600 }}>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginBottom: 4, fontWeight: 600 }}>
             {hoveredPoint.xLabel}
           </div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#ffffff", letterSpacing: -0.5 }}>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#ffffff" }}>
             {formatY(hoveredPoint.value)}
           </div>
           {hoveredChange && (
             <div style={{ 
-              fontSize: 13, 
+              fontSize: 12, 
               fontWeight: 700,
-              marginTop: 8,
-              paddingTop: 8,
+              marginTop: 6,
+              paddingTop: 6,
               borderTop: "1px solid rgba(255,255,255,0.1)",
               color: hoveredChange.value > 0 ? "#ef4444" : "#10b981",
               display: "flex",
               alignItems: "center",
-              gap: 6,
+              gap: 4,
             }}>
-              <span style={{ fontSize: 14 }}>{hoveredChange.value > 0 ? "↑" : "↓"}</span>
+              <span>{hoveredChange.value > 0 ? "↑" : "↓"}</span>
               <span>{formatY(Math.abs(hoveredChange.value))}</span>
-              <span style={{ color: "rgba(255,255,255,0.5)" }}>
-                ({hoveredChange.percent > 0 ? "+" : ""}{hoveredChange.percent.toFixed(1)}%)
+              <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>
+                ({hoveredChange.percent > 0 ? "+" : ""}{hoveredChange.percent.toFixed(0)}%)
               </span>
             </div>
           )}
