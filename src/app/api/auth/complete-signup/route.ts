@@ -85,17 +85,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Account created but sign in failed. Please log in." }, { status: 500 });
   }
 
-  // Send welcome email (don't block signup if it fails)
-  sendWelcomeEmail(email).catch((err) => {
+  // Send welcome email
+  try {
+    console.log("Sending welcome email to:", email);
+    await sendWelcomeEmail(email);
+    console.log("Welcome email sent successfully");
+  } catch (err) {
     console.error("Failed to send welcome email:", err);
-  });
+  }
 
   // Trigger initial sync
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   fetch(`${appUrl}/api/sync/run?connection_id=${connectionId}`).catch(() => {});
 
   return NextResponse.json({ success: true });
-  
+
   // Send welcome email (don't block signup if it fails)
 console.log("Attempting to send welcome email to:", email);
 sendWelcomeEmail(email).catch((err) => {
