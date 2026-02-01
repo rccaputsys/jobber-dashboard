@@ -1715,7 +1715,7 @@ export default async function DashboardPage({
               title="Quote Leak"
               subtitle="Point-in-time balance"
               points={points.leak}
-              formatY={moneyForChart}
+              formatType="money"
               chartType={chartType}
               color="#ef4444"
             />
@@ -1723,7 +1723,7 @@ export default async function DashboardPage({
               title="AR 15+ Days"
               subtitle="Point-in-time balance"
               points={points.ar15}
-              formatY={moneyForChart}
+              formatType="money"
               chartType={chartType}
               color="#f59e0b"
             />
@@ -1731,7 +1731,7 @@ export default async function DashboardPage({
               title="Unscheduled"
               subtitle="Point-in-time backlog"
               points={points.unsched}
-              formatY={(v) => `${Math.round(v)}`}
+              formatType="number"
               chartType={chartType}
               color="#5aa6ff"
             />
