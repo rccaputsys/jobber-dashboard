@@ -271,7 +271,7 @@ export function SparkLine(props: {
         <div
           style={{
             position: "absolute",
-            left: tooltipPos.x,
+            left: tooltipPos.x > 200 ? tooltipPos.x - 150 : tooltipPos.x,
             top: tooltipPos.y - 90,
             background: "#1a1f2e",
             border: "1px solid #3a4055",
