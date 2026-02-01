@@ -104,7 +104,7 @@ export function Controls({ onLoadingChange }: { onLoadingChange?: (loading: bool
     { key: "bar", label: "Bar" },
   ];
 
-  // Premium button styles
+  // Premium button styles - ALL use gradient when active
   const pillStyle = (active: boolean, hovered: boolean): React.CSSProperties => ({
     padding: "8px 14px",
     borderRadius: 10,
@@ -122,23 +122,22 @@ export function Controls({ onLoadingChange }: { onLoadingChange?: (loading: bool
     boxShadow: active ? "0 4px 12px rgba(124,92,255,0.3)" : "none",
   });
 
+  // Same gradient style for segment buttons (Group By, Chart)
   const segmentStyle = (active: boolean, hovered: boolean): React.CSSProperties => ({
-    padding: "7px 12px",
+    padding: "8px 14px",
+    borderRadius: 10,
     border: "none",
     background: active
-      ? isLight ? "#ffffff" : "rgba(255,255,255,0.12)"
-      : "transparent",
-    color: active 
-      ? isLight ? "#7c5cff" : "#a78bfa"
+      ? "linear-gradient(135deg, #7c5cff, #5aa6ff)"
       : hovered
-      ? isLight ? "#334155" : "#fff"
-      : isLight ? "#64748b" : "rgba(255,255,255,0.6)",
+      ? isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)"
+      : "transparent",
+    color: active ? "#fff" : isLight ? "#334155" : "rgba(255,255,255,0.85)",
     fontSize: 13,
     fontWeight: 600,
     cursor: "pointer",
     transition: "all 0.15s ease",
-    borderRadius: 8,
-    boxShadow: active ? (isLight ? "0 2px 8px rgba(0,0,0,0.06)" : "0 2px 8px rgba(0,0,0,0.2)") : "none",
+    boxShadow: active ? "0 4px 12px rgba(124,92,255,0.3)" : "none",
   });
 
   const labelStyle: React.CSSProperties = {
