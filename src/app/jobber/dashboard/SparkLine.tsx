@@ -176,6 +176,7 @@ export function SparkLine(props: {
 
         {/* Y axis labels */}
         <text x={padL - 6} y={yOf(max) + 4} fontSize="11" fontWeight="600" textAnchor="end">{formatYAxisLabel(max)}</text>
+        <text x={padL - 6} y={yOf(max / 2) + 4} fontSize="10" fontWeight="500" textAnchor="end">{formatYAxisLabel(max / 2)}</text>
         <text x={padL - 6} y={yOf(0) + 4} fontSize="11" fontWeight="600" textAnchor="end">{formatYAxisLabel(0)}</text>
 
         <g clipPath={`url(#${clipId})`}>
@@ -281,7 +282,8 @@ export function SparkLine(props: {
           style={{
             position: "fixed",
             left: mousePos.x + 15,
-            top: mousePos.y - 100,
+            top: mousePos.y - 150,
+            transform: "translateY(-50%)",
             background: "rgba(15,20,35,0.95)",
             border: "1px solid rgba(255,255,255,0.15)",
             borderRadius: 10,
