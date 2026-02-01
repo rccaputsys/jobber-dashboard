@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 
 type ExportCSVProps = {
   data: Record<string, unknown>[];
@@ -6,10 +7,11 @@ type ExportCSVProps = {
   label?: string;
 };
 
-export function ExportCSV({ data, filename, label = "Export CSV →" }: ExportCSVProps) {
+export function ExportCSV({ data, filename, label = "Export CSV ↗" }: ExportCSVProps) {
+  const [isHovered, setIsHovered] = useState(false);
+
   function handleExport() {
     if (!data.length) return;
-
     const headers = Object.keys(data[0]);
     const csvContent = [
       headers.join(","),
@@ -23,10 +25,8 @@ export function ExportCSV({ data, filename, label = "Export CSV →" }: ExportCS
           .join(",")
       ),
     ].join("\n");
-
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
-    
     const a = document.createElement("a");
     a.href = url;
     a.download = `${filename}-${new Date().toISOString().split("T")[0]}.csv`;
@@ -39,6 +39,8 @@ export function ExportCSV({ data, filename, label = "Export CSV →" }: ExportCS
   return (
     <button
       onClick={handleExport}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -46,14 +48,20 @@ export function ExportCSV({ data, filename, label = "Export CSV →" }: ExportCS
         gap: 10,
         padding: "10px 14px",
         borderRadius: 12,
-        fontWeight: 1000,
+        fontWeight: 700,
         fontSize: 13,
         textDecoration: "none",
-        border: "1px solid rgba(255,255,255,0.16)",
-        background: "linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95))",
+        border: "1px solid rgba(255,255,255,0.2)",
+        background: isHovered
+          ? "linear-gradient(135deg, rgba(140,108,255,1), rgba(106,182,255,1))"
+          : "linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95))",
         color: "white",
-        boxShadow: "0 18px 48px rgba(90,166,255,0.22)",
+        boxShadow: isHovered
+          ? "0 12px 32px rgba(90,166,255,0.35)"
+          : "0 8px 24px rgba(90,166,255,0.22)",
         cursor: "pointer",
+        transition: "all 0.2s ease",
+        transform: isHovered ? "translateY(-2px)" : "translateY(0)",
       }}
     >
       {label}

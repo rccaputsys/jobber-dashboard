@@ -3,6 +3,7 @@ import { useState } from "react";
 
 export function SyncButton({ connectionId }: { connectionId: string }) {
   const [syncing, setSyncing] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -24,9 +25,12 @@ export function SyncButton({ connectionId }: { connectionId: string }) {
     <button
       onClick={handleSync}
       disabled={syncing}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="btn-interactive"
       style={{
         padding: "10px 18px",
-        background: "#5a67d8",
+        background: isHovered && !syncing ? "#6875e0" : "#5a67d8",
         color: "#fff",
         border: "none",
         borderRadius: 10,
@@ -37,11 +41,15 @@ export function SyncButton({ connectionId }: { connectionId: string }) {
         display: "flex",
         alignItems: "center",
         gap: 8,
-        boxShadow: "0 4px 12px rgba(90,103,216,0.3)",
+        boxShadow: isHovered && !syncing ? "0 6px 20px rgba(90,103,216,0.4)" : "0 4px 12px rgba(90,103,216,0.3)",
         transition: "all 0.2s ease",
+        transform: isHovered && !syncing ? "translateY(-1px)" : "translateY(0)",
       }}
     >
-      <span>{syncing ? "⏳" : "🔄"}</span>
+      <span style={{ 
+        display: "inline-block",
+        animation: syncing ? "spin 1s linear infinite" : "none",
+      }}>{syncing ? "⏳" : "🔄"}</span>
       {syncing ? "Syncing..." : "Sync Now"}
     </button>
   );

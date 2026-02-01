@@ -37,6 +37,8 @@ export function Controls() {
   const router = useRouter();
   const sp = useSearchParams();
   const [isLight, setIsLight] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [hoveredButton, setHoveredButton] = React.useState<string | null>(null);
 
   // Detect theme changes
   React.useEffect(() => {
@@ -69,12 +71,15 @@ export function Controls() {
   }, [start, end]);
 
   function setParams(next: Record<string, string | null>) {
+    setIsLoading(true);
     const params = new URLSearchParams(sp.toString());
     for (const [k, v] of Object.entries(next)) {
       if (v === null) params.delete(k);
       else params.set(k, v);
     }
     router.push(`/jobber/dashboard?${params.toString()}`, { scroll: false });
+    // Loading will clear when page re-renders with new data
+    setTimeout(() => setIsLoading(false), 2000);
   }
 
   function applyCustomRange(e: React.FormEvent) {
@@ -82,53 +87,82 @@ export function Controls() {
     setParams({ range: "custom", start: startLocal, end: endLocal });
   }
 
-  const pill = (active: boolean): React.CSSProperties => ({
-    borderRadius: 999,
-    border: active
-      ? "1px solid rgba(90,166,255,0.3)"
-      : isLight
-      ? "1px solid #e2e8f0"
-      : "1px solid rgba(255,255,255,0.12)",
-    background: active
-      ? "linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95))"
-      : isLight
-      ? "#f1f5f9"
-      : "rgba(255,255,255,0.06)",
-    color: active ? "white" : isLight ? "#334155" : "white",
-    padding: "7px 10px",
-    fontSize: 12,
-    fontWeight: 700,
-    cursor: "pointer",
-  });
+  const pill = (key: string, active: boolean): React.CSSProperties => {
+    const hovered = hoveredButton === `pill-${key}`;
+    return {
+      borderRadius: 999,
+      border: active
+        ? "1px solid rgba(90,166,255,0.3)"
+        : isLight
+        ? "1px solid #e2e8f0"
+        : "1px solid rgba(255,255,255,0.12)",
+      background: active
+        ? "linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95))"
+        : hovered
+        ? isLight ? "#e2e8f0" : "rgba(255,255,255,0.12)"
+        : isLight
+        ? "#f1f5f9"
+        : "rgba(255,255,255,0.06)",
+      color: active ? "white" : isLight ? "#334155" : "white",
+      padding: "7px 10px",
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: "pointer",
+      transition: "all 0.15s ease",
+      transform: hovered && !active ? "translateY(-1px)" : "translateY(0)",
+    };
+  };
 
-  const chip = (active: boolean): React.CSSProperties => ({
+  const chip = (key: string, active: boolean): React.CSSProperties => {
+    const hovered = hoveredButton === `chip-${key}`;
+    return {
+      borderRadius: 12,
+      border: active
+        ? isLight
+          ? "1px solid rgba(37,99,235,0.3)"
+          : "1px solid rgba(90,166,255,0.3)"
+        : isLight
+        ? "1px solid #e2e8f0"
+        : "1px solid rgba(255,255,255,0.12)",
+      background: active
+        ? isLight
+          ? "rgba(90,166,255,0.15)"
+          : "rgba(90,166,255,0.18)"
+        : hovered
+        ? isLight ? "#e2e8f0" : "rgba(255,255,255,0.12)"
+        : isLight
+        ? "#f1f5f9"
+        : "rgba(255,255,255,0.06)",
+      color: active
+        ? isLight
+          ? "#2563eb"
+          : "#5aa6ff"
+        : isLight
+        ? "#334155"
+        : "white",
+      padding: "7px 10px",
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: "pointer",
+      transition: "all 0.15s ease",
+      transform: hovered && !active ? "translateY(-1px)" : "translateY(0)",
+    };
+  };
+
+  const applyButtonHovered = hoveredButton === "apply";
+  const applyButtonStyle: React.CSSProperties = {
     borderRadius: 12,
-    border: active
-      ? isLight
-        ? "1px solid rgba(37,99,235,0.3)"
-        : "1px solid rgba(90,166,255,0.3)"
-      : isLight
-      ? "1px solid #e2e8f0"
-      : "1px solid rgba(255,255,255,0.12)",
-    background: active
-      ? isLight
-        ? "rgba(90,166,255,0.15)"
-        : "rgba(90,166,255,0.18)"
-      : isLight
-      ? "#f1f5f9"
-      : "rgba(255,255,255,0.06)",
-    color: active
-      ? isLight
-        ? "#2563eb"
-        : "#5aa6ff"
-      : isLight
-      ? "#334155"
-      : "white",
-    padding: "7px 10px",
-    fontSize: 12,
+    border: isLight ? "1px solid #e2e8f0" : "1px solid rgba(255,255,255,0.16)",
+    background: applyButtonHovered
+      ? isLight ? "#e2e8f0" : "rgba(255,255,255,0.12)"
+      : isLight ? "#f1f5f9" : "rgba(255,255,255,0.06)",
+    color: isLight ? "#334155" : "white",
+    padding: "8px 12px",
     fontWeight: 700,
     cursor: "pointer",
-  });
+    transition: "all 0.15s ease",
+    transform: applyButtonHovered ? "translateY(-1px)" : "translateY(0)",
+  };
 
   return (
     <div
@@ -145,8 +179,41 @@ export function Controls() {
         gap: 12,
         alignItems: "center",
         justifyContent: "space-between",
+        position: "relative",
       }}
     >
+      {/* Loading overlay */}
+      {isLoading && (
+        <div style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: isLight ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.5)",
+          borderRadius: 18,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 10,
+        }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            color: isLight ? "#334155" : "white",
+            fontWeight: 600,
+            fontSize: 14,
+          }}>
+            <span style={{ 
+              display: "inline-block",
+              animation: "spin 1s linear infinite",
+            }}>⏳</span>
+            Loading...
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
         <div
           style={{
@@ -170,7 +237,9 @@ export function Controls() {
             <button
               key={key}
               onClick={() => setParams({ range: key, start: null, end: null })}
-              style={pill(rangePreset === key)}
+              onMouseEnter={() => setHoveredButton(`pill-${key}`)}
+              onMouseLeave={() => setHoveredButton(null)}
+              style={pill(key, rangePreset === key)}
             >
               {label}
             </button>
@@ -226,15 +295,9 @@ export function Controls() {
           />
           <button
             type="submit"
-            style={{
-              borderRadius: 12,
-              border: isLight ? "1px solid #e2e8f0" : "1px solid rgba(255,255,255,0.16)",
-              background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.06)",
-              color: isLight ? "#334155" : "white",
-              padding: "8px 12px",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
+            onMouseEnter={() => setHoveredButton("apply")}
+            onMouseLeave={() => setHoveredButton(null)}
+            style={applyButtonStyle}
             title="Apply custom range"
           >
             Apply
@@ -254,7 +317,13 @@ export function Controls() {
             Bucket
           </span>
           {(["day", "week", "month", "quarter"] as Granularity[]).map((k) => (
-            <button key={k} onClick={() => setParams({ g: k })} style={chip(g === k)}>
+            <button 
+              key={k} 
+              onClick={() => setParams({ g: k })} 
+              onMouseEnter={() => setHoveredButton(`chip-${k}`)}
+              onMouseLeave={() => setHoveredButton(null)}
+              style={chip(k, g === k)}
+            >
               {k === "day" ? "Daily" : k === "week" ? "Weekly" : k === "month" ? "Monthly" : "Quarterly"}
             </button>
           ))}
@@ -271,7 +340,13 @@ export function Controls() {
             Chart
           </span>
           {(["line", "bar"] as ChartType[]).map((k) => (
-            <button key={k} onClick={() => setParams({ chart: k })} style={chip(chart === k)}>
+            <button 
+              key={k} 
+              onClick={() => setParams({ chart: k })} 
+              onMouseEnter={() => setHoveredButton(`chip-chart-${k}`)}
+              onMouseLeave={() => setHoveredButton(null)}
+              style={chip(`chart-${k}`, chart === k)}
+            >
               {k === "line" ? "Line" : "Bars"}
             </button>
           ))}

@@ -178,6 +178,11 @@ const globalStyles = `
     100% { background-position: 200% 0; }
   }
   
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
   .animate-in {
     animation: fadeInUp 0.5s ease-out forwards;
     opacity: 0;
@@ -739,9 +744,8 @@ const globalStyles = `
     border-color: #cbd5e1 !important;
   }
   
-  html[data-theme="light"] .btn-primary {
-    background: linear-gradient(135deg, #7c5cff, #5aa6ff) !important;
-    border-color: rgba(90,166,255,0.3) !important;
+  html[data-theme="light"] .btn-primary:hover {
+    background: linear-gradient(135deg, #8c6cff, #6ab6ff) !important;
     color: #ffffff !important;
   }
   
@@ -1535,23 +1539,6 @@ export default async function DashboardPage({
             <ThemeToggle />
             
             {/* Status Pills */}
-            <div className="status-pill" style={{
-              borderRadius: 10,
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              background: sevBg(arSev),
-              border: `1.5px solid ${sevColor(arSev)}`,
-            }}>
-              <span className={arSev === "critical" ? "pulse-dot" : ""} style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background: sevColor(arSev),
-              }} />
-              AR Risk <strong>{pct(riskPct)}</strong>
-            </div>
 
             <SubscriptionStatus billingStatus={billingStatus} trialEndsAt={trialEndsAt} />
             {subscriptionActive ? <ManageSubscriptionButton /> : <SubscribeButton />}
