@@ -175,8 +175,8 @@ export function SparkLine(props: {
         <line x1={padL} y1={yOf(0)} x2={vbW - padR} y2={yOf(0)} stroke="rgba(255,255,255,0.06)" strokeDasharray="4,4" />
 
         {/* Y axis labels */}
-        <text x={padL - 6} y={yOf(max) + 3} fontSize="9" textAnchor="end">{formatYAxisLabel(max)}</text>
-        <text x={padL - 6} y={yOf(0) + 3} fontSize="9" textAnchor="end">{formatYAxisLabel(0)}</text>
+        <text x={padL - 6} y={yOf(max) + 4} fontSize="11" fontWeight="600" textAnchor="end">{formatYAxisLabel(max)}</text>
+        <text x={padL - 6} y={yOf(0) + 4} fontSize="11" fontWeight="600" textAnchor="end">{formatYAxisLabel(0)}</text>
 
         <g clipPath={`url(#${clipId})`}>
           {props.chartType === "line" ? (
