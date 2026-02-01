@@ -374,15 +374,15 @@ const globalStyles = `
   }
   
   .kpi-value-large {
-    font-size: 32px;
+    font-size: 44px;
     font-weight: 800;
-    letter-spacing: -1px;
-    line-height: 1.1;
+    letter-spacing: -2px;
+    line-height: 1;
   }
   
   @media (min-width: 640px) {
     .kpi-value-large {
-      font-size: 40px;
+      font-size: 52px;
     }
   }
   
@@ -408,14 +408,14 @@ const globalStyles = `
   }
   
   .kpi-value-medium {
-    font-size: 24px;
+    font-size: 32px;
     font-weight: 800;
-    letter-spacing: -0.5px;
+    letter-spacing: -1px;
   }
   
   @media (min-width: 640px) {
     .kpi-value-medium {
-      font-size: 28px;
+      font-size: 36px;
     }
   }
   

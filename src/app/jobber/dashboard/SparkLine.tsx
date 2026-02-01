@@ -40,9 +40,9 @@ export function SparkLine(props: {
 
   const vbW = 360;
   const vbH = 140;
-  const padL = 48;
-  const padR = 40;
-  const padT = 20;
+  const padL = 52;
+  const padR = 16;
+  const padT = 14;
   const padB = 32;
 
   const chartColor = props.color || "#5aa6ff";
@@ -89,7 +89,15 @@ export function SparkLine(props: {
   const gradientId = `gradient-${Math.random().toString(16).slice(2)}`;
 
   const barW = Math.max(4, (vbW - padL - padR) / Math.max(1, props.points.length) - 4);
-  const labelSkip = props.points.length > 16 ? 4 : props.points.length > 10 ? 3 : 2;
+  
+  // Smart label skipping - aim for ~6-8 labels max
+  const pointCount = props.points.length;
+  const labelSkip = 
+    pointCount > 60 ? Math.ceil(pointCount / 6) :
+    pointCount > 30 ? Math.ceil(pointCount / 7) :
+    pointCount > 16 ? 4 :
+    pointCount > 10 ? 3 : 
+    pointCount > 6 ? 2 : 1;
 
   const currentValue = props.points.length > 0 ? props.points[props.points.length - 1].value : 0;
 
@@ -226,29 +234,6 @@ export function SparkLine(props: {
               <path d={areaD} fill={`url(#${gradientId})`} />
               <path d={d} fill="none" stroke={glowColor} strokeWidth="8" strokeLinecap="round" />
               <path d={d} fill="none" stroke={chartColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              {props.points.map((p, i) => (
-                <g key={i}>
-                  <circle
-                    cx={xOf(i)}
-                    cy={yOf(p.value)}
-                    r={20}
-                    fill="transparent"
-                    style={{ cursor: "pointer" }}
-                    onMouseEnter={(e) => handleMouseEnter(i, e)}
-                    onMouseMove={handleMouseMove}
-                  />
-                  <circle
-                    cx={xOf(i)}
-                    cy={yOf(p.value)}
-                    r={hoveredIndex === i ? 6 : (i === props.points.length - 1 ? 5 : 3)}
-                    fill={chartColor}
-                    style={{ pointerEvents: "none" }}
-                  />
-                  {(i === props.points.length - 1 || hoveredIndex === i) && (
-                    <circle cx={xOf(i)} cy={yOf(p.value)} r={hoveredIndex === i ? 10 : 8} fill={chartColor} opacity={0.2} style={{ pointerEvents: "none" }} />
-                  )}
-                </g>
-              ))}
             </>
           ) : (
             props.points.map((p, i) => {
@@ -282,6 +267,31 @@ export function SparkLine(props: {
             })
           )}
         </g>
+
+        {/* Dots rendered OUTSIDE clip path so they don't get cut off */}
+        {props.chartType === "line" && props.points.map((p, i) => (
+          <g key={`dot-${i}`}>
+            <circle
+              cx={xOf(i)}
+              cy={yOf(p.value)}
+              r={20}
+              fill="transparent"
+              style={{ cursor: "pointer" }}
+              onMouseEnter={(e) => handleMouseEnter(i, e)}
+              onMouseMove={handleMouseMove}
+            />
+            <circle
+              cx={xOf(i)}
+              cy={yOf(p.value)}
+              r={hoveredIndex === i ? 6 : (i === props.points.length - 1 ? 5 : 3)}
+              fill={chartColor}
+              style={{ pointerEvents: "none" }}
+            />
+            {(i === props.points.length - 1 || hoveredIndex === i) && (
+              <circle cx={xOf(i)} cy={yOf(p.value)} r={hoveredIndex === i ? 10 : 8} fill={chartColor} opacity={0.2} style={{ pointerEvents: "none" }} />
+            )}
+          </g>
+        ))}
 
         {/* X axis labels */}
         {props.points.map((p, i) => {
