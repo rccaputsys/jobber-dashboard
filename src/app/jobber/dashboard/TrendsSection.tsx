@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
 import { SparkLine } from "./SparkLine";
 import { Controls } from "./controls";
 
@@ -31,25 +30,56 @@ export function TrendsSection({
   granularityLabel,
 }: Props) {
   const [loading, setLoading] = useState(false);
-  const searchParams = useSearchParams();
-
-  // Reset loading when search params change (data has loaded)
+  
+  // Track previous props to detect when data changes
+  const prevDataRef = useRef<string>("");
+  
   useEffect(() => {
-    setLoading(false);
-  }, [searchParams]);
+    // Create a signature of the current data
+    const dataSignature = JSON.stringify({
+      leakPoints: leakPoints.length,
+      ar15Points: ar15Points.length,
+      unschedPoints: unschedPoints.length,
+      rangeLabel,
+      granularityLabel,
+      chartType,
+    });
+    
+    // If data changed, turn off loading
+    if (prevDataRef.current !== "" && prevDataRef.current !== dataSignature) {
+      setLoading(false);
+    }
+    
+    prevDataRef.current = dataSignature;
+  }, [leakPoints, ar15Points, unschedPoints, rangeLabel, granularityLabel, chartType]);
+
+  const handleLoadingChange = (isLoading: boolean) => {
+    setLoading(isLoading);
+    
+    // Fallback timeout in case navigation doesn't trigger re-render
+    if (isLoading) {
+      setTimeout(() => setLoading(false), 3000);
+    }
+  };
 
   return (
-    <div className="panel" style={{ padding: 20 }}>
-      <div style={{ marginBottom: 16 }}>
-        <h2 className="section-title" style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>Trends</h2>
-        <p className="section-subtitle" style={{ fontSize: 13 }}>{rangeLabel} • {granularityLabel}</p>
+    <div className="panel" style={{ padding: 0 }}>
+      <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Trends</h2>
+            <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
+              {rangeLabel} • {granularityLabel}
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <div style={{ padding: 16 }}>
+        <Controls onLoadingChange={handleLoadingChange} />
       </div>
 
-      <div style={{ marginBottom: 20 }}>
-        <Controls onLoadingChange={setLoading} />
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+      <div className="chart-grid" style={{ padding: "0 16px 16px" }}>
         <SparkLine
           title="Quote Leak"
           subtitle="Point-in-time balance"
