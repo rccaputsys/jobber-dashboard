@@ -95,4 +95,10 @@ export async function POST(req: Request) {
   fetch(`${appUrl}/api/sync/run?connection_id=${connectionId}`).catch(() => {});
 
   return NextResponse.json({ success: true });
+  
+  // Send welcome email (don't block signup if it fails)
+console.log("Attempting to send welcome email to:", email);
+sendWelcomeEmail(email).catch((err) => {
+  console.error("Failed to send welcome email:", err);
+});
 }
