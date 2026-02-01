@@ -9,10 +9,32 @@ export function SparkLine(props: {
   title: string;
   subtitle: string;
   points: { xLabel: string; value: number; tooltip: string }[];
-  formatY: (v: number) => string;
+  formatType: "money" | "number";
   chartType: ChartType;
   color?: string;
 }) {
+  // Format function based on type
+  const formatY = (cents: number): string => {
+    if (props.formatType === "number") {
+      return `${Math.round(cents)}`;
+    }
+    // Money format (value is in cents)
+    const dollars = Math.round(cents / 100);
+    if (dollars >= 1000000) {
+      const rounded = Math.round(dollars / 10000) * 10000;
+      return `$${(rounded / 1000000).toFixed(2)}M`;
+    }
+    if (dollars >= 1000) {
+      const rounded = Math.round(dollars / 100) * 100;
+      return `$${(rounded / 1000).toFixed(1)}k`;
+    }
+    if (dollars >= 100) {
+      const rounded = Math.round(dollars / 100) * 100;
+      return `$${rounded}`;
+    }
+    return `$${dollars}`;
+  };
+
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
 
@@ -52,9 +74,6 @@ export function SparkLine(props: {
   const max = niceMax || 1;
   const span = Math.max(1e-9, max - min);
 
-  // Generate Y-axis tick values (just top and bottom to keep it clean)
-  const yTicks = [0, max];
-
   const xStep = (vbW - padL - padR) / Math.max(1, props.points.length - 1);
   const yOf = (v: number) => {
     const t = (v - min) / span;
@@ -80,14 +99,12 @@ export function SparkLine(props: {
 
   // Format Y-axis label with nice rounding
   function formatYAxisLabel(value: number): string {
-    // For non-money charts (like unscheduled count)
-    if (props.title === "Unscheduled") {
+    if (props.formatType === "number") {
       return `${Math.round(value)}`;
     }
     
     if (value === 0) return "$0";
     
-    // Convert from cents to dollars
     const dollars = value / 100;
     
     if (dollars >= 1000000) {
@@ -95,12 +112,10 @@ export function SparkLine(props: {
     }
     if (dollars >= 1000) {
       const k = dollars / 1000;
-      // Round to nearest 0.5k for cleaner labels
       const rounded = Math.round(k * 2) / 2;
       return rounded % 1 === 0 ? `$${rounded}k` : `$${rounded.toFixed(1)}k`;
     }
     if (dollars >= 100) {
-      // Round to nearest 100
       const rounded = Math.round(dollars / 100) * 100;
       return `$${rounded}`;
     }
@@ -136,7 +151,7 @@ export function SparkLine(props: {
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 20, fontWeight: 800, color: chartColor, letterSpacing: -0.5 }}>
-            {props.formatY(currentValue)}
+            {formatY(currentValue)}
           </div>
           <div className="chart-label" style={{ fontSize: 10, marginTop: 2 }}>Current</div>
         </div>
@@ -259,7 +274,7 @@ export function SparkLine(props: {
             {hoveredPoint.xLabel}
           </div>
           <div style={{ fontSize: 20, fontWeight: 800, color: chartColor, letterSpacing: -0.5 }}>
-            {props.formatY(hoveredPoint.value)}
+            {formatY(hoveredPoint.value)}
           </div>
           {hoveredChange && hoveredChange.value !== 0 && (
             <div style={{ 
@@ -274,7 +289,7 @@ export function SparkLine(props: {
               gap: 4,
             }}>
               <span style={{ fontSize: 14 }}>{hoveredChange.value > 0 ? "↑" : "↓"}</span>
-              <span>{props.formatY(Math.abs(hoveredChange.value))}</span>
+              <span>{formatY(Math.abs(hoveredChange.value))}</span>
               <span style={{ color: "rgba(234,241,255,0.4)", marginLeft: 4 }}>
                 ({hoveredChange.percent > 0 ? "+" : ""}{hoveredChange.percent.toFixed(1)}%)
               </span>
