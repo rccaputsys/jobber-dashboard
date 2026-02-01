@@ -520,8 +520,10 @@ const globalStyles = `
   }
   
   .btn:hover {
-    background: rgba(255,255,255,0.1);
-    border-color: rgba(255,255,255,0.15);
+    background: rgba(90,166,255,0.15);
+    border-color: rgba(90,166,255,0.4);
+    color: #5aa6ff;
+    transform: translateY(-1px);
   }
   
   @media (min-width: 640px) {
@@ -740,8 +742,10 @@ const globalStyles = `
   }
   
   html[data-theme="light"] .btn:hover {
-    background: #f8fafc !important;
-    border-color: #cbd5e1 !important;
+    background: rgba(90,166,255,0.1) !important;
+    border-color: rgba(90,166,255,0.4) !important;
+    color: #2563eb !important;
+    transform: translateY(-1px);
   }
   
   html[data-theme="light"] .btn-primary:hover {
