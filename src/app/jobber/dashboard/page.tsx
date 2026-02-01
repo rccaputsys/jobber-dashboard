@@ -123,10 +123,19 @@ function moneyFactory(currency: string, locale = "en-US") {
 
 function moneyForChart(cents: number): string {
   const dollars = Math.round((Number(cents || 0) as number) / 100);
-  if (dollars >= 1000) {
-    return `$${(dollars / 1000).toFixed(1)}k`;
+  if (dollars >= 1000000) {
+    const rounded = Math.round(dollars / 10000) * 10000;
+    return `$${(rounded / 1000000).toFixed(2)}M`;
   }
-  return `$${dollars.toLocaleString()}`;
+  if (dollars >= 1000) {
+    const rounded = Math.round(dollars / 100) * 100;
+    return `$${(rounded / 1000).toFixed(1)}k`;
+  }
+  if (dollars >= 100) {
+    const rounded = Math.round(dollars / 100) * 100;
+    return `$${rounded}`;
+  }
+  return `$${dollars}`;
 }
 
 function severityFromScore(score: number): "critical" | "warning" | "good" {
