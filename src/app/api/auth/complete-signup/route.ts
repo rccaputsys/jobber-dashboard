@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { sendWelcomeEmail } from "@/lib/resend";
 
 export async function POST(req: Request) {
   const { email, password, connectionId } = await req.json();
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
 
   // Sign in the user
   const cookieStore = await cookies();
-  
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -83,6 +84,11 @@ export async function POST(req: Request) {
   if (signInError) {
     return NextResponse.json({ error: "Account created but sign in failed. Please log in." }, { status: 500 });
   }
+
+  // Send welcome email (don't block signup if it fails)
+  sendWelcomeEmail(email).catch((err) => {
+    console.error("Failed to send welcome email:", err);
+  });
 
   // Trigger initial sync
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
