@@ -372,38 +372,38 @@ export function ActionListTabs({
               <table className="data-table" style={{ fontSize: 14 }}>
                 <thead>
                   <tr>
-                    <th style={{ width: 55, padding: "6px 8px" }}>Age</th>
-                    <th style={{ padding: "6px 8px" }}>Invoice</th>
-                    <th style={{ width: 95, padding: "6px 8px" }}>Due</th>
-                    <th style={{ width: 95, padding: "6px 8px" }}>Amount</th>
-                    <th style={{ width: 85, padding: "6px 8px" }}>Action</th>
+                    <th style={{ width: "10%", padding: "8px 12px" }}>Age</th>
+                    <th style={{ width: "30%", padding: "8px 12px" }}>Invoice</th>
+                    <th style={{ width: "20%", padding: "8px 12px" }}>Due</th>
+                    <th style={{ width: "20%", padding: "8px 12px" }}>Amount</th>
+                    <th style={{ width: "20%", padding: "8px 12px" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sortedAR.slice(0, arShowCount).map((inv, idx) => (
                     <tr key={idx}>
-                      <td style={{ padding: "8px" }}>
+                      <td style={{ padding: "12px" }}>
                         <span className={`age-badge ${inv.days_overdue > 30 ? "critical" : inv.days_overdue > 15 ? "warning" : "good"}`}>
                           {inv.days_overdue}d
                         </span>
                       </td>
-                      <td style={{ padding: "8px" }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: isLight ? "#1e293b" : "#fff" }}>
+                      <td style={{ padding: "12px" }}>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: isLight ? "#1e293b" : "#fff" }}>
                           #{inv.invoice_number}
                         </div>
                         {inv.client_name && (
-                          <div style={{ fontSize: 12, marginTop: 1, color: isLight ? "#64748b" : "rgba(255,255,255,0.6)" }}>
+                          <div style={{ fontSize: 13, marginTop: 2, color: isLight ? "#64748b" : "rgba(255,255,255,0.6)" }}>
                             {inv.client_name}
                           </div>
                         )}
                       </td>
-                      <td style={{ padding: "8px", fontSize: 13, color: isLight ? "#94a3b8" : "rgba(255,255,255,0.5)" }}>
+                      <td style={{ padding: "12px", fontSize: 14, color: isLight ? "#64748b" : "rgba(255,255,255,0.7)" }}>
                         {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "—"}
                       </td>
-                      <td style={{ padding: "8px", fontSize: 14, fontWeight: 600, color: isLight ? "#1e293b" : "#fff" }}>
+                      <td style={{ padding: "12px", fontSize: 16, fontWeight: 700, color: isLight ? "#1e293b" : "#fff" }}>
                         {money(inv.amount_cents)}
                       </td>
-                      <td style={{ padding: "8px" }}>
+                      <td style={{ padding: "12px" }}>
                         <OpenLink url={inv.jobber_url} />
                       </td>
                     </tr>
@@ -477,11 +477,11 @@ export function ActionListTabs({
               <table className="data-table" style={{ fontSize: 14 }}>
                 <thead>
                   <tr>
-                    <th style={{ width: 55, padding: "6px 8px" }}>Age</th>
-                    <th style={{ padding: "6px 8px" }}>Job</th>
-                    <th style={{ width: 95, padding: "6px 8px" }}>Created</th>
-                    <th style={{ width: 95, padding: "6px 8px" }}>Amount</th>
-                    <th style={{ width: 85, padding: "6px 8px" }}>Action</th>
+                    <th style={{ width: "10%", padding: "8px 12px" }}>Age</th>
+                    <th style={{ width: "30%", padding: "8px 12px" }}>Job</th>
+                    <th style={{ width: "20%", padding: "8px 12px" }}>Created</th>
+                    <th style={{ width: "20%", padding: "8px 12px" }}>Amount</th>
+                    <th style={{ width: "20%", padding: "8px 12px" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -489,28 +489,28 @@ export function ActionListTabs({
                     const age = ageDays(r.created_at_jobber || null);
                     return (
                       <tr key={idx}>
-                        <td style={{ padding: "8px" }}>
+                        <td style={{ padding: "12px" }}>
                           <span className={`age-badge ${age > 14 ? "critical" : age > 7 ? "warning" : "good"}`}>
                             {age}d
                           </span>
                         </td>
-                        <td style={{ padding: "8px" }}>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: isLight ? "#1e293b" : "#fff" }}>
+                        <td style={{ padding: "12px" }}>
+                          <div style={{ fontSize: 15, fontWeight: 600, color: isLight ? "#1e293b" : "#fff" }}>
                             {r.job_number ? `#${r.job_number}` : "—"}
                           </div>
                           {r.job_title && (
-                            <div style={{ fontSize: 12, marginTop: 1, color: isLight ? "#64748b" : "rgba(255,255,255,0.6)" }}>
+                            <div style={{ fontSize: 13, marginTop: 2, color: isLight ? "#64748b" : "rgba(255,255,255,0.6)" }}>
                               {r.job_title}
                             </div>
                           )}
                         </td>
-                        <td style={{ padding: "8px", fontSize: 13, color: isLight ? "#94a3b8" : "rgba(255,255,255,0.5)" }}>
+                        <td style={{ padding: "12px", fontSize: 14, color: isLight ? "#64748b" : "rgba(255,255,255,0.7)" }}>
                           {r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "—"}
                         </td>
-                        <td style={{ padding: "8px", fontSize: 14, fontWeight: 600, color: isLight ? "#1e293b" : "#fff" }}>
+                        <td style={{ padding: "12px", fontSize: 16, fontWeight: 700, color: isLight ? "#1e293b" : "#fff" }}>
                           {r.total_amount_cents ? money(r.total_amount_cents) : "—"}
                         </td>
-                        <td style={{ padding: "8px" }}>
+                        <td style={{ padding: "12px" }}>
                           <OpenLink url={r.jobber_url} />
                         </td>
                       </tr>
@@ -586,11 +586,11 @@ export function ActionListTabs({
               <table className="data-table" style={{ fontSize: 14 }}>
                 <thead>
                   <tr>
-                    <th style={{ width: 55, padding: "6px 8px" }}>Age</th>
-                    <th style={{ padding: "6px 8px" }}>Quote</th>
-                    <th style={{ width: 95, padding: "6px 8px" }}>Sent</th>
-                    <th style={{ width: 95, padding: "6px 8px" }}>Amount</th>
-                    <th style={{ width: 85, padding: "6px 8px" }}>Action</th>
+                    <th style={{ width: "10%", padding: "8px 12px" }}>Age</th>
+                    <th style={{ width: "30%", padding: "8px 12px" }}>Quote</th>
+                    <th style={{ width: "20%", padding: "8px 12px" }}>Sent</th>
+                    <th style={{ width: "20%", padding: "8px 12px" }}>Amount</th>
+                    <th style={{ width: "20%", padding: "8px 12px" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -599,28 +599,28 @@ export function ActionListTabs({
                     const age = sent ? Math.max(0, Math.round((Date.now() - sent.getTime()) / 86400000)) : 0;
                     return (
                       <tr key={idx}>
-                        <td style={{ padding: "8px" }}>
+                        <td style={{ padding: "12px" }}>
                           <span className={`age-badge ${age > 14 ? "critical" : age > 7 ? "warning" : "good"}`}>
                             {age}d
                           </span>
                         </td>
-                        <td style={{ padding: "8px" }}>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: isLight ? "#1e293b" : "#fff" }}>
+                        <td style={{ padding: "12px" }}>
+                          <div style={{ fontSize: 15, fontWeight: 600, color: isLight ? "#1e293b" : "#fff" }}>
                             {q.quote_number ? `#${q.quote_number}` : "—"}
                           </div>
                           {q.quote_title && (
-                            <div style={{ fontSize: 12, marginTop: 1, color: isLight ? "#64748b" : "rgba(255,255,255,0.6)" }}>
+                            <div style={{ fontSize: 13, marginTop: 2, color: isLight ? "#64748b" : "rgba(255,255,255,0.6)" }}>
                               {q.quote_title}
                             </div>
                           )}
                         </td>
-                        <td style={{ padding: "8px", fontSize: 13, color: isLight ? "#94a3b8" : "rgba(255,255,255,0.5)" }}>
+                        <td style={{ padding: "12px", fontSize: 14, color: isLight ? "#64748b" : "rgba(255,255,255,0.7)" }}>
                           {sent ? sent.toLocaleDateString() : "—"}
                         </td>
-                        <td style={{ padding: "8px", fontSize: 14, fontWeight: 600, color: isLight ? "#1e293b" : "#fff" }}>
+                        <td style={{ padding: "12px", fontSize: 16, fontWeight: 700, color: isLight ? "#1e293b" : "#fff" }}>
                           {money(Number(q.quote_total_cents ?? 0))}
                         </td>
-                        <td style={{ padding: "8px" }}>
+                        <td style={{ padding: "12px" }}>
                           <OpenLink url={q.quote_url} />
                         </td>
                       </tr>
