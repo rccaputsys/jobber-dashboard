@@ -94,7 +94,6 @@ export function ActionListTabs({
   const [unscheduledShowCount, setUnscheduledShowCount] = useState(INITIAL_SHOW);
   const [quotesShowCount, setQuotesShowCount] = useState(INITIAL_SHOW);
 
-  // Create money formatter from currency code
   const money = moneyFactory(currencyCode);
 
   const tabs = [
@@ -103,7 +102,6 @@ export function ActionListTabs({
     { id: "quotes" as const, label: "Leaking Quotes", count: leakCandidates.length, icon: "📋" },
   ];
 
-  // Sorted data
   const sortedAR = [...agedARInvoices].sort((a, b) => b.days_overdue - a.days_overdue);
   const sortedQuotes = [...leakCandidates].sort((a, b) => new Date(a.sent_at ?? 0).getTime() - new Date(b.sent_at ?? 0).getTime());
 
@@ -120,11 +118,11 @@ export function ActionListTabs({
     const remaining = totalCount - currentCount;
 
     return (
-      <div style={{ textAlign: "center", marginTop: 16 }}>
+      <div style={{ textAlign: "center", marginTop: 12 }}>
         <button
           onClick={onShowMore}
           className="btn"
-          style={{ padding: "10px 24px" }}
+          style={{ padding: "8px 20px", fontSize: 13 }}
         >
           Show More ({remaining} remaining)
         </button>
@@ -152,56 +150,54 @@ export function ActionListTabs({
       {/* Tab Content */}
       {activeTab === "ar" && (
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
             <div>
-              <h3 className="text-primary" style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Aged Receivables (Past Due)</h3>
-              <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>Oldest first</p>
+              <h3 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Aged Receivables (Past Due)</h3>
+              <p className="text-muted" style={{ fontSize: 13, marginTop: 2 }}>Oldest first</p>
             </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              {agedARInvoices.length > 0 && (
-                <ExportCSV data={agedARExportData} filename="aged-ar" />
-              )}
-            </div>
+            {agedARInvoices.length > 0 && (
+              <ExportCSV data={agedARExportData} filename="aged-ar" />
+            )}
           </div>
 
           {agedARInvoices.length === 0 ? (
-            <div className="empty-state" style={{ padding: 24, textAlign: "center", fontSize: 13 }}>
+            <div className="empty-state" style={{ padding: 20, textAlign: "center", fontSize: 14 }}>
               ✨ No past due invoices!
             </div>
           ) : (
             <>
               <div className="table-container">
-                <table className="data-table">
+                <table className="data-table" style={{ fontSize: 14 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: 70 }}>Age</th>
-                      <th>Invoice</th>
-                      <th style={{ width: 100 }}>Due</th>
-                      <th style={{ width: 100 }}>Amount</th>
-                      <th style={{ width: 120 }}>Action</th>
+                      <th style={{ width: 60, padding: "8px 10px" }}>Age</th>
+                      <th style={{ padding: "8px 10px" }}>Invoice</th>
+                      <th style={{ width: 100, padding: "8px 10px" }}>Due</th>
+                      <th style={{ width: 100, padding: "8px 10px" }}>Amount</th>
+                      <th style={{ width: 100, padding: "8px 10px" }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {sortedAR.slice(0, arShowCount).map((inv, idx) => (
                       <tr key={idx}>
-                        <td>
+                        <td style={{ padding: "10px" }}>
                           <span className={`age-badge ${inv.days_overdue > 30 ? "critical" : inv.days_overdue > 15 ? "warning" : "good"}`}>
                             {inv.days_overdue}d
                           </span>
                         </td>
-                        <td>
-                          <div className="cell-primary">#{inv.invoice_number}</div>
+                        <td style={{ padding: "10px" }}>
+                          <div className="cell-primary" style={{ fontSize: 14, fontWeight: 600 }}>#{inv.invoice_number}</div>
                           {inv.client_name && (
-                            <div className="cell-secondary" style={{ fontSize: 11, marginTop: 2 }}>{inv.client_name}</div>
+                            <div className="cell-secondary" style={{ fontSize: 13, marginTop: 1 }}>{inv.client_name}</div>
                           )}
                         </td>
-                        <td className="cell-muted">
+                        <td className="cell-muted" style={{ padding: "10px", fontSize: 13 }}>
                           {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "—"}
                         </td>
-                        <td className="cell-primary">{money(inv.amount_cents)}</td>
-                        <td>
+                        <td className="cell-primary" style={{ padding: "10px", fontSize: 14, fontWeight: 600 }}>{money(inv.amount_cents)}</td>
+                        <td style={{ padding: "10px" }}>
                           {inv.jobber_url ? (
-                            <a href={inv.jobber_url} target="_blank" rel="noreferrer" className="btn">
+                            <a href={inv.jobber_url} target="_blank" rel="noreferrer" className="btn" style={{ padding: "6px 12px", fontSize: 13 }}>
                               Open →
                             </a>
                           ) : (
@@ -225,33 +221,31 @@ export function ActionListTabs({
 
       {activeTab === "unscheduled" && (
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
             <div>
-              <h3 className="text-primary" style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Unscheduled Jobs</h3>
-              <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>Oldest first</p>
+              <h3 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Unscheduled Jobs</h3>
+              <p className="text-muted" style={{ fontSize: 13, marginTop: 2 }}>Oldest first</p>
             </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              {unscheduledRows.length > 0 && (
-                <ExportCSV data={unscheduledExportData} filename="unscheduled-jobs" />
-              )}
-            </div>
+            {unscheduledRows.length > 0 && (
+              <ExportCSV data={unscheduledExportData} filename="unscheduled-jobs" />
+            )}
           </div>
 
           {unscheduledRows.length === 0 ? (
-            <div className="empty-state" style={{ padding: 24, textAlign: "center", fontSize: 13 }}>
+            <div className="empty-state" style={{ padding: 20, textAlign: "center", fontSize: 14 }}>
               ✨ No unscheduled jobs!
             </div>
           ) : (
             <>
               <div className="table-container">
-                <table className="data-table">
+                <table className="data-table" style={{ fontSize: 14 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: 70 }}>Age</th>
-                      <th>Job</th>
-                      <th style={{ width: 100 }}>Created</th>
-                      <th style={{ width: 100 }}>Amount</th>
-                      <th style={{ width: 120 }}>Action</th>
+                      <th style={{ width: 60, padding: "8px 10px" }}>Age</th>
+                      <th style={{ padding: "8px 10px" }}>Job</th>
+                      <th style={{ width: 100, padding: "8px 10px" }}>Created</th>
+                      <th style={{ width: 100, padding: "8px 10px" }}>Amount</th>
+                      <th style={{ width: 100, padding: "8px 10px" }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -259,28 +253,28 @@ export function ActionListTabs({
                       const age = ageDays(r.created_at_jobber || null);
                       return (
                         <tr key={idx}>
-                          <td>
+                          <td style={{ padding: "10px" }}>
                             <span className={`age-badge ${age > 14 ? "critical" : age > 7 ? "warning" : "good"}`}>
                               {age}d
                             </span>
                           </td>
-                          <td>
-                            <div className="cell-primary">
+                          <td style={{ padding: "10px" }}>
+                            <div className="cell-primary" style={{ fontSize: 14, fontWeight: 600 }}>
                               {r.job_number ? `#${r.job_number}` : "—"}
                             </div>
                             {r.job_title && (
-                              <div className="cell-secondary" style={{ fontSize: 11, marginTop: 2 }}>{r.job_title}</div>
+                              <div className="cell-secondary" style={{ fontSize: 13, marginTop: 1 }}>{r.job_title}</div>
                             )}
                           </td>
-                          <td className="cell-muted">
+                          <td className="cell-muted" style={{ padding: "10px", fontSize: 13 }}>
                             {r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "—"}
                           </td>
-                          <td className="cell-primary">
+                          <td className="cell-primary" style={{ padding: "10px", fontSize: 14, fontWeight: 600 }}>
                             {r.total_amount_cents ? money(r.total_amount_cents) : "—"}
                           </td>
-                          <td>
+                          <td style={{ padding: "10px" }}>
                             {r.jobber_url ? (
-                              <a href={r.jobber_url} target="_blank" rel="noreferrer" className="btn">
+                              <a href={r.jobber_url} target="_blank" rel="noreferrer" className="btn" style={{ padding: "6px 12px", fontSize: 13 }}>
                                 Open →
                               </a>
                             ) : (
@@ -305,33 +299,31 @@ export function ActionListTabs({
 
       {activeTab === "quotes" && (
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
             <div>
-              <h3 className="text-primary" style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Leaking Quotes</h3>
-              <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>Oldest first</p>
+              <h3 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Leaking Quotes</h3>
+              <p className="text-muted" style={{ fontSize: 13, marginTop: 2 }}>Oldest first</p>
             </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              {leakCandidates.length > 0 && (
-                <ExportCSV data={leakingQuotesExportData} filename="leaking-quotes" />
-              )}
-            </div>
+            {leakCandidates.length > 0 && (
+              <ExportCSV data={leakingQuotesExportData} filename="leaking-quotes" />
+            )}
           </div>
 
           {leakCandidates.length === 0 ? (
-            <div className="empty-state" style={{ padding: 24, textAlign: "center", fontSize: 13 }}>
+            <div className="empty-state" style={{ padding: 20, textAlign: "center", fontSize: 14 }}>
               ✨ No leaking quotes!
             </div>
           ) : (
             <>
               <div className="table-container">
-                <table className="data-table">
+                <table className="data-table" style={{ fontSize: 14 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: 70 }}>Age</th>
-                      <th>Quote</th>
-                      <th style={{ width: 100 }}>Sent</th>
-                      <th style={{ width: 100 }}>Amount</th>
-                      <th style={{ width: 120 }}>Action</th>
+                      <th style={{ width: 60, padding: "8px 10px" }}>Age</th>
+                      <th style={{ padding: "8px 10px" }}>Quote</th>
+                      <th style={{ width: 100, padding: "8px 10px" }}>Sent</th>
+                      <th style={{ width: 100, padding: "8px 10px" }}>Amount</th>
+                      <th style={{ width: 100, padding: "8px 10px" }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -340,26 +332,26 @@ export function ActionListTabs({
                       const age = sent ? Math.max(0, Math.round((Date.now() - sent.getTime()) / 86400000)) : 0;
                       return (
                         <tr key={idx}>
-                          <td>
+                          <td style={{ padding: "10px" }}>
                             <span className={`age-badge ${age > 14 ? "critical" : age > 7 ? "warning" : "good"}`}>
                               {age}d
                             </span>
                           </td>
-                          <td>
-                            <div className="cell-primary">
+                          <td style={{ padding: "10px" }}>
+                            <div className="cell-primary" style={{ fontSize: 14, fontWeight: 600 }}>
                               {q.quote_number ? `#${q.quote_number}` : "—"}
                             </div>
                             {q.quote_title && (
-                              <div className="cell-secondary" style={{ fontSize: 11, marginTop: 2 }}>{q.quote_title}</div>
+                              <div className="cell-secondary" style={{ fontSize: 13, marginTop: 1 }}>{q.quote_title}</div>
                             )}
                           </td>
-                          <td className="cell-muted">
+                          <td className="cell-muted" style={{ padding: "10px", fontSize: 13 }}>
                             {sent ? sent.toLocaleDateString() : "—"}
                           </td>
-                          <td className="cell-primary">{money(Number(q.quote_total_cents ?? 0))}</td>
-                          <td>
+                          <td className="cell-primary" style={{ padding: "10px", fontSize: 14, fontWeight: 600 }}>{money(Number(q.quote_total_cents ?? 0))}</td>
+                          <td style={{ padding: "10px" }}>
                             {q.quote_url ? (
-                              <a href={q.quote_url} target="_blank" rel="noreferrer" className="btn">
+                              <a href={q.quote_url} target="_blank" rel="noreferrer" className="btn" style={{ padding: "6px 12px", fontSize: 13 }}>
                                 Open →
                               </a>
                             ) : (
