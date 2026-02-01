@@ -280,8 +280,8 @@ export function SparkLine(props: {
           className="chart-tooltip"
           style={{
             position: "fixed",
-            left: Math.min(mousePos.x + 15, window?.innerWidth ? window.innerWidth - 180 : mousePos.x + 15),
-            top: mousePos.y - 60,
+            left: mousePos.x + 15,
+            top: mousePos.y - 100,
             background: "rgba(15,20,35,0.95)",
             border: "1px solid rgba(255,255,255,0.15)",
             borderRadius: 10,
