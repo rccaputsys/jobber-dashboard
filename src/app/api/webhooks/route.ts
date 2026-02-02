@@ -9,9 +9,10 @@ const supabase = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    const webhookData = await request.json();
+    const rawData = await request.json();
+    const webhookData = rawData.data?.webHookEvent || rawData;
     
-    console.log('Received webhook from Jobber - FULL PAYLOAD:', JSON.stringify(webhookData, null, 2));
+    console.log('Received webhook from Jobber - FULL PAYLOAD:', JSON.stringify(rawData, null, 2));
 
     // Handle different webhook types
     switch (webhookData.topic) {
@@ -19,9 +20,7 @@ export async function POST(request: NextRequest) {
         console.log('App disconnected from Jobber side:', webhookData);
         
         // Get account ID from webhook payload
-        const accountId = webhookData.resource?.account_id 
-          || webhookData.account_id 
-          || webhookData.resource?.id;
+        const accountId = webhookData.accountId;
         
         if (accountId) {
           // Find the connection by Jobber account ID
