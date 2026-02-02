@@ -6,9 +6,8 @@ export default function PrivacyPolicy() {
     <main
       style={{
         minHeight: "100vh",
-        background:
-          "linear-gradient(180deg, #060811 0%, #0A1222 50%, #0d1a2d 100%)",
-        color: "#EAF1FF",
+        background: "#ffffff",
+        color: "#1e293b",
         fontFamily:
           "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
@@ -17,15 +16,15 @@ export default function PrivacyPolicy() {
         .policy-content h2 {
           font-size: 20px;
           font-weight: 700;
-          color: #EAF1FF;
+          color: #1e293b;
           margin: 32px 0 16px 0;
           padding-bottom: 8px;
-          border-bottom: 1px solid rgba(255,255,255,0.1);
+          border-bottom: 1px solid #e2e8f0;
         }
         .policy-content h3 {
           font-size: 16px;
           font-weight: 600;
-          color: rgba(234,241,255,0.9);
+          color: #334155;
           margin: 24px 0 12px 0;
         }
         .policy-content p {
@@ -48,7 +47,7 @@ export default function PrivacyPolicy() {
           margin-bottom: 32px;
         }
         .policy-content a {
-          color: #a5b4fc;
+          color: #7c5cff;
           text-decoration: none;
         }
         .policy-content a:hover {
@@ -60,7 +59,7 @@ export default function PrivacyPolicy() {
         <Link
           href="/jobber"
           style={{
-            color: "#a5b4fc",
+            color: "#7c5cff",
             textDecoration: "none",
             fontSize: 14,
             display: "inline-flex",
@@ -69,23 +68,23 @@ export default function PrivacyPolicy() {
             marginBottom: 32,
           }}
         >
-          ← Back to AccuInsight by OwnerView
+          ← Back to AccuInsight
         </Link>
 
-        <h1 style={{ fontSize: 36, fontWeight: 800, marginBottom: 8 }}>
+        <h1 style={{ fontSize: 36, fontWeight: 800, marginBottom: 8, color: "#1e293b" }}>
           Privacy Policy
         </h1>
 
-        <p style={{ color: "rgba(234,241,255,0.5)", marginBottom: 48 }}>
-          Last updated: January 23, 2026
+        <p style={{ color: "#64748b", marginBottom: 48 }}>
+          Last updated: February 2, 2026
         </p>
 
-        <div className="policy-content" style={{ color: "rgba(234,241,255,0.8)" }}>
+        <div className="policy-content" style={{ color: "#475569" }}>
           <section>
             <h2>Introduction</h2>
             <p>
               This Privacy Policy explains how OwnerView ("we," "us," or "our") collects, uses, and
-              shares information when you use our Service. We are committed to protecting your privacy
+              shares information when you use AccuInsight and related services. We are committed to protecting your privacy
               and do not sell personal information.
             </p>
           </section>
@@ -95,161 +94,154 @@ export default function PrivacyPolicy() {
 
             <h3>Information You Provide</h3>
             <p>
-              When you register for an account, subscribe, contact support, or
-              otherwise communicate with us, we may collect:
+              When you create an account, subscribe, or contact support, we collect:
             </p>
             <ul>
               <li>Name and email address</li>
-              <li>Billing details and payment information</li>
+              <li>Billing and payment information (processed securely via Stripe)</li>
               <li>Account credentials</li>
               <li>Any other information you choose to provide</li>
             </ul>
 
-            <h3>Connected Account Data (Jobber)</h3>
+            <h3>Data from Jobber</h3>
             <p>
-              If you See Your Numbers Now, we access data needed to display analytics,
-              including:
+              When you connect your Jobber account, we access data needed to display your analytics dashboard:
             </p>
             <ul>
               <li>Jobs and scheduling information</li>
-              <li>Invoices and payment status</li>
-              <li>Quotes and client information</li>
-              <li>Related business records</li>
+              <li>Invoices, payment status, and due dates</li>
+              <li>Quotes and conversion status</li>
+              <li>Client names (for display purposes only)</li>
             </ul>
             <p>
-              You may revoke this access at any time through your Jobber account settings.
+              We only read this data to display insights—we never modify your Jobber data. You can disconnect at any time from your dashboard or Jobber's App Marketplace.
             </p>
 
             <h3>Automatically Collected Information</h3>
             <p>
-              We may automatically collect certain information when you use the Service:
+              We automatically collect:
             </p>
             <ul>
-              <li>IP address and location data</li>
+              <li>IP address and general location</li>
               <li>Browser type and device information</li>
-              <li>Usage activity and interaction data</li>
-              <li>Diagnostic logs for security and operations</li>
+              <li>Usage patterns and feature interactions</li>
+              <li>Error logs for troubleshooting</li>
             </ul>
           </section>
 
           <section>
             <h2>How We Use Information</h2>
-            <p>We use the information we collect to:</p>
+            <p>We use your information to:</p>
             <ul>
-              <li>Provide, operate, and maintain the Service</li>
-              <li>Display dashboards and business analytics</li>
-              <li>Authenticate users and secure accounts</li>
-              <li>Process payments and manage subscriptions</li>
+              <li>Display your business analytics dashboard</li>
+              <li>Authenticate your account and keep it secure</li>
+              <li>Process payments and manage your subscription</li>
               <li>Provide customer support</li>
-              <li>Send important service updates</li>
+              <li>Send important service updates (e.g., trial expiration)</li>
+              <li>Improve the product based on usage patterns</li>
               <li>Comply with legal obligations</li>
+              <li>Create anonymized, aggregated research and industry benchmarks</li>
+              <li>Publish insights about home service industry trends (never identifying individual businesses)</li>
             </ul>
           </section>
 
           <section>
             <h2>Marketing Communications</h2>
             <p>
-              We may use your email address to send product updates, feature
-              announcements, educational content, and other communications
-              related to AccuInsight and OwnerView.
+              We may send product updates, tips, and announcements to your email address.
             </p>
             <p>
-              You may opt out of marketing emails at any time by:
+              You can opt out anytime by:
             </p>
             <ul>
-              <li>Using the unsubscribe link in any marketing email</li>
-              <li>Contacting us at support@ownerview.io</li>
+              <li>Clicking "unsubscribe" in any marketing email</li>
+              <li>Emailing support@ownerview.io</li>
             </ul>
+            <p>
+              We will still send transactional emails (billing receipts, security alerts, etc.) regardless of your marketing preferences.
+            </p>
           </section>
 
           <section>
             <h2>How We Share Information</h2>
             <p>
-              <strong>We do not sell personal information.</strong> We may share information only in the following circumstances:
+              <strong>We do not sell your data. Ever.</strong>
             </p>
+            <p>We only share information with:</p>
             <ul>
-              <li><strong>Service Providers:</strong> With trusted third parties who help us operate the Service (e.g., payment processors, hosting providers)</li>
-              <li><strong>Legal Compliance:</strong> When required by law or to protect our rights</li>
-              <li><strong>Business Transactions:</strong> In connection with a merger, acquisition, or sale of assets</li>
+              <li><strong>Stripe:</strong> To process payments securely</li>
+              <li><strong>Supabase:</strong> To store your data securely</li>
+              <li><strong>Vercel:</strong> To host and serve the application</li>
+              <li><strong>Legal authorities:</strong> When required by law</li>
+              <li><strong>Research & Benchmarks:</strong> We may publish aggregated industry insights (e.g., "average quote conversion rate for lawn care businesses"). This data will never identify you or your business.</li>
             </ul>
           </section>
 
           <section>
             <h2>Data Retention</h2>
             <p>
-              We retain information only as long as necessary to:
+              We retain your data while your account is active. If you disconnect Jobber or cancel your subscription:
             </p>
             <ul>
-              <li>Provide the Service to you</li>
-              <li>Comply with legal obligations</li>
-              <li>Resolve disputes and enforce agreements</li>
-              <li>Maintain security and prevent fraud</li>
+              <li>Your Jobber data is deleted immediately</li>
+              <li>Your account information is retained for 30 days (in case you return)</li>
+              <li>Billing records are retained as required by law</li>
             </ul>
             <p>
-              You may request deletion of your data by contacting support@ownerview.io.
+              Request full deletion anytime at support@ownerview.io.
             </p>
           </section>
 
           <section>
             <h2>Security</h2>
             <p>
-              We implement reasonable technical and organizational safeguards to protect your
-              information, including:
+              We take security seriously:
             </p>
             <ul>
-              <li>Encryption of data in transit and at rest</li>
-              <li>Secure authentication mechanisms</li>
-              <li>Regular security assessments</li>
+              <li>All data encrypted in transit (HTTPS) and at rest</li>
+              <li>OAuth authentication with Jobber (we never see your Jobber password)</li>
+              <li>Row-level security ensures you only see your own data</li>
+              <li>Regular security reviews</li>
             </ul>
             <p>
-              However, no system is completely secure, and we cannot guarantee absolute security.
+              No system is 100% secure, but we follow industry best practices to protect your information.
             </p>
           </section>
 
           <section>
             <h2>Your Rights</h2>
             <p>
-              Depending on your location, you may have the right to:
+              You have the right to:
             </p>
             <ul>
-              <li>Access the personal information we hold about you</li>
-              <li>Request correction of inaccurate information</li>
-              <li>Request deletion of your information</li>
-              <li>Object to certain processing of your information</li>
-              <li>Export your data in a portable format</li>
+              <li>Access your data (export available from dashboard)</li>
+              <li>Correct inaccurate information</li>
+              <li>Delete your account and data</li>
+              <li>Disconnect Jobber at any time</li>
             </ul>
             <p>
-              <strong>California Residents:</strong> We do not sell personal information as defined under the CCPA.
+              <strong>California Residents:</strong> We do not sell personal information under the CCPA.
             </p>
           </section>
 
           <section>
             <h2>Children</h2>
             <p>
-              The Service is not intended for children under 13 years of age. We do not knowingly
-              collect personal information from children under 13.
+              AccuInsight is a business tool not intended for anyone under 18.
             </p>
           </section>
 
           <section>
             <h2>Changes to This Policy</h2>
             <p>
-              We may update this Privacy Policy from time to time. We will notify you of any
-              material changes by posting the new policy on this page and updating the
-              "Last updated" date.
-            </p>
-            <p>
-              Your continued use of the Service after changes constitutes acceptance of the updated policy.
+              We may update this policy occasionally. Material changes will be communicated via email or dashboard notification.
             </p>
           </section>
 
           <section>
             <h2>Contact Us</h2>
             <p>
-              If you have questions about this Privacy Policy, please contact us at:
-            </p>
-            <p>
-              <strong>Email:</strong>{" "}
+              Questions? Reach us at{" "}
               <a href="mailto:support@ownerview.io">support@ownerview.io</a>
             </p>
           </section>
@@ -259,17 +251,17 @@ export default function PrivacyPolicy() {
           style={{
             marginTop: 60,
             paddingTop: 32,
-            borderTop: "1px solid rgba(255,255,255,0.08)",
+            borderTop: "1px solid #e2e8f0",
             textAlign: "center",
             fontSize: 13,
-            color: "rgba(234,241,255,0.4)",
+            color: "#94a3b8",
           }}
         >
           <p>© 2026 OwnerView. All rights reserved.</p>
           <p style={{ marginTop: 8 }}>
-            <Link href="/privacy" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Privacy Policy</Link>
+            <Link href="/privacy" style={{ color: "#64748b", textDecoration: "none" }}>Privacy Policy</Link>
             {" · "}
-            <Link href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms of Service</Link>
+            <Link href="/terms" style={{ color: "#64748b", textDecoration: "none" }}>Terms of Service</Link>
           </p>
         </footer>
       </div>

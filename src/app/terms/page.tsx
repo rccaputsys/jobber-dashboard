@@ -6,9 +6,8 @@ export default function TermsOfService() {
     <main
       style={{
         minHeight: "100vh",
-        background:
-          "linear-gradient(180deg, #060811 0%, #0A1222 50%, #0d1a2d 100%)",
-        color: "#EAF1FF",
+        background: "#ffffff",
+        color: "#1e293b",
         fontFamily:
           "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
@@ -17,15 +16,15 @@ export default function TermsOfService() {
         .policy-content h2 {
           font-size: 20px;
           font-weight: 700;
-          color: #EAF1FF;
+          color: #1e293b;
           margin: 32px 0 16px 0;
           padding-bottom: 8px;
-          border-bottom: 1px solid rgba(255,255,255,0.1);
+          border-bottom: 1px solid #e2e8f0;
         }
         .policy-content h3 {
           font-size: 16px;
           font-weight: 600;
-          color: rgba(234,241,255,0.9);
+          color: #334155;
           margin: 24px 0 12px 0;
         }
         .policy-content p {
@@ -48,15 +47,15 @@ export default function TermsOfService() {
           margin-bottom: 32px;
         }
         .policy-content a {
-          color: #a5b4fc;
+          color: #7c5cff;
           text-decoration: none;
         }
         .policy-content a:hover {
           text-decoration: underline;
         }
         .policy-content .disclaimer {
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.1);
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
           border-radius: 8px;
           padding: 16px;
           margin: 16px 0;
@@ -67,7 +66,7 @@ export default function TermsOfService() {
         <Link
           href="/jobber"
           style={{
-            color: "#a5b4fc",
+            color: "#7c5cff",
             textDecoration: "none",
             fontSize: 14,
             display: "inline-flex",
@@ -76,288 +75,208 @@ export default function TermsOfService() {
             marginBottom: 32,
           }}
         >
-          ← Back to AccuInsight by OwnerView
+          ← Back to AccuInsight
         </Link>
 
-        <h1 style={{ fontSize: 36, fontWeight: 800, marginBottom: 8 }}>
+        <h1 style={{ fontSize: 36, fontWeight: 800, marginBottom: 8, color: "#1e293b" }}>
           Terms of Service
         </h1>
 
-        <p style={{ color: "rgba(234,241,255,0.5)", marginBottom: 48 }}>
-          Last updated: January 23, 2026
+        <p style={{ color: "#64748b", marginBottom: 48 }}>
+          Last updated: February 2, 2026
         </p>
 
-        <div className="policy-content" style={{ color: "rgba(234,241,255,0.8)" }}>
+        <div className="policy-content" style={{ color: "#475569" }}>
           <section>
             <h2>Agreement to Terms</h2>
             <p>
-              By accessing or using AccuInsight by OwnerView ("Service"), you agree to be bound
-              by these Terms of Service ("Terms"). If you do not agree to these Terms,
-              you may not use the Service.
-            </p>
-            <p>
-              These Terms constitute a legally binding agreement between you and OwnerView.
-              Please read them carefully.
+              By using AccuInsight ("Service"), you agree to these Terms of Service. If you don't agree, please don't use the Service.
             </p>
           </section>
 
           <section>
-            <h2>Description of the Service</h2>
+            <h2>What AccuInsight Does</h2>
             <p>
-              AccuInsight provides business analytics and dashboards derived from
-              third-party services, including Jobber, to help business owners
-              understand and manage their operations more effectively.
-            </p>
-            <p>
-              Our Service includes:
+              AccuInsight connects to your Jobber account and displays business analytics to help you:
             </p>
             <ul>
-              <li>Accounts receivable aging reports and alerts</li>
-              <li>Quote tracking and conversion analytics</li>
-              <li>Job scheduling and backlog management tools</li>
-              <li>Business performance dashboards</li>
+              <li>Track accounts receivable aging and overdue invoices</li>
+              <li>Monitor quote conversion rates and follow-up opportunities</li>
+              <li>Manage unscheduled jobs and backlog</li>
+              <li>See trends in your key business metrics</li>
             </ul>
+            <p>
+              We read your Jobber data to display insights. We never modify your Jobber data.
+            </p>
           </section>
 
           <section>
-            <h2>Account Registration</h2>
+            <h2>Your Account</h2>
             <p>
-              To use the Service, you must:
+              To use AccuInsight, you must:
             </p>
             <ul>
-              <li>Create an account with accurate and complete information</li>
-              <li>Be at least 18 years old or the age of majority in your jurisdiction</li>
-              <li>Maintain the security of your account credentials</li>
-              <li>Notify us immediately of any unauthorized access</li>
+              <li>Create an account with accurate information</li>
+              <li>Be at least 18 years old</li>
+              <li>Keep your login credentials secure</li>
+              <li>Notify us immediately if you suspect unauthorized access</li>
             </ul>
             <p>
-              You are responsible for all activities that occur under your account.
+              You're responsible for all activity under your account.
             </p>
           </section>
 
           <section>
-            <h2>Account Connection and Data Access</h2>
+            <h2>Connecting Jobber</h2>
             <p>
-              To use certain features, you may See Your Numbers Now using
-              OAuth authentication. By connecting your account, you represent that:
+              When you connect your Jobber account via OAuth, you confirm that:
             </p>
             <ul>
-              <li>You have authority to grant access to the connected account</li>
-              <li>You are authorized to share the data contained therein</li>
-              <li>Your use complies with the third party's terms of service</li>
+              <li>You have authority to grant access to that Jobber account</li>
+              <li>You're authorized to share the business data it contains</li>
+              <li>Your use complies with Jobber's terms of service</li>
             </ul>
             <p>
-              <strong>We access Jobber data solely to provide the Service.</strong> We do not sell
-              your data, do not use it for advertising, and do not claim ownership of it.
-            </p>
-            <p>
-              You may revoke access at any time through your Jobber account settings.
+              You can disconnect Jobber anytime from your AccuInsight dashboard or from Jobber's App Marketplace. When you disconnect, we delete your Jobber data immediately.
             </p>
           </section>
 
           <section>
-            <h2>Data Ownership</h2>
+            <h2>Your Data</h2>
             <p>
-              <strong>Your data remains your property.</strong> All Jobber data and business
-              information you provide belongs to you.
+              <strong>Your data belongs to you.</strong> We don't sell it and don't claim ownership of it.
             </p>
             <p>
-              We may generate aggregated and anonymized data for product improvement
-              purposes. This data will not identify you or your business.
+              You grant us a license to use your data to:
+            </p>
+            <ul>
+              <li>Provide and improve the Service</li>
+              <li>Create aggregated, anonymized benchmarks and industry research</li>
+              <li>Publish insights about home service industry trends (without identifying your business)</li>
+            </ul>
+            <p>
+              We will never share data that identifies you or your business without your explicit consent.
             </p>
           </section>
 
           <section>
-            <h2>No Professional Advice</h2>
+            <h2>Not Professional Advice</h2>
             <div className="disclaimer">
               <p style={{ margin: 0 }}>
-                <strong>Important:</strong> The Service provides informational tools only and does not
-                constitute financial, accounting, tax, legal, or other professional advice.
+                <strong>Important:</strong> AccuInsight provides informational dashboards only—not financial, accounting, tax, or legal advice. Consult qualified professionals for business decisions.
               </p>
             </div>
-            <p>
-              You are solely responsible for decisions made using the Service. We recommend
-              consulting with qualified professionals for specific business, financial, or legal matters.
-            </p>
           </section>
 
           <section>
-            <h2>Subscriptions and Payment</h2>
+            <h2>Pricing & Payment</h2>
             <p>
-              Certain features of the Service require a paid subscription. By subscribing, you agree that:
+              AccuInsight offers a free trial followed by a paid subscription. Current pricing is available at signup.
             </p>
             <ul>
-              <li>Subscriptions renew automatically unless canceled before the renewal date</li>
-              <li>You authorize us to charge your payment method for recurring fees</li>
-              <li>Failed payments may result in suspension or termination of access</li>
-              <li>Fees are non-refundable except where required by law</li>
+              <li>Your subscription renews automatically each month</li>
+              <li>Cancel anytime—you'll keep access until the end of your billing period</li>
+              <li>No refunds for partial months (except where required by law)</li>
+              <li>Failed payments may result in access suspension</li>
             </ul>
             <p>
-              You may cancel your subscription at any time through your account settings or by
-              contacting support@ownerview.io.
+              Cancel via your dashboard or email support@ownerview.io.
             </p>
           </section>
 
           <section>
             <h2>Free Trial</h2>
             <p>
-              We may offer a free trial period for new users. At the end of the trial:
+              New users get a free trial. At the end of your trial:
             </p>
             <ul>
-              <li>Your subscription will automatically begin unless you cancel</li>
-              <li>You will be charged the applicable subscription fee</li>
-              <li>You may cancel at any time during the trial without charge</li>
+              <li>Subscribe to continue using AccuInsight</li>
+              <li>If you don't subscribe, you'll lose access to the dashboard</li>
+              <li>Your data remains available if you subscribe later</li>
             </ul>
           </section>
 
           <section>
-            <h2>Acceptable Use</h2>
-            <p>
-              You agree not to:
-            </p>
+            <h2>Don't Do These Things</h2>
             <ul>
-              <li>Use the Service for any unlawful purpose</li>
-              <li>Attempt to gain unauthorized access to any part of the Service</li>
-              <li>Interfere with or disrupt the Service or servers</li>
-              <li>Reverse engineer, decompile, or disassemble the Service</li>
-              <li>Copy, modify, or distribute any part of the Service</li>
-              <li>Use automated systems to access the Service without permission</li>
-              <li>Impersonate any person or entity</li>
+              <li>Use AccuInsight for anything illegal</li>
+              <li>Try to hack, reverse engineer, or break the Service</li>
+              <li>Scrape data or use bots without permission</li>
+              <li>Share your account with others</li>
+              <li>Impersonate someone else</li>
             </ul>
           </section>
 
           <section>
             <h2>Third-Party Services</h2>
             <p>
-              The Service relies on third-party platforms, including Jobber.
+              AccuInsight integrates with Jobber but is not affiliated with or endorsed by Jobber. We're also not responsible for:
             </p>
             <ul>
-              <li>OwnerView is not affiliated with or endorsed by Jobber</li>
-              <li>We are not responsible for third-party data accuracy or availability</li>
-              <li>Third-party services are subject to their own terms and policies</li>
+              <li>Jobber's uptime or data accuracy</li>
+              <li>Changes Jobber makes to their API</li>
+              <li>Jobber's terms of service or policies</li>
             </ul>
           </section>
 
           <section>
-            <h2>Intellectual Property</h2>
+            <h2>Our Intellectual Property</h2>
             <p>
-              The Service, including all content, features, and functionality, is owned by
-              OwnerView and is protected by copyright, trademark, and other intellectual
-              property laws.
-            </p>
-            <p>
-              You are granted a limited, non-exclusive, non-transferable license to use the
-              Service for your business purposes in accordance with these Terms.
+              AccuInsight's design, code, and branding belong to OwnerView. You get a license to use the Service for your business—not to copy, resell, or redistribute it.
             </p>
           </section>
 
           <section>
-            <h2>Security</h2>
-            <p>
-              We implement reasonable safeguards to protect your data, including:
-            </p>
-            <ul>
-              <li>Encryption of data in transit and at rest</li>
-              <li>Secure authentication mechanisms</li>
-              <li>Regular security monitoring</li>
-            </ul>
-            <p>
-              However, no system is completely secure, and we cannot guarantee absolute security.
-            </p>
-          </section>
-
-          <section>
-            <h2>Disclaimer of Warranties</h2>
+            <h2>Service Availability</h2>
             <div className="disclaimer">
               <p style={{ margin: 0 }}>
-                THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND,
-                EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF
-                MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+                AccuInsight is provided "as is." We do our best to keep it running smoothly, but we can't guarantee 100% uptime or that it will be error-free.
               </p>
             </div>
-            <p>
-              We do not warrant that the Service will be uninterrupted, error-free, or secure.
-            </p>
           </section>
 
           <section>
             <h2>Limitation of Liability</h2>
             <div className="disclaimer">
               <p style={{ margin: 0 }}>
-                TO THE MAXIMUM EXTENT PERMITTED BY LAW, OWNERVIEW SHALL NOT BE LIABLE FOR ANY
-                INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING
-                BUT NOT LIMITED TO LOSS OF PROFITS, DATA, OR BUSINESS OPPORTUNITIES.
+                To the maximum extent permitted by law, OwnerView is not liable for indirect, incidental, or consequential damages. Our total liability is limited to what you've paid us in the past 12 months.
               </p>
             </div>
-            <p>
-              Our total liability for any claims arising from these Terms or your use of the
-              Service shall not exceed the amounts you paid to us in the twelve (12) months
-              preceding the claim.
-            </p>
           </section>
 
           <section>
-            <h2>Indemnification</h2>
+            <h2>We Can Terminate Access</h2>
             <p>
-              You agree to indemnify and hold harmless OwnerView and its officers, directors,
-              employees, and agents from any claims, damages, losses, or expenses arising from:
+              We may suspend or terminate your account if you:
             </p>
             <ul>
-              <li>Your use of the Service</li>
-              <li>Your violation of these Terms</li>
-              <li>Your violation of any third-party rights</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2>Termination</h2>
-            <p>
-              We may suspend or terminate your access to the Service:
-            </p>
-            <ul>
-              <li>For violations of these Terms</li>
-              <li>For non-payment of fees</li>
-              <li>If required by law</li>
-              <li>At our discretion with reasonable notice</li>
+              <li>Violate these Terms</li>
+              <li>Don't pay your subscription</li>
+              <li>Use the Service in a way that harms others</li>
             </ul>
             <p>
-              You may terminate your account at any time by contacting support@ownerview.io
-              or through your account settings.
+              You can cancel anytime via your dashboard or by emailing support@ownerview.io.
             </p>
           </section>
 
           <section>
             <h2>Governing Law</h2>
             <p>
-              These Terms are governed by and construed in accordance with the laws of the
-              State of Texas, without regard to its conflict of law provisions.
-            </p>
-            <p>
-              Any disputes arising from these Terms shall be resolved in the courts located
-              in Texas.
+              These Terms are governed by Texas law. Any disputes will be resolved in Texas courts.
             </p>
           </section>
 
           <section>
             <h2>Changes to Terms</h2>
             <p>
-              We may update these Terms from time to time. We will notify you of any material
-              changes by posting the updated Terms on this page and updating the "Last updated" date.
-            </p>
-            <p>
-              Your continued use of the Service after changes constitutes acceptance of the
-              updated Terms.
+              We may update these Terms occasionally. We'll notify you of material changes via email or dashboard notification. Continued use after changes means you accept the new Terms.
             </p>
           </section>
 
           <section>
-            <h2>Contact Us</h2>
+            <h2>Contact</h2>
             <p>
-              If you have questions about these Terms, please contact us at:
-            </p>
-            <p>
-              <strong>Email:</strong>{" "}
-              <a href="mailto:support@ownerview.io">support@ownerview.io</a>
+              Questions? Email <a href="mailto:support@ownerview.io">support@ownerview.io</a>
             </p>
           </section>
         </div>
@@ -366,17 +285,17 @@ export default function TermsOfService() {
           style={{
             marginTop: 60,
             paddingTop: 32,
-            borderTop: "1px solid rgba(255,255,255,0.08)",
+            borderTop: "1px solid #e2e8f0",
             textAlign: "center",
             fontSize: 13,
-            color: "rgba(234,241,255,0.4)",
+            color: "#94a3b8",
           }}
         >
           <p>© 2026 OwnerView. All rights reserved.</p>
           <p style={{ marginTop: 8 }}>
-            <Link href="/privacy" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Privacy Policy</Link>
+            <Link href="/privacy" style={{ color: "#64748b", textDecoration: "none" }}>Privacy Policy</Link>
             {" · "}
-            <Link href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms of Service</Link>
+            <Link href="/terms" style={{ color: "#64748b", textDecoration: "none" }}>Terms of Service</Link>
           </p>
         </footer>
       </div>
