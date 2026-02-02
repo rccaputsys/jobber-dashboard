@@ -1150,9 +1150,9 @@ export default async function DashboardPage({
     supabaseAdmin.from("fact_invoices").select("*").eq("connection_id", connectionId),
     supabaseAdmin.from("fact_jobs").select("*").eq("connection_id", connectionId),
     supabaseAdmin
-      .from("fact_quotes")
-      .select("jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,sent_at,updated_at_jobber")
-      .eq("connection_id", connectionId),
+  .from("fact_quotes")
+  .select("jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,sent_at,updated_at_jobber,created_at_jobber")
+  .eq("connection_id", connectionId),
   ]);
 
   const invoices = (invoicesData ?? []) as any[];
@@ -1248,25 +1248,24 @@ export default async function DashboardPage({
   // Denominator: ALL quotes sent in last 30 days (including outstanding)
   const thirtyDaysAgo = addDaysUTC(todayUTC, -30);
   
-  const quotesSentLast30Days = quotes.filter((q) => {
-    const sent = safeDate(q.sent_at);
-    if (!sent) return false;
-    return sent.getTime() >= thirtyDaysAgo.getTime();
-  });
+  const quotesInLast30Days = quotes.filter((q) => {
+  const st = String(q.quote_status ?? "").toLowerCase().trim();
+  if (st === "draft") return false;
   
-  const quotesWonLast30Days = quotes.filter((q) => {
-    const st = String(q.quote_status ?? "").toLowerCase().trim();
-    if (!statusLooksWon(st)) return false;
-    // Quote must have been sent in last 30 days
-    const sent = safeDate(q.sent_at);
-    if (!sent) return false;
-    return sent.getTime() >= thirtyDaysAgo.getTime();
-  });
+  const date = safeDate(q.sent_at) || safeDate(q.created_at_jobber);
+  if (!date) return false;
   
-  const quoteWonPct = quotesSentLast30Days.length > 0 
-    ? quotesWonLast30Days.length / quotesSentLast30Days.length 
-    : 0;
+  return date.getTime() >= thirtyDaysAgo.getTime();
+});
 
+const quotesWonLast30Days = quotesInLast30Days.filter((q) => {
+  const st = String(q.quote_status ?? "").toLowerCase().trim();
+  return statusLooksWon(st);
+});
+
+const quoteWonPct = quotesInLast30Days.length > 0 
+  ? quotesWonLast30Days.length / quotesInLast30Days.length 
+  : 0;
   // Aged AR - only unpaid invoices
   const agedARInvoices = unpaidInvoices
     .filter((inv: any) => {
@@ -1779,7 +1778,7 @@ export default async function DashboardPage({
             }`}>
               {pct(quoteWonPct)}
             </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Last 30 days • {quotesWonLast30Days.length} won / {quotesSentLast30Days.length} sent</div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Last 30 days • {quotesWonLast30Days.length} won / {quotesInLast30Days.length} total</div>
           </div>
 
         </div>
