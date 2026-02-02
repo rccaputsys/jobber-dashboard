@@ -1724,7 +1724,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
         </div>
 
         {/* Secondary KPIs */}
-        <div className="kpi-grid-secondary animate-in delay-3" style={{ marginTop: 16 }}>
+        <div className="kpi-grid-secondary animate-in delay-3" style={{ marginTop: 20 }}>
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
               <span style={{ fontSize: 14 }}>✏️</span>
@@ -1784,7 +1784,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
         </div>
 
        {/* Trends */}
-        <div className="animate-in delay-4" style={{ marginTop: 20 }}>
+        <div className="animate-in delay-4" style={{ marginTop: 32 }}>
           <TrendsSection
             leakPoints={points.leak}
             ar15Points={points.ar15}
@@ -1796,7 +1796,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
         </div>
 
         {/* Action Lists */}
-        <div className="panel animate-in delay-5" style={{ marginTop: 20 }}>
+        <div className="panel animate-in delay-5" style={{ marginTop: 32 }}>
           <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
             <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Action Lists</h2>
             <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
