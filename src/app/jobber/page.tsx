@@ -116,7 +116,7 @@ export default function JobberLanding() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24 }}>
             <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 16, padding: 28, border: "1px solid rgba(255,255,255,0.08)" }}>
               <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(239,68,68,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 16 }}>💰</div>
-              <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>AR Aging Alerts</h3>
+              <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Aging Invoice Alerts</h3>
               <p style={{ fontSize: 14, color: "rgba(234,241,255,0.6)", lineHeight: 1.6 }}>See exactly which invoices are 15+ days overdue. One-click to open in Jobber and collect.</p>
             </div>
             
@@ -127,9 +127,9 @@ export default function JobberLanding() {
             </div>
             
             <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 16, padding: 28, border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(90,166,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 16 }}>📅</div>
-              <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Scheduling Gaps</h3>
-              <p style={{ fontSize: 14, color: "rgba(234,241,255,0.6)", lineHeight: 1.6 }}>Find unscheduled jobs that are slipping through the cracks. Stay on top of your backlog.</p>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(90,166,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 16 }}>🎯</div>
+              <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Quote Win Rate</h3>
+              <p style={{ fontSize: 14, color: "rgba(234,241,255,0.6)", lineHeight: 1.6 }}>Track your quote-to-job conversion rate. Know if your pricing and follow-up are working.</p>
             </div>
             
             <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 16, padding: 28, border: "1px solid rgba(255,255,255,0.08)" }}>
