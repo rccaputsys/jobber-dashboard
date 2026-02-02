@@ -11,11 +11,7 @@ export async function POST(request: NextRequest) {
   try {
     const webhookData = await request.json();
     
-    console.log('Received webhook from Jobber:', {
-      topic: webhookData.topic,
-      resource: webhookData.resource,
-      timestamp: new Date().toISOString()
-    });
+    console.log('Received webhook from Jobber - FULL PAYLOAD:', JSON.stringify(webhookData, null, 2));
 
     // Handle different webhook types
     switch (webhookData.topic) {
