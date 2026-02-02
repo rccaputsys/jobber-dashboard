@@ -19,6 +19,39 @@ export async function POST(request: NextRequest) {
 
     // Handle different webhook types
     switch (webhookData.topic) {
+      case 'APP_DISCONNECT':
+        console.log('App disconnected from Jobber side:', webhookData);
+        
+        // Get account ID from webhook payload
+        const accountId = webhookData.resource?.account_id 
+          || webhookData.account_id 
+          || webhookData.resource?.id;
+        
+        if (accountId) {
+          // Find the connection by Jobber account ID
+          const { data: connection } = await supabase
+            .from("jobber_connections")
+            .select("id")
+            .eq("jobber_account_id", accountId)
+            .maybeSingle();
+          
+          if (connection) {
+            // Delete all related data (same as your disconnect endpoint)
+            await supabase.from("fact_invoices").delete().eq("connection_id", connection.id);
+            await supabase.from("fact_jobs").delete().eq("connection_id", connection.id);
+            await supabase.from("fact_quotes").delete().eq("connection_id", connection.id);
+            await supabase.from("jobber_tokens").delete().eq("connection_id", connection.id);
+            await supabase.from("jobber_connections").delete().eq("id", connection.id);
+            
+            console.log('Connection and data deleted for account:', accountId);
+          } else {
+            console.log('No connection found for account:', accountId);
+          }
+        } else {
+          console.log('No account ID in webhook payload:', webhookData);
+        }
+        break;
+
       case 'job.created':
         console.log('New job created:', webhookData.resource.id);
         break;
