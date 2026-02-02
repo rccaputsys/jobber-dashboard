@@ -38,20 +38,11 @@ export default function JobberLanding() {
             <span>⚡</span> Built for Jobber Users
           </div>
           
-          <h1
-            style={{
-              fontSize: "clamp(32px, 5vw, 56px)",
-              fontWeight: 800,
-              lineHeight: 1.3,
-              marginBottom: 20,
-              background: "linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-            }}
-          >
-            AccuInsight by OwnerView
-          </h1>
+          <img 
+            src="/AccuInsight_Logo_Dark.svg" 
+            alt="AccuInsight by OwnerView" 
+            style={{ height: 70, marginBottom: 32 }} 
+          />
           
           <p
             style={{
