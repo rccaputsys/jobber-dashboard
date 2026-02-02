@@ -38,11 +38,13 @@ export default function JobberLanding() {
             <span>⚡</span> Built for Jobber Users
           </div>
           
-          <img 
-            src="/AccuInsight_Logo_Dark.svg" 
-            alt="AccuInsight by OwnerView" 
-            style={{ height: 70, marginBottom: 32 }} 
-          />
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 32 }}>
+            <img 
+              src="/AccuInsight_Logo_Dark.svg" 
+              alt="AccuInsight by OwnerView" 
+              style={{ height: 70 }} 
+            />
+          </div>
           
           <p
             style={{
