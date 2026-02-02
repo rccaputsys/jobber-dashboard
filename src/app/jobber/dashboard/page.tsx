@@ -1643,8 +1643,8 @@ export default async function DashboardPage({
             <div style={{ position: "relative", zIndex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <span style={{ fontSize: 20 }}>⚠️</span>
-                <span className="kpi-label" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  AR 15+ Days
+                <span className="kpi-label" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  Invoices 15+ Days
                 </span>
               </div>
               <div className={`kpi-value-large ${arSev === "critical" ? "text-critical" : arSev === "warning" ? "text-warning" : "text-success"}`}>

@@ -132,9 +132,9 @@ export function ActionListTabs({
   const money = moneyFactory(currencyCode);
 
   const tabs = [
-    { id: "ar" as const, label: "Aged AR", count: agedARInvoices.length, icon: "💰" },
+    { id: "ar" as const, label: "Invoices", count: agedARInvoices.length, icon: "💰" },
     { id: "unscheduled" as const, label: "Unscheduled", count: unscheduledRows.length, icon: "📦" },
-    { id: "quotes" as const, label: "Leaking Quotes", count: leakCandidates.length, icon: "📋" },
+    { id: "quotes" as const, label: "Quotes", count: leakCandidates.length, icon: "📋" },
   ];
 
   const sortedAR = [...agedARInvoices].sort((a, b) => b.days_overdue - a.days_overdue);
@@ -143,7 +143,7 @@ export function ActionListTabs({
   // Tab button style with hover
   const tabStyle = (active: boolean, hovered: boolean): React.CSSProperties => ({
     flex: 1,
-    padding: "12px 16px",
+    padding: "10px 8px",
     border: "none",
     borderRadius: 10,
     background: active
@@ -154,14 +154,14 @@ export function ActionListTabs({
     color: active 
       ? "#fff" 
       : isLight ? "#334155" : "rgba(255,255,255,0.8)",
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: 600,
     cursor: "pointer",
     transition: "all 0.15s ease",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 6,
     boxShadow: active ? "0 4px 12px rgba(124,92,255,0.3)" : "none",
     transform: hovered && !active ? "translateY(-1px)" : "none",
   });
@@ -321,18 +321,14 @@ export function ActionListTabs({
 
   return (
     <div>
-      {/* Full-width horizontal tabs - scrollable on mobile */}
+      {/* Full-width horizontal tabs - all visible */}
       <div style={{ 
         display: "flex", 
-        gap: 6,
-        padding: 6,
+        gap: 4,
+        padding: 4,
         background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.04)",
         borderRadius: 12,
         marginBottom: 12,
-        overflowX: "auto",
-        WebkitOverflowScrolling: "touch",
-        scrollbarWidth: "none",
-        msOverflowStyle: "none",
       }}>
         {tabs.map((tab) => (
           <button
@@ -340,14 +336,10 @@ export function ActionListTabs({
             onClick={() => setActiveTab(tab.id)}
             onMouseEnter={() => setHoveredTab(tab.id)}
             onMouseLeave={() => setHoveredTab(null)}
-            style={{
-              ...tabStyle(activeTab === tab.id, hoveredTab === tab.id),
-              minWidth: "fit-content",
-              flexShrink: 0,
-            }}
+            style={tabStyle(activeTab === tab.id, hoveredTab === tab.id)}
           >
             <span>{tab.icon}</span>
-            <span style={{ whiteSpace: "nowrap" }}>{tab.label}</span>
+            <span>{tab.label}</span>
             <span style={badgeStyle(activeTab === tab.id)}>{tab.count}</span>
           </button>
         ))}
