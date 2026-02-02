@@ -153,6 +153,53 @@ function statusLooksLost(status: string) {
   const s = status.toUpperCase();
   return s.includes("REJECTED") || s.includes("DECLINED") || s.includes("LOST") || s.includes("EXPIRED") || s.includes("ARCHIVED");
 }
+/* --------------------------------- DEMO DATA --------------------------------- */
+const DEMO_DATA = {
+  companyName: "Greenscape Lawn & Garden",
+  currencyCode: "USD",
+  lastSyncPretty: "2 hours ago",
+  totalAR: 484700,
+  b15p: 215500,
+  leakDollars: 1234000,
+  leakCount: 8,
+  changesRequestedCount: 2,
+  approvedNoJobCount: 3,
+  unscheduledCount: 7,
+  quoteWonPct: 0.34,
+  quotesWonLast30Days: 11,
+  quotesInLast30Days: 32,
+  allOverdueCount: 9,
+  agedARInvoices: [
+    { invoice_number: "1247", client_name: "Johnson Residence", amount_cents: 85000, days_overdue: 34, due_date: "2025-12-30", jobber_url: "#" },
+    { invoice_number: "1251", client_name: "Oakwood HOA", amount_cents: 62500, days_overdue: 28, due_date: "2026-01-05", jobber_url: "#" },
+    { invoice_number: "1258", client_name: "Martinez Property", amount_cents: 34500, days_overdue: 21, due_date: "2026-01-12", jobber_url: "#" },
+    { invoice_number: "1263", client_name: "Thompson Estate", amount_cents: 18500, days_overdue: 18, due_date: "2026-01-15", jobber_url: "#" },
+    { invoice_number: "1267", client_name: "Riverside Church", amount_cents: 15000, days_overdue: 16, due_date: "2026-01-17", jobber_url: "#" },
+  ],
+  unscheduledRows: [
+    { job_number: "3847", job_title: "Spring cleanup & mulching", created_at_jobber: "2026-01-15", jobber_url: "#", total_amount_cents: 125000 },
+    { job_number: "3851", job_title: "Irrigation system repair", created_at_jobber: "2026-01-18", jobber_url: "#", total_amount_cents: 85000 },
+    { job_number: "3854", job_title: "Tree trimming - backyard oaks", created_at_jobber: "2026-01-22", jobber_url: "#", total_amount_cents: 45000 },
+    { job_number: "3858", job_title: "Weekly maintenance setup", created_at_jobber: "2026-01-25", jobber_url: "#", total_amount_cents: 32000 },
+    { job_number: "3861", job_title: "Fence line clearing", created_at_jobber: "2026-01-28", jobber_url: "#", total_amount_cents: 28000 },
+  ],
+  leakCandidates: [
+    { quote_number: "Q-892", quote_title: "Full landscape redesign", sent_at: "2026-01-08", quote_total_cents: 485000, quote_url: "#", quote_status: "awaiting_response" },
+    { quote_number: "Q-897", quote_title: "Patio & retaining wall", sent_at: "2026-01-12", quote_total_cents: 325000, quote_url: "#", quote_status: "awaiting_response" },
+    { quote_number: "Q-901", quote_title: "Drainage solution - side yard", sent_at: "2026-01-15", quote_total_cents: 175000, quote_url: "#", quote_status: "awaiting_response" },
+    { quote_number: "Q-904", quote_title: "Seasonal flower installation", sent_at: "2026-01-19", quote_total_cents: 125000, quote_url: "#", quote_status: "awaiting_response" },
+    { quote_number: "Q-908", quote_title: "Lawn renovation & seeding", sent_at: "2026-01-24", quote_total_cents: 124000, quote_url: "#", quote_status: "awaiting_response" },
+  ],
+  trendLabels: ["Dec 9", "Dec 16", "Dec 23", "Dec 30", "Jan 6", "Jan 13", "Jan 20", "Jan 27"],
+  leakTrend: [1850000, 1720000, 1580000, 1450000, 1380000, 1290000, 1260000, 1234000],
+  ar15Trend: [385000, 342000, 298000, 275000, 248000, 232000, 218000, 215500],
+  unschedTrend: [12, 11, 10, 9, 8, 8, 7, 7],
+  recommendations: [
+    { icon: "🔴", text: "$2,155 overdue 15+ days (5 invoices). Priority: Call top 3 oldest accounts today.", priority: "high" as const },
+    { icon: "✏️", text: "2 quotes waiting for revisions. Hot leads - respond within 24hrs.", priority: "high" as const },
+    { icon: "💰", text: "8 quotes pending ($12,340 total). Follow up on top 5 - potential $3,085 recovery.", priority: "medium" as const },
+  ],
+};
 
 /* ----------------------------------- Global Styles ----------------------------------- */
 const globalStyles = `
@@ -975,6 +1022,17 @@ const globalStyles = `
     background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%) !important;
     background-size: 200% 100%;
   }
+
+  /* Demo banner */
+.demo-banner {
+  background: linear-gradient(135deg, #7c5cff, #5aa6ff);
+  color: white;
+  padding: 12px 20px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+}
 `;
 
 /* ----------------------------------- UI ----------------------------------- */
@@ -998,8 +1056,291 @@ export default async function DashboardPage({
     chart?: ChartType;
     unscheduled_min_days?: string;
     checkout?: string;
+    demo?: string;
   }>;
 }) {
+  const sp = await searchParams;
+  const isDemo = sp.demo === "true";
+
+  if (isDemo) {
+    const money = moneyFactory(DEMO_DATA.currencyCode);
+    
+    const demoPoints = {
+      leak: DEMO_DATA.trendLabels.map((label, i) => ({
+        xLabel: label,
+        value: DEMO_DATA.leakTrend[i],
+        tooltip: `${label}: ${money(DEMO_DATA.leakTrend[i])} quote leak balance`,
+      })),
+      ar15: DEMO_DATA.trendLabels.map((label, i) => ({
+        xLabel: label,
+        value: DEMO_DATA.ar15Trend[i],
+        tooltip: `${label}: ${money(DEMO_DATA.ar15Trend[i])} invoices 15+ days`,
+      })),
+      unsched: DEMO_DATA.trendLabels.map((label, i) => ({
+        xLabel: label,
+        value: DEMO_DATA.unschedTrend[i],
+        tooltip: `${label}: ${DEMO_DATA.unschedTrend[i]} unscheduled jobs`,
+      })),
+    };
+
+    const chartType: ChartType = "line";
+
+    const agedARExportData = DEMO_DATA.agedARInvoices.map((inv) => ({
+      "Age (days)": inv.days_overdue,
+      "Invoice #": inv.invoice_number,
+      "Client": inv.client_name,
+      "Due Date": new Date(inv.due_date).toLocaleDateString(),
+      "Amount": (inv.amount_cents / 100).toFixed(2),
+      "Jobber URL": inv.jobber_url,
+    }));
+
+    const unscheduledExportData = DEMO_DATA.unscheduledRows.map((r) => ({
+      "Age (days)": Math.round((Date.now() - new Date(r.created_at_jobber).getTime()) / 86400000),
+      "Job #": `#${r.job_number}`,
+      "Job Title": r.job_title,
+      "Created": new Date(r.created_at_jobber).toLocaleDateString(),
+      "Amount": (r.total_amount_cents / 100).toFixed(2),
+      "Jobber URL": r.jobber_url,
+    }));
+
+    const leakingQuotesExportData = DEMO_DATA.leakCandidates.map((q) => ({
+      "Age (days)": Math.round((Date.now() - new Date(q.sent_at).getTime()) / 86400000),
+      "Quote #": q.quote_number,
+      "Quote Title": q.quote_title,
+      "Sent": new Date(q.sent_at).toLocaleDateString(),
+      "Total": (q.quote_total_cents / 100).toFixed(2),
+      "Jobber URL": q.quote_url,
+    }));
+
+    const sevColor = (sev: "critical" | "warning" | "good") => {
+      if (sev === "critical") return "#ef4444";
+      if (sev === "warning") return "#f59e0b";
+      return "#10b981";
+    };
+
+    const sevBg = (sev: "critical" | "warning" | "good") => {
+      if (sev === "critical") return "rgba(239,68,68,0.15)";
+      if (sev === "warning") return "rgba(245,158,11,0.15)";
+      return "rgba(16,185,129,0.15)";
+    };
+
+    const arSev = severityFromScore(clamp((DEMO_DATA.b15p / DEMO_DATA.totalAR) * 120, 0, 100));
+
+    return (
+      <main className="dashboard-main" style={{
+        minHeight: "100vh",
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        background: `
+          radial-gradient(ellipse 80% 60% at 50% -20%, rgba(124,92,255,0.15), transparent),
+          radial-gradient(ellipse 60% 40% at 100% 0%, rgba(90,166,255,0.1), transparent),
+          linear-gradient(180deg, #060811 0%, #0a1020 100%)
+        `,
+      }}>
+        <style>{globalStyles}</style>
+
+  
+
+        <div className="dashboard-container" data-testid="DEMO-MODE-ACTIVE">
+          <header className="dashboard-header animate-in">
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <svg width="40" height="40" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#7c5cff" />
+                    <stop offset="100%" stopColor="#5aa6ff" />
+                  </linearGradient>
+                </defs>
+                <circle cx="25" cy="25" r="22" fill="none" stroke="url(#logoGrad)" strokeWidth="3"/>
+                <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#logoGrad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <div>
+                <h1 className="text-primary" style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5, margin: 0 }}>
+                  {DEMO_DATA.companyName}
+                </h1>
+                <p className="text-secondary" style={{ fontSize: 13, marginTop: 4 }}>
+                  Last sync: {DEMO_DATA.lastSyncPretty} • {DEMO_DATA.currencyCode}
+                </p>
+              </div>
+            </div>
+
+            <div className="header-actions">
+              <button className="btn" disabled style={{ opacity: 0.5 }}>Sync</button>
+              <ThemeToggle />
+              <div className="status-pill" style={{
+                borderRadius: 10,
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                background: "rgba(16,185,129,0.15)",
+                border: "1px solid rgba(16,185,129,0.4)",
+              }}>
+                <span style={{ fontSize: 10 }}>⭐</span>
+                Pro
+              </div>
+            </div>
+          </header>
+
+          <div className="recommendation-banner animate-in delay-1" style={{ marginTop: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <span style={{ fontSize: 16 }}>💡</span>
+              <span className="focus-title" style={{ fontSize: 13, fontWeight: 700 }}>This Week&apos;s Focus</span>
+            </div>
+            {DEMO_DATA.recommendations.map((rec, i) => (
+              <div key={i} className="recommendation-item">
+                <span style={{ fontSize: 14 }}>{rec.icon}</span>
+                <span className="text-secondary">{rec.text}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="kpi-grid-primary animate-in delay-2" style={{ marginTop: 20 }}>
+            <div className="kpi-primary gradient-purple hover-lift">
+              <div style={{ position: "relative", zIndex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 20 }}>💰</span>
+                  <span className="text-secondary" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    Total Invoices Past Due
+                  </span>
+                </div>
+                <div className="kpi-value-large text-primary">{money(DEMO_DATA.totalAR)}</div>
+                <div className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>
+                  9 invoices outstanding
+                </div>
+              </div>
+            </div>
+
+            <div className="kpi-primary hover-lift" style={{
+              background: `linear-gradient(145deg, ${sevBg(arSev)} 0%, rgba(255,255,255,0.02) 100%)`,
+              borderColor: `${sevColor(arSev)}40`,
+            }}>
+              <div style={{ position: "relative", zIndex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 20 }}>⚠️</span>
+                  <span className="text-secondary" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    Invoices 15+ Days
+                  </span>
+                </div>
+                <div className={`kpi-value-large ${arSev === "critical" ? "text-critical" : arSev === "warning" ? "text-warning" : "text-success"}`}>
+                  {money(DEMO_DATA.b15p)}
+                </div>
+                <div className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>
+                  {pct(DEMO_DATA.b15p / DEMO_DATA.totalAR)} of total • {DEMO_DATA.agedARInvoices.length} invoices
+                </div>
+              </div>
+            </div>
+
+            <div className="kpi-primary hover-lift" style={{
+              background: "linear-gradient(145deg, rgba(239,68,68,0.08) 0%, rgba(255,255,255,0.02) 100%)",
+              borderColor: "rgba(239,68,68,0.3)",
+            }}>
+              <div style={{ position: "relative", zIndex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 20 }}>📋</span>
+                  <span className="text-secondary" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    Quote Leak
+                  </span>
+                </div>
+                <div className="kpi-value-large text-critical">
+                  {money(DEMO_DATA.leakDollars)}
+                </div>
+                <div className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>
+                  {DEMO_DATA.leakCount} quotes outstanding
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="kpi-grid-secondary animate-in delay-3" style={{ marginTop: 20 }}>
+            <div className="kpi-secondary">
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
+                <span style={{ fontSize: 14 }}>✏️</span>
+                <span className="text-secondary" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Changes Requested</span>
+              </div>
+              <div className="kpi-value-medium text-warning">{DEMO_DATA.changesRequestedCount}</div>
+              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>Quotes to revise</div>
+            </div>
+
+            <div className="kpi-secondary">
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
+                <span style={{ fontSize: 14 }}>✅</span>
+                <span className="text-secondary" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Approved No Job</span>
+              </div>
+              <div className="kpi-value-medium text-warning">{DEMO_DATA.approvedNoJobCount}</div>
+              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>Quotes to schedule</div>
+            </div>
+
+            <div className="kpi-secondary">
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
+                <span style={{ fontSize: 14 }}>📦</span>
+                <span className="text-secondary" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Unscheduled</span>
+              </div>
+              <div className="kpi-value-medium text-warning">{DEMO_DATA.unscheduledCount}</div>
+              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>Jobs in backlog</div>
+            </div>
+
+            <div className="kpi-secondary">
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
+                <span style={{ fontSize: 14 }}>🎯</span>
+                <span className="text-secondary" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Quote Won %</span>
+              </div>
+              <div className="kpi-value-medium text-success">{pct(DEMO_DATA.quoteWonPct)}</div>
+              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>Last 30 days • {DEMO_DATA.quotesWonLast30Days} won / {DEMO_DATA.quotesInLast30Days} total</div>
+            </div>
+          </div>
+
+          <div className="animate-in delay-4" style={{ marginTop: 32 }}>
+            <TrendsSection
+              leakPoints={demoPoints.leak}
+              ar15Points={demoPoints.ar15}
+              unschedPoints={demoPoints.unsched}
+              chartType={chartType}
+              rangeLabel="2024-12-09 → 2025-01-27"
+              granularityLabel="Weekly"
+            />
+          </div>
+
+          <div className="panel animate-in delay-5" style={{ marginTop: 32 }}>
+            <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Action Lists</h2>
+              <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
+                Collect AR, schedule backlog, close sales leaks
+              </p>
+            </div>
+
+            <div style={{ padding: 16 }}>
+              <ActionListTabs
+                agedARInvoices={DEMO_DATA.agedARInvoices}
+                agedARExportData={agedARExportData}
+                unscheduledRows={DEMO_DATA.unscheduledRows}
+                unscheduledExportData={unscheduledExportData}
+                leakCandidates={DEMO_DATA.leakCandidates}
+                leakingQuotesExportData={leakingQuotesExportData}
+                currencyCode={DEMO_DATA.currencyCode}
+              />
+            </div>
+          </div>
+
+          <footer style={{
+            marginTop: 40,
+            paddingTop: 24,
+            borderTop: "1px solid rgba(255,255,255,0.06)",
+            textAlign: "center",
+            fontSize: 12,
+            color: "rgba(234,241,255,0.4)",
+          }}>
+            <p style={{ margin: 0 }}>© 2026 OwnerView. All rights reserved.</p>
+            <p style={{ margin: "8px 0 0" }}>
+              <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms</a>
+              {" · "}
+              <a href="/privacy" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Privacy</a>
+            </p>
+          </footer>
+        </div>
+      </main>
+    );
+  }
+
   const user = await getUser();
   if (!user) redirect("/login");
 
@@ -1104,7 +1445,6 @@ export default async function DashboardPage({
     );
   }
 
-  const sp = await searchParams;
   const g: Granularity = (sp.g ?? "week") as Granularity;
   const chartType: ChartType = (sp.chart ?? "line") as ChartType;
 
@@ -1575,7 +1915,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
     }}>
       <style>{globalStyles}</style>
 
-      <div className="dashboard-container">
+      <div className="dashboard-container" data-testid="DEMO-MODE-ACTIVE">
         {/* Header */}
         <header className="dashboard-header animate-in">
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
