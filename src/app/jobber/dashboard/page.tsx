@@ -395,6 +395,7 @@ const globalStyles = `
     transition: all 0.2s ease;
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
     min-height: 120px;
   }
   

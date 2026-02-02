@@ -35,12 +35,24 @@ function defaultRange(preset: string) {
   return { start, end };
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = React.useState(false);
+  React.useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+}
+
 export function Controls({ onLoadingChange }: { onLoadingChange?: (loading: boolean) => void }) {
   const router = useRouter();
   const sp = useSearchParams();
   const [isLight, setIsLight] = React.useState(false);
   const [hoveredButton, setHoveredButton] = React.useState<string | null>(null);
   const [showCustom, setShowCustom] = React.useState(false);
+  const isMobile = useIsMobile();
 
   React.useEffect(() => {
     const checkTheme = () => {
@@ -148,16 +160,21 @@ export function Controls({ onLoadingChange }: { onLoadingChange?: (loading: bool
   };
 
   return (
-    <div style={{ overflowX: "auto", overflowY: "hidden", margin: "0 -16px", padding: "0 16px" }}>
-      {/* Single row that scrolls horizontally on mobile */}
+    <div>
+      {/* Stacked on mobile, single row on desktop */}
       <div style={{ 
         display: "flex", 
-        alignItems: "center",
-        gap: 12,
-        minWidth: "fit-content",
+        flexDirection: isMobile ? "column" : "row",
+        alignItems: isMobile ? "stretch" : "center",
+        gap: isMobile ? 8 : 12,
       }}>
         {/* Time Range */}
-        <div style={sectionStyle}>
+        <div style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          gap: 0,
+          justifyContent: isMobile ? "space-between" : "flex-start",
+        }}>
           <span style={labelStyle}>Range</span>
           <div style={pillGroupStyle}>
             {rangeOptions.map((opt) => (
@@ -183,55 +200,67 @@ export function Controls({ onLoadingChange }: { onLoadingChange?: (loading: bool
           </div>
         </div>
 
-        {/* Divider */}
-        <div style={{ 
-          width: 1, 
-          height: 28, 
-          background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)",
-          flexShrink: 0,
-        }} />
+        {/* Divider - only on desktop */}
+        {!isMobile && (
+          <div style={{ 
+            width: 1, 
+            height: 28, 
+            background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)",
+            flexShrink: 0,
+          }} />
+        )}
 
-        {/* Group By */}
-        <div style={sectionStyle}>
-          <span style={labelStyle}>Group</span>
-          <div style={pillGroupStyle}>
-            {bucketOptions.map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => setParams({ g: opt.key })}
-                onMouseEnter={() => setHoveredButton(`bucket-${opt.key}`)}
-                onMouseLeave={() => setHoveredButton(null)}
-                style={buttonStyle(g === opt.key, hoveredButton === `bucket-${opt.key}`)}
-              >
-                {opt.label}
-              </button>
-            ))}
+        {/* Group By + Chart Type row on mobile */}
+        <div style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          gap: isMobile ? 12 : 12,
+          justifyContent: isMobile ? "space-between" : "flex-start",
+        }}>
+          {/* Group By */}
+          <div style={sectionStyle}>
+            <span style={labelStyle}>Group</span>
+            <div style={pillGroupStyle}>
+              {bucketOptions.map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setParams({ g: opt.key })}
+                  onMouseEnter={() => setHoveredButton(`bucket-${opt.key}`)}
+                  onMouseLeave={() => setHoveredButton(null)}
+                  style={buttonStyle(g === opt.key, hoveredButton === `bucket-${opt.key}`)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Divider */}
-        <div style={{ 
-          width: 1, 
-          height: 28, 
-          background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)",
-          flexShrink: 0,
-        }} />
+          {/* Divider - only on desktop */}
+          {!isMobile && (
+            <div style={{ 
+              width: 1, 
+              height: 28, 
+              background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)",
+              flexShrink: 0,
+            }} />
+          )}
 
-        {/* Chart Type */}
-        <div style={sectionStyle}>
-          <span style={labelStyle}>Chart</span>
-          <div style={pillGroupStyle}>
-            {chartOptions.map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => setParams({ chart: opt.key })}
-                onMouseEnter={() => setHoveredButton(`chart-${opt.key}`)}
-                onMouseLeave={() => setHoveredButton(null)}
-                style={buttonStyle(chart === opt.key, hoveredButton === `chart-${opt.key}`)}
-              >
-                {opt.label}
-              </button>
-            ))}
+          {/* Chart Type */}
+          <div style={sectionStyle}>
+            <span style={labelStyle}>Chart</span>
+            <div style={pillGroupStyle}>
+              {chartOptions.map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setParams({ chart: opt.key })}
+                  onMouseEnter={() => setHoveredButton(`chart-${opt.key}`)}
+                  onMouseLeave={() => setHoveredButton(null)}
+                  style={buttonStyle(chart === opt.key, hoveredButton === `chart-${opt.key}`)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
