@@ -1429,7 +1429,7 @@ export default async function DashboardPage({
     ar15: bucketStarts.map((bs, i) => {
       const label = labelForBucket(bs, g);
       const v = ar15ByBucket[i];
-      return { xLabel: label, value: v, tooltip: `${label}: ${money(v)} AR 15+ balance` };
+      return { xLabel: label, value: v, tooltip: `${label}: ${money(v)} invoices 15+ days` };
     }),
     unsched: bucketStarts.map((bs, i) => {
       const label = labelForBucket(bs, g);
@@ -1625,7 +1625,7 @@ export default async function DashboardPage({
             <div style={{ position: "relative", zIndex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <span style={{ fontSize: 20 }}>💰</span>
-                <span className="kpi-label" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                <span className="kpi-label" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
                   Total Invoices Past Due
                 </span>
               </div>
@@ -1663,7 +1663,7 @@ export default async function DashboardPage({
             <div style={{ position: "relative", zIndex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <span style={{ fontSize: 20 }}>📋</span>
-                <span className="kpi-label" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                <span className="kpi-label" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
                   Quote Leak
                 </span>
               </div>
@@ -1682,7 +1682,7 @@ export default async function DashboardPage({
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
               <span style={{ fontSize: 14 }}>✏️</span>
-              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Changes Requested</span>
+              <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Changes Requested</span>
             </div>
             <div className={`kpi-value-medium ${
               changesRequestedCount > 5 ? "text-critical" : 
@@ -1696,7 +1696,7 @@ export default async function DashboardPage({
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
               <span style={{ fontSize: 14 }}>✅</span>
-              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Approved No Job</span>
+              <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Approved No Job</span>
             </div>
             <div className={`kpi-value-medium ${
               approvedNoJobCount > 5 ? "text-critical" : 
@@ -1710,7 +1710,7 @@ export default async function DashboardPage({
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
               <span style={{ fontSize: 14 }}>📦</span>
-              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Unscheduled</span>
+              <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Unscheduled</span>
             </div>
             <div className={`kpi-value-medium ${
               unscheduledCount > 10 ? "text-critical" : 
@@ -1724,7 +1724,7 @@ export default async function DashboardPage({
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
               <span style={{ fontSize: 14 }}>🎯</span>
-              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Quote Won %</span>
+              <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Quote Won %</span>
             </div>
             <div className={`kpi-value-medium ${
               quoteWonPct >= 0.30 ? "text-success" : 
