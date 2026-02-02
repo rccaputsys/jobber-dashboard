@@ -40,10 +40,10 @@ export function SparkLine(props: {
 
   const vbW = 360;
   const vbH = 140;
-  const padL = 52;
-  const padR = 16;
+  const padL = 48;
+  const padR = 12;
   const padT = 14;
-  const padB = 32;
+  const padB = 28;
 
   const chartColor = props.color || "#5aa6ff";
   const glowColor = props.color ? `${props.color}30` : "rgba(90,166,255,0.2)";
@@ -295,7 +295,18 @@ export function SparkLine(props: {
 
         {/* X axis labels */}
         {props.points.map((p, i) => {
-          if (i % labelSkip !== 0 && i !== props.points.length - 1) return null;
+          const isLast = i === props.points.length - 1;
+          const showBySkip = i % labelSkip === 0;
+          
+          // Skip last label if it would overlap with the previous shown label
+          if (isLast) {
+            const prevShownIndex = Math.floor((props.points.length - 2) / labelSkip) * labelSkip;
+            const gap = props.points.length - 1 - prevShownIndex;
+            if (gap < labelSkip * 0.7) return null; // Too close, skip last
+          }
+          
+          if (!showBySkip && !isLast) return null;
+          
           return (
             <text key={`x-${i}`} x={xOf(i)} y={vbH - 8} fontSize="9" textAnchor="middle">
               {p.xLabel}

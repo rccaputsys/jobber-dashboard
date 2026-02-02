@@ -332,6 +332,7 @@ export function ActionListTabs({
         background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.04)",
         borderRadius: 12,
         marginBottom: 12,
+        border: isLight ? "1px solid #e2e8f0" : "1px solid transparent",
       }}>
         {tabs.map((tab) => (
           <button
@@ -370,7 +371,7 @@ export function ActionListTabs({
               </p>
             </div>
             {agedARInvoices.length > 0 && (
-              <ExportCSV data={agedARExportData} filename="aged-ar" />
+              <ExportCSV data={agedARExportData} filename="aged-invoices" />
             )}
           </div>
 
