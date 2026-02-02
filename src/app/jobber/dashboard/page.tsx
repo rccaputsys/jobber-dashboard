@@ -1626,12 +1626,12 @@ export default async function DashboardPage({
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <span style={{ fontSize: 20 }}>💰</span>
                 <span className="kpi-label" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  Total AR Past Due
+                  Total Invoices Past Due
                 </span>
               </div>
               <div className="kpi-value-large text-primary">{money(totalAR)}</div>
               <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
-                Outstanding receivables
+                {agedARInvoices.length} invoice{agedARInvoices.length !== 1 ? "s" : ""} outstanding
               </div>
             </div>
           </div>
@@ -1671,7 +1671,7 @@ export default async function DashboardPage({
                 {money(leakDollars)}
               </div>
               <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
-                Quotes outstanding and not won
+                {leakCandidatesInRange.length} quote{leakCandidatesInRange.length !== 1 ? "s" : ""} outstanding
               </div>
             </div>
           </div>
@@ -1680,7 +1680,7 @@ export default async function DashboardPage({
         {/* Secondary KPIs */}
         <div className="kpi-grid-secondary animate-in delay-3" style={{ marginTop: 16 }}>
           <div className="kpi-secondary">
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
               <span style={{ fontSize: 14 }}>✏️</span>
               <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Changes Requested</span>
             </div>
@@ -1694,9 +1694,9 @@ export default async function DashboardPage({
           </div>
 
           <div className="kpi-secondary">
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
               <span style={{ fontSize: 14 }}>✅</span>
-              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Approved No Job Scheduled</span>
+              <span className="kpi-label" style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase" }}>Approved No Job</span>
             </div>
             <div className={`kpi-value-medium ${
               approvedNoJobCount > 5 ? "text-critical" : 

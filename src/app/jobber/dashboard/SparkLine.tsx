@@ -332,9 +332,9 @@ export function SparkLine(props: {
               fontSize: 12,
               fontWeight: 600,
               marginTop: 4,
-              color: hoveredChange.value > 0 ? "#ef4444" : "#10b981",
+              color: hoveredChange.value === 0 ? "#888" : hoveredChange.value > 0 ? "#ef4444" : "#10b981",
             }}>
-              {hoveredChange.value > 0 ? "↑" : "↓"} {formatY(Math.abs(hoveredChange.value))} ({hoveredChange.percent > 0 ? "+" : ""}{hoveredChange.percent.toFixed(0)}%)
+              {hoveredChange.value === 0 ? "—" : hoveredChange.value > 0 ? "↑" : "↓"} {formatY(Math.abs(hoveredChange.value))} ({hoveredChange.percent > 0 ? "+" : ""}{hoveredChange.percent.toFixed(0)}%)
             </div>
           )}
         </div>

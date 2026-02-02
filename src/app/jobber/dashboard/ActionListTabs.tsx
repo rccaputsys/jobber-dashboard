@@ -296,7 +296,7 @@ export function ActionListTabs({
 
   return (
     <div>
-      {/* Full-width horizontal tabs */}
+      {/* Full-width horizontal tabs - scrollable on mobile */}
       <div style={{ 
         display: "flex", 
         gap: 6,
@@ -304,15 +304,23 @@ export function ActionListTabs({
         background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.04)",
         borderRadius: 12,
         marginBottom: 12,
+        overflowX: "auto",
+        WebkitOverflowScrolling: "touch",
+        scrollbarWidth: "none",
+        msOverflowStyle: "none",
       }}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            style={tabStyle(activeTab === tab.id)}
+            style={{
+              ...tabStyle(activeTab === tab.id),
+              minWidth: "fit-content",
+              flexShrink: 0,
+            }}
           >
             <span>{tab.icon}</span>
-            <span>{tab.label}</span>
+            <span style={{ whiteSpace: "nowrap" }}>{tab.label}</span>
             <span style={badgeStyle(activeTab === tab.id)}>{tab.count}</span>
           </button>
         ))}
@@ -332,7 +340,7 @@ export function ActionListTabs({
           }}>
             <div>
               <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: isLight ? "#1e293b" : "#fff" }}>
-                Aged Receivables
+                Aged Invoices
               </h3>
               <p style={{ fontSize: 12, marginTop: 2, color: isLight ? "#64748b" : "rgba(255,255,255,0.5)" }}>
                 Oldest first
