@@ -393,6 +393,9 @@ const globalStyles = `
     background: rgba(255,255,255,0.04);
     border: 1px solid rgba(255,255,255,0.08);
     transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    min-height: 120px;
   }
   
   @media (min-width: 640px) {
@@ -1746,7 +1749,7 @@ export default async function DashboardPage({
           </div>
 
           <div className="kpi-secondary">
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
               <span style={{ fontSize: 14 }}>📦</span>
               <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Unscheduled</span>
             </div>
@@ -1760,7 +1763,7 @@ export default async function DashboardPage({
           </div>
 
           <div className="kpi-secondary">
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
               <span style={{ fontSize: 14 }}>🎯</span>
               <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Quote Won %</span>
             </div>
