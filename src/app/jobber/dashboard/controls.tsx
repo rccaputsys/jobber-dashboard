@@ -105,15 +105,15 @@ export function Controls({ onLoadingChange }: { onLoadingChange?: (loading: bool
   ];
 
   const bucketOptions = [
-    { key: "day", label: "Day" },
-    { key: "week", label: "Week" },
-    { key: "month", label: "Month" },
-    { key: "quarter", label: "Qtr" },
+    { key: "day", mobileLabel: "D", desktopLabel: "Day" },
+    { key: "week", mobileLabel: "W", desktopLabel: "Week" },
+    { key: "month", mobileLabel: "M", desktopLabel: "Month" },
+    { key: "quarter", mobileLabel: "Q", desktopLabel: "Qtr" },
   ];
 
   const chartOptions = [
-    { key: "line", label: "Line" },
-    { key: "bar", label: "Bar" },
+    { key: "line", mobileLabel: "📈", desktopLabel: "Line" },
+    { key: "bar", mobileLabel: "📊", desktopLabel: "Bar" },
   ];
 
   // Consistent gradient button style for ALL buttons
@@ -228,8 +228,9 @@ export function Controls({ onLoadingChange }: { onLoadingChange?: (loading: bool
                   onMouseEnter={() => setHoveredButton(`bucket-${opt.key}`)}
                   onMouseLeave={() => setHoveredButton(null)}
                   style={buttonStyle(g === opt.key, hoveredButton === `bucket-${opt.key}`)}
+                  title={opt.desktopLabel}
                 >
-                  {opt.label}
+                  {isMobile ? opt.mobileLabel : opt.desktopLabel}
                 </button>
               ))}
             </div>
@@ -256,8 +257,9 @@ export function Controls({ onLoadingChange }: { onLoadingChange?: (loading: bool
                   onMouseEnter={() => setHoveredButton(`chart-${opt.key}`)}
                   onMouseLeave={() => setHoveredButton(null)}
                   style={buttonStyle(chart === opt.key, hoveredButton === `chart-${opt.key}`)}
+                  title={opt.desktopLabel}
                 >
-                  {opt.label}
+                  {isMobile ? opt.mobileLabel : opt.desktopLabel}
                 </button>
               ))}
             </div>
