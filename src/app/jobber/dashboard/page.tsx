@@ -1603,6 +1603,44 @@ export default async function DashboardPage({
           </div>
         </header>
 
+        {/* Empty State - Show when no data */}
+        {invoices.length === 0 && jobs.length === 0 && quotes.length === 0 && (
+          <div className="panel animate-in delay-1" style={{ 
+            marginTop: 20, 
+            padding: 32,
+            textAlign: "center",
+            background: "linear-gradient(145deg, rgba(124,92,255,0.1) 0%, rgba(90,166,255,0.05) 100%)",
+            border: "1px solid rgba(124,92,255,0.2)",
+          }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>👋</div>
+            <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Welcome to AccuInsight!</h2>
+            <p style={{ fontSize: 15, opacity: 0.7, marginBottom: 24, maxWidth: 400, margin: "0 auto 24px" }}>
+              Let&apos;s pull in your Jobber data so you can see your business insights.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
+              <SyncButton connectionId={connectionId} />
+              <p style={{ fontSize: 13, opacity: 0.5 }}>
+                This usually takes 1-2 minutes depending on your data volume.
+              </p>
+            </div>
+            <div style={{ marginTop: 24, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+              <a 
+                href="https://ownerview.io/getting-started-with-accuinsight" 
+                target="_blank" 
+                rel="noreferrer"
+                style={{ 
+                  fontSize: 13, 
+                  color: "#7c5cff", 
+                  textDecoration: "none",
+                  fontWeight: 600,
+                }}
+              >
+                📖 Read the Getting Started Guide →
+              </a>
+            </div>
+          </div>
+        )}
+
         {/* Recommendations */}
         {recommendations.length > 0 && (
           <div className="recommendation-banner animate-in delay-1" style={{ marginTop: 20 }}>
