@@ -124,6 +124,8 @@ export function ActionListTabs({
   const [arShowCount, setArShowCount] = useState(INITIAL_SHOW);
   const [unscheduledShowCount, setUnscheduledShowCount] = useState(INITIAL_SHOW);
   const [quotesShowCount, setQuotesShowCount] = useState(INITIAL_SHOW);
+  const [hoveredTab, setHoveredTab] = useState<string | null>(null);
+  const [hoveredButton, setHoveredButton] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const isLight = useIsLight();
 
@@ -138,35 +140,20 @@ export function ActionListTabs({
   const sortedAR = [...agedARInvoices].sort((a, b) => b.days_overdue - a.days_overdue);
   const sortedQuotes = [...leakCandidates].sort((a, b) => new Date(a.sent_at ?? 0).getTime() - new Date(b.sent_at ?? 0).getTime());
 
-  // Purple gradient button style for Open buttons
-  const openButtonStyle: React.CSSProperties = {
-    padding: "6px 12px",
-    fontSize: 13,
-    fontWeight: 600,
-    borderRadius: 8,
-    border: "none",
-    background: "linear-gradient(135deg, #7c5cff, #5aa6ff)",
-    color: "#fff",
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-    boxShadow: "0 2px 8px rgba(124,92,255,0.25)",
-    transition: "all 0.15s ease",
-    textDecoration: "none",
-    display: "inline-block",
-  };
-
-  // Tab button style
-  const tabStyle = (active: boolean): React.CSSProperties => ({
+  // Tab button style with hover
+  const tabStyle = (active: boolean, hovered: boolean): React.CSSProperties => ({
     flex: 1,
     padding: "12px 16px",
     border: "none",
     borderRadius: 10,
     background: active
       ? "linear-gradient(135deg, #7c5cff, #5aa6ff)"
+      : hovered
+      ? isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)"
       : "transparent",
     color: active 
       ? "#fff" 
-      : isLight ? "#64748b" : "rgba(255,255,255,0.6)",
+      : isLight ? "#334155" : "rgba(255,255,255,0.8)",
     fontSize: 13,
     fontWeight: 600,
     cursor: "pointer",
@@ -176,6 +163,7 @@ export function ActionListTabs({
     justifyContent: "center",
     gap: 8,
     boxShadow: active ? "0 4px 12px rgba(124,92,255,0.3)" : "none",
+    transform: hovered && !active ? "translateY(-1px)" : "none",
   });
 
   const badgeStyle = (active: boolean): React.CSSProperties => ({
@@ -202,14 +190,28 @@ export function ActionListTabs({
   }) => {
     if (currentCount >= totalCount) return null;
     const remaining = totalCount - currentCount;
+    const id = `showmore-${currentCount}`;
 
     return (
       <div style={{ textAlign: "center", marginTop: 12 }}>
         <button
           onClick={onShowMore}
+          onMouseEnter={() => setHoveredButton(id)}
+          onMouseLeave={() => setHoveredButton(null)}
           style={{
-            ...openButtonStyle,
             padding: "8px 20px",
+            fontSize: 13,
+            fontWeight: 600,
+            borderRadius: 8,
+            border: "none",
+            background: "linear-gradient(135deg, #7c5cff, #5aa6ff)",
+            color: "#fff",
+            cursor: "pointer",
+            boxShadow: hoveredButton === id 
+              ? "0 6px 20px rgba(124,92,255,0.4)" 
+              : "0 2px 8px rgba(124,92,255,0.25)",
+            transition: "all 0.15s ease",
+            transform: hoveredButton === id ? "translateY(-2px)" : "none",
           }}
         >
           Show More ({remaining} remaining)
@@ -218,16 +220,37 @@ export function ActionListTabs({
     );
   };
 
-  // Link component for Open buttons
-  const OpenLink = ({ url }: { url: string | null | undefined }) => {
+  // Link component for Open buttons with hover
+  const OpenLink = ({ url, id }: { url: string | null | undefined; id: string }) => {
     if (!url) return <span style={{ color: isLight ? "#94a3b8" : "rgba(255,255,255,0.3)" }}>—</span>;
+    
+    const isHovered = hoveredButton === id;
     
     return (
       <a 
         href={url} 
         target="_blank" 
         rel="noreferrer" 
-        style={openButtonStyle}
+        onMouseEnter={() => setHoveredButton(id)}
+        onMouseLeave={() => setHoveredButton(null)}
+        style={{
+          padding: "6px 12px",
+          fontSize: 13,
+          fontWeight: 600,
+          borderRadius: 8,
+          border: "none",
+          background: "linear-gradient(135deg, #7c5cff, #5aa6ff)",
+          color: "#fff",
+          cursor: "pointer",
+          whiteSpace: "nowrap",
+          boxShadow: isHovered 
+            ? "0 6px 20px rgba(124,92,255,0.4)" 
+            : "0 2px 8px rgba(124,92,255,0.25)",
+          transition: "all 0.15s ease",
+          textDecoration: "none",
+          display: "inline-block",
+          transform: isHovered ? "translateY(-2px)" : "none",
+        }}
       >
         Open →
       </a>
@@ -242,6 +265,7 @@ export function ActionListTabs({
     date, 
     amount, 
     url,
+    id,
     ageThresholds = [30, 15],
   }: { 
     age: number;
@@ -250,6 +274,7 @@ export function ActionListTabs({
     date?: string;
     amount?: string;
     url?: string | null;
+    id: string;
     ageThresholds?: [number, number];
   }) => (
     <div style={{
@@ -290,7 +315,7 @@ export function ActionListTabs({
           {amount && <span style={{ fontWeight: 600, color: isLight ? "#1e293b" : "#fff" }}>{amount}</span>}
         </div>
       </div>
-      <OpenLink url={url} />
+      <OpenLink url={url} id={id} />
     </div>
   );
 
@@ -313,8 +338,10 @@ export function ActionListTabs({
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
+            onMouseEnter={() => setHoveredTab(tab.id)}
+            onMouseLeave={() => setHoveredTab(null)}
             style={{
-              ...tabStyle(activeTab === tab.id),
+              ...tabStyle(activeTab === tab.id, hoveredTab === tab.id),
               minWidth: "fit-content",
               flexShrink: 0,
             }}
@@ -366,6 +393,7 @@ export function ActionListTabs({
               {sortedAR.slice(0, arShowCount).map((inv, idx) => (
                 <MobileCard
                   key={idx}
+                  id={`ar-${idx}`}
                   age={inv.days_overdue}
                   title={`#${inv.invoice_number}`}
                   subtitle={inv.client_name}
@@ -412,7 +440,7 @@ export function ActionListTabs({
                         {money(inv.amount_cents)}
                       </td>
                       <td style={{ padding: "12px" }}>
-                        <OpenLink url={inv.jobber_url} />
+                        <OpenLink url={inv.jobber_url} id={`ar-table-${idx}`} />
                       </td>
                     </tr>
                   ))}
@@ -469,6 +497,7 @@ export function ActionListTabs({
                 return (
                   <MobileCard
                     key={idx}
+                    id={`unsched-${idx}`}
                     age={age}
                     title={r.job_number ? `#${r.job_number}` : "—"}
                     subtitle={r.job_title}
@@ -519,7 +548,7 @@ export function ActionListTabs({
                           {r.total_amount_cents ? money(r.total_amount_cents) : "—"}
                         </td>
                         <td style={{ padding: "12px" }}>
-                          <OpenLink url={r.jobber_url} />
+                          <OpenLink url={r.jobber_url} id={`unsched-table-${idx}`} />
                         </td>
                       </tr>
                     );
@@ -578,6 +607,7 @@ export function ActionListTabs({
                 return (
                   <MobileCard
                     key={idx}
+                    id={`quote-${idx}`}
                     age={age}
                     title={q.quote_number ? `#${q.quote_number}` : "—"}
                     subtitle={q.quote_title}
@@ -629,7 +659,7 @@ export function ActionListTabs({
                           {money(Number(q.quote_total_cents ?? 0))}
                         </td>
                         <td style={{ padding: "12px" }}>
-                          <OpenLink url={q.quote_url} />
+                          <OpenLink url={q.quote_url} id={`quote-table-${idx}`} />
                         </td>
                       </tr>
                     );
