@@ -1141,17 +1141,22 @@ export default async function DashboardPage({
 
   const lastSyncPretty = conn?.last_sync_at ? formatSyncTime(new Date(conn.last_sync_at)) : "Not synced yet";
 
-  // Fetch facts
-  const { data: invoicesData } = await supabaseAdmin.from("fact_invoices").select("*").eq("connection_id", connectionId);
+  // Fetch facts IN PARALLEL
+  const [
+    { data: invoicesData },
+    { data: jobsData },
+    { data: quotesData },
+  ] = await Promise.all([
+    supabaseAdmin.from("fact_invoices").select("*").eq("connection_id", connectionId),
+    supabaseAdmin.from("fact_jobs").select("*").eq("connection_id", connectionId),
+    supabaseAdmin
+      .from("fact_quotes")
+      .select("jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,sent_at,updated_at_jobber")
+      .eq("connection_id", connectionId),
+  ]);
+
   const invoices = (invoicesData ?? []) as any[];
-
-  const { data: jobsData } = await supabaseAdmin.from("fact_jobs").select("*").eq("connection_id", connectionId);
   const jobs = (jobsData ?? []) as any[];
-
-  const { data: quotesData } = await supabaseAdmin
-    .from("fact_quotes")
-    .select("jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,sent_at,updated_at_jobber")
-    .eq("connection_id", connectionId);
   const quotes = (quotesData ?? []) as any[];
 
   // AR buckets - only unpaid invoices
