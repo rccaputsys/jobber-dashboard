@@ -143,7 +143,8 @@ export function ActionListTabs({
   // Tab button style with hover
   const tabStyle = (active: boolean, hovered: boolean): React.CSSProperties => ({
     flex: 1,
-    padding: "10px 8px",
+    minWidth: 0, // Allow shrinking
+    padding: "10px 4px",
     border: "none",
     borderRadius: 10,
     background: active
@@ -154,23 +155,25 @@ export function ActionListTabs({
     color: active 
       ? "#fff" 
       : isLight ? "#334155" : "rgba(255,255,255,0.8)",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 600,
     cursor: "pointer",
     transition: "all 0.15s ease",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 4,
     boxShadow: active ? "0 4px 12px rgba(124,92,255,0.3)" : "none",
     transform: hovered && !active ? "translateY(-1px)" : "none",
+    overflow: "hidden",
   });
 
   const badgeStyle = (active: boolean): React.CSSProperties => ({
-    padding: "2px 8px",
+    padding: "2px 6px",
     borderRadius: 10,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: 700,
+    flexShrink: 0,
     background: active 
       ? "rgba(255,255,255,0.2)" 
       : isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)",
@@ -338,14 +341,15 @@ export function ActionListTabs({
             onMouseLeave={() => setHoveredTab(null)}
             style={tabStyle(activeTab === tab.id, hoveredTab === tab.id)}
           >
-            <span>{tab.icon}</span>
-            <span>{tab.label}</span>
+            <span style={{ flexShrink: 0 }}>{tab.icon}</span>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tab.label}</span>
             <span style={badgeStyle(activeTab === tab.id)}>{tab.count}</span>
           </button>
         ))}
       </div>
 
-      {/* Tab Content */}
+      {/* Tab Content - min-height prevents page jumping when switching tabs */}
+      <div style={{ minHeight: 300 }}>
       {activeTab === "ar" && (
         <div>
           <div style={{ 
@@ -667,6 +671,7 @@ export function ActionListTabs({
           />
         </div>
       )}
+      </div>
     </div>
   );
 }
