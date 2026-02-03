@@ -1287,11 +1287,11 @@ export default async function DashboardPage({
 
             <div className="kpi-secondary">
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
-                <span style={{ fontSize: 14 }}>🎯</span>
-                <span className="text-secondary" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Quote Won %</span>
+                <span style={{ fontSize: 14 }}>📥</span>
+                <span className="text-secondary" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Open Requests</span>
               </div>
-              <div className="kpi-value-medium text-success">{pct(DEMO_DATA.quoteWonPct)}</div>
-              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>Last 30 days • {DEMO_DATA.quotesWonLast30Days} won / {DEMO_DATA.quotesInLast30Days} total</div>
+              <div className="kpi-value-medium text-success">{DEMO_DATA.openRequestsCount}</div>
+              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>Pending work requests</div>
             </div>
           </div>
 
@@ -1322,6 +1322,15 @@ export default async function DashboardPage({
                 unscheduledExportData={unscheduledExportData}
                 leakCandidates={DEMO_DATA.leakCandidates}
                 leakingQuotesExportData={leakingQuotesExportData}
+                openRequests={DEMO_DATA.openRequests}
+                openRequestsExportData={DEMO_DATA.openRequests.map((r: any) => ({
+                  "Age (days)": r.created_at_jobber ? Math.max(0, Math.round((Date.now() - new Date(r.created_at_jobber).getTime()) / 86400000)) : 0,
+                  "Title": r.title || "Untitled",
+                  "Client": r.client_name || "",
+                  "Source": r.source || "",
+                  "Created": r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "",
+                  "Jobber URL": r.jobber_url || "",
+                }))}
                 currencyCode={DEMO_DATA.currencyCode}
               />
             </div>
