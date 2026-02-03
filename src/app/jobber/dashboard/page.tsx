@@ -190,6 +190,12 @@ const DEMO_DATA = {
     { quote_number: "Q-904", quote_title: "Seasonal flower installation", sent_at: "2026-01-19", quote_total_cents: 125000, quote_url: "#", quote_status: "awaiting_response" },
     { quote_number: "Q-908", quote_title: "Lawn renovation & seeding", sent_at: "2026-01-24", quote_total_cents: 124000, quote_url: "#", quote_status: "awaiting_response" },
   ],
+  openRequests: [
+    { title: "New lawn care estimate", client_name: "Sarah Mitchell", source: "website", created_at_jobber: "2026-01-30", jobber_url: "#" },
+    { title: "Spring cleanup quote needed", client_name: "Oak Valley HOA", source: "phone", created_at_jobber: "2026-01-28", jobber_url: "#" },
+    { title: "Irrigation repair assessment", client_name: "Tom Henderson", source: "website", created_at_jobber: "2026-01-25", jobber_url: "#" },
+  ],
+  openRequestsCount: 3,
   trendLabels: ["Dec 9", "Dec 16", "Dec 23", "Dec 30", "Jan 6", "Jan 13", "Jan 20", "Jan 27"],
   leakTrend: [1850000, 1720000, 1580000, 1450000, 1380000, 1290000, 1260000, 1234000],
   ar15Trend: [385000, 342000, 298000, 275000, 248000, 232000, 218000, 215500],
