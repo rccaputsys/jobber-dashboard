@@ -1344,6 +1344,12 @@ export default async function DashboardPage({
             fontSize: 12,
             color: "rgba(234,241,255,0.4)",
           }}>
+            <p style={{ margin: "0 0 12px" }}>
+              Need help?{" "}
+              <a href="https://ownerview.io/accuinsight-faq" target="_blank" rel="noreferrer" style={{ color: "rgba(234,241,255,0.6)", textDecoration: "none", fontWeight: 500 }}>FAQ</a>
+              {" · "}
+              <a href="https://ownerview.io/getting-started-with-accuinsight" target="_blank" rel="noreferrer" style={{ color: "rgba(234,241,255,0.6)", textDecoration: "none", fontWeight: 500 }}>Get Started Guide</a>
+            </p>
             <p style={{ margin: 0 }}>© 2026 OwnerView. All rights reserved.</p>
             <p style={{ margin: "8px 0 0" }}>
               <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms</a>
@@ -2008,19 +2014,56 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 This usually takes 1-2 minutes depending on your data volume.
               </p>
             </div>
-            <div style={{ marginTop: 24, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+            <div style={{ 
+              marginTop: 32, 
+              paddingTop: 24, 
+              borderTop: "1px solid rgba(255,255,255,0.1)",
+              display: "flex",
+              justifyContent: "center",
+              gap: 24,
+              flexWrap: "wrap",
+            }}>
               <a 
                 href="https://ownerview.io/getting-started-with-accuinsight" 
                 target="_blank" 
                 rel="noreferrer"
                 style={{ 
-                  fontSize: 13, 
-                  color: "#7c5cff", 
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "12px 20px",
+                  borderRadius: 10,
+                  background: "rgba(124,92,255,0.15)",
+                  border: "1px solid rgba(124,92,255,0.3)",
+                  fontSize: 14,
+                  color: "#a5b4fc", 
                   textDecoration: "none",
                   fontWeight: 600,
+                  transition: "all 0.2s ease",
                 }}
               >
-                📖 Read the Getting Started Guide →
+                📖 Getting Started Guide
+              </a>
+              <a 
+                href="https://ownerview.io/accuinsight-faq" 
+                target="_blank" 
+                rel="noreferrer"
+                style={{ 
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "12px 20px",
+                  borderRadius: 10,
+                  background: "rgba(90,166,255,0.15)",
+                  border: "1px solid rgba(90,166,255,0.3)",
+                  fontSize: 14,
+                  color: "#93c5fd", 
+                  textDecoration: "none",
+                  fontWeight: 600,
+                  transition: "all 0.2s ease",
+                }}
+              >
+                ❓ FAQ
               </a>
             </div>
           </div>
@@ -2218,6 +2261,12 @@ const quoteWonPct = quotesInLast30Days.length > 0
           fontSize: 12,
           color: "rgba(234,241,255,0.4)",
         }}>
+          <p style={{ margin: "0 0 12px" }}>
+            Need help?{" "}
+            <a href="https://ownerview.io/accuinsight-faq" target="_blank" rel="noreferrer" style={{ color: "rgba(234,241,255,0.6)", textDecoration: "none", fontWeight: 500 }}>FAQ</a>
+            {" · "}
+            <a href="https://ownerview.io/getting-started-with-accuinsight" target="_blank" rel="noreferrer" style={{ color: "rgba(234,241,255,0.6)", textDecoration: "none", fontWeight: 500 }}>Get Started Guide</a>
+          </p>
           <p style={{ margin: 0 }}>© 2026 OwnerView. All rights reserved.</p>
           <p style={{ margin: "8px 0 0" }}>
             <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms</a>
