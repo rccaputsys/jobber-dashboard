@@ -1,5 +1,61 @@
 // src/app/jobber/page.tsx
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
+
+function ConnectButton({ children }: { children: React.ReactNode }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = () => {
+    setLoading(true);
+  };
+
+  const buttonStyle: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "16px 32px",
+    background: loading 
+      ? "linear-gradient(135deg, #4a5568 0%, #5a6578 100%)" 
+      : "linear-gradient(135deg, #5a67d8 0%, #667eea 100%)",
+    color: "#ffffff",
+    fontSize: 17,
+    fontWeight: 700,
+    borderRadius: 12,
+    textDecoration: "none",
+    boxShadow: loading ? "none" : "0 4px 24px rgba(90,103,216,0.4)",
+    pointerEvents: loading ? "none" : "auto",
+    opacity: loading ? 0.8 : 1,
+    transition: "all 0.2s ease",
+  };
+
+  const spinnerStyle: React.CSSProperties = {
+    animation: "spin 1s linear infinite",
+  };
+
+  return (
+    <a href="/api/jobber/connect" onClick={handleClick} style={buttonStyle}>
+      {loading ? (
+        <>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            style={spinnerStyle}
+          >
+            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+          </svg>
+          Connecting...
+        </>
+      ) : (
+        children
+      )}
+    </a>
+  );
+}
 
 export default function JobberLanding() {
   return (
@@ -11,6 +67,13 @@ export default function JobberLanding() {
         fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
     >
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+
       {/* Hero Section */}
       <div
         style={{
@@ -59,27 +122,12 @@ export default function JobberLanding() {
             aging invoices, sales leaks, and scheduling gaps all in a single-page dashboard.
           </p>
 
-          <a
-            href="/api/jobber/connect"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "16px 32px",
-              background: "linear-gradient(135deg, #5a67d8 0%, #667eea 100%)",
-              color: "#ffffff",
-              fontSize: 17,
-              fontWeight: 700,
-              borderRadius: 12,
-              textDecoration: "none",
-              boxShadow: "0 4px 24px rgba(90,103,216,0.4)",
-            }}
-          >
+          <ConnectButton>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M13.8 12H3" />
             </svg>
             See Your Numbers Now
-          </a>
+          </ConnectButton>
           
           <p style={{ fontSize: 13, color: "rgba(234,241,255,0.5)", marginTop: 16 }}>
             Free 14-day trial • No credit card required • 2-minute setup
@@ -181,9 +229,9 @@ export default function JobberLanding() {
         <div style={{ background: "linear-gradient(135deg, rgba(90,103,216,0.2) 0%, rgba(102,126,234,0.1) 100%)", borderRadius: 20, padding: "48px 32px", textAlign: "center", border: "1px solid rgba(90,103,216,0.3)" }}>
           <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 16 }}>Ready to See Your Numbers?</h2>
           <p style={{ fontSize: 16, color: "rgba(234,241,255,0.7)", marginBottom: 24, maxWidth: 500, margin: "0 auto 24px" }}>Join other service businesses who stopped guessing and started knowing.</p>
-          <a href="/api/jobber/connect" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "16px 32px", background: "linear-gradient(135deg, #5a67d8 0%, #667eea 100%)", color: "#ffffff", fontSize: 17, fontWeight: 700, borderRadius: 12, textDecoration: "none", boxShadow: "0 4px 24px rgba(90,103,216,0.4)" }}>
+          <ConnectButton>
             Start Free Trial →
-          </a>
+          </ConnectButton>
         </div>
 
         {/* Footer */}
@@ -193,7 +241,6 @@ export default function JobberLanding() {
             <a href="/privacy" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none", marginRight: 16 }}>Privacy Policy</a>
             <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms of Service</a>
           </p>
-          <p style={{ marginTop: 8 }}>© 2026 OwnerView. All rights reserved.</p>
         </footer>
       </div>
     </main>
