@@ -1486,18 +1486,40 @@ export default async function DashboardPage({
     { data: invoicesData },
     { data: jobsData },
     { data: quotesData },
+    { data: requestsData },
   ] = await Promise.all([
     supabaseAdmin.from("fact_invoices").select("*").eq("connection_id", connectionId),
     supabaseAdmin.from("fact_jobs").select("*").eq("connection_id", connectionId),
     supabaseAdmin
-  .from("fact_quotes")
-  .select("jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,sent_at,updated_at_jobber,created_at_jobber")
-  .eq("connection_id", connectionId),
+      .from("fact_quotes")
+      .select("jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,sent_at,updated_at_jobber,created_at_jobber")
+      .eq("connection_id", connectionId),
+    supabaseAdmin
+      .from("fact_requests")
+      .select("jobber_request_id,title,request_status,source,client_name,jobber_url,created_at_jobber")
+      .eq("connection_id", connectionId),
   ]);
 
   const invoices = (invoicesData ?? []) as any[];
   const jobs = (jobsData ?? []) as any[];
   const quotes = (quotesData ?? []) as any[];
+  const requests = (requestsData ?? []) as any[];
+  console.log("REQUESTS FROM DB:", requests);
+  console.log("FILTERED REQUESTS:", requests.filter((r: any) => {
+    const status = (r.request_status || "").toUpperCase();
+    return status === "NEW" || status === "PENDING" || status === "UNSCHEDULED" || status === "ASSESSMENT_COMPLETED" || status === "ACTION_REQUIRED";
+  }));
+  console.log("openRequestsCount:", requests.filter((r: any) => {
+    const status = (r.request_status || "").toUpperCase();
+    return status === "NEW" || status === "PENDING" || status === "UNSCHEDULED" || status === "ASSESSMENT_COMPLETED" || status === "ACTION_REQUIRED";
+  }).length);
+  
+  // Open requests count (PENDING = not yet converted/archived/closed)
+  const openRequestsCount = requests.filter((r: any) => {
+  const status = (r.request_status || "").toUpperCase();
+  // Open requests: NEW, PENDING, UNSCHEDULED, or ASSESSMENT_COMPLETED (action required)
+  return status === "NEW" || status === "PENDING" || status === "UNSCHEDULED" || status === "ASSESSMENT_COMPLETED" || status === "ACTION_REQUIRED";
+}).length;
 
   // AR buckets - only unpaid invoices
   const nowMs = Date.now();
@@ -1915,7 +1937,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
     }}>
       <style>{globalStyles}</style>
 
-      <div className="dashboard-container" data-testid="DEMO-MODE-ACTIVE">
+      <div className="dashboard-container">
         {/* Header */}
         <header className="dashboard-header animate-in">
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -2109,16 +2131,16 @@ const quoteWonPct = quotesInLast30Days.length > 0
 
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
-              <span style={{ fontSize: 14 }}>🎯</span>
-              <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Quote Won %</span>
+              <span style={{ fontSize: 14 }}>📥</span>
+              <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Open Requests</span>
             </div>
             <div className={`kpi-value-medium ${
-              quoteWonPct >= 0.30 ? "text-success" : 
-              quoteWonPct >= 0.20 ? "text-warning" : "text-critical"
+              openRequestsCount > 10 ? "text-critical" : 
+              openRequestsCount > 5 ? "text-warning" : "text-success"
             }`}>
-              {pct(quoteWonPct)}
+              {openRequestsCount}
             </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Last 30 days • {quotesWonLast30Days.length} won / {quotesInLast30Days.length} total</div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Pending work requests</div>
           </div>
 
         </div>
@@ -2152,6 +2174,21 @@ const quoteWonPct = quotesInLast30Days.length > 0
               unscheduledExportData={unscheduledExportData}
               leakCandidates={leakCandidatesInRange.slice().sort((a: any, b: any) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime())}
               leakingQuotesExportData={leakingQuotesExportData}
+              openRequests={requests.filter((r: any) => {
+  const status = (r.request_status || "").toUpperCase();
+  return status === "NEW" || status === "PENDING" || status === "UNSCHEDULED" || status === "ASSESSMENT_COMPLETED" || status === "ACTION_REQUIRED";
+})}
+              openRequestsExportData={requests.filter((r: any) => {
+  const status = (r.request_status || "").toUpperCase();
+  return status === "NEW" || status === "PENDING" || status === "UNSCHEDULED" || status === "ASSESSMENT_COMPLETED" || status === "ACTION_REQUIRED";
+}).map((r: any) => ({
+                "Age (days)": r.created_at_jobber ? Math.max(0, Math.round((Date.now() - new Date(r.created_at_jobber).getTime()) / 86400000)) : 0,
+                "Title": r.title || "Untitled",
+                "Client": r.client_name || "",
+                "Source": r.source || "",
+                "Created": r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "",
+                "Jobber URL": r.jobber_url || "",
+              }))}
               currencyCode={currencyCode}
             />
           </div>

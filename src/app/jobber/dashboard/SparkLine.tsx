@@ -85,8 +85,10 @@ export function SparkLine(props: {
     ? d + ` L ${xOf(props.points.length - 1).toFixed(1)} ${vbH - padB} L ${xOf(0).toFixed(1)} ${vbH - padB} Z`
     : "";
 
-  const clipId = `clip-${Math.random().toString(16).slice(2)}`;
-  const gradientId = `gradient-${Math.random().toString(16).slice(2)}`;
+  // Use stable IDs based on title to avoid hydration mismatch
+  const safeTitle = props.title.toLowerCase().replace(/[^a-z0-9]/g, "-");
+  const clipId = `clip-${safeTitle}`;
+  const gradientId = `gradient-${safeTitle}`;
 
   const barW = Math.max(4, (vbW - padL - padR) / Math.max(1, props.points.length) - 4);
   

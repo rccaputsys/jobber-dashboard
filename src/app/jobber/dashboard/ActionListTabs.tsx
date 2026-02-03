@@ -98,6 +98,15 @@ type LeakingQuote = {
   sent_at?: string;
 };
 
+type OpenRequest = {
+  jobber_request_id?: string;
+  title?: string;
+  client_name?: string;
+  source?: string;
+  jobber_url?: string | null;
+  created_at_jobber?: string;
+};
+
 type Props = {
   agedARInvoices: AgedARInvoice[];
   agedARExportData: Record<string, any>[];
@@ -105,6 +114,8 @@ type Props = {
   unscheduledExportData: Record<string, any>[];
   leakCandidates: LeakingQuote[];
   leakingQuotesExportData: Record<string, any>[];
+  openRequests?: OpenRequest[];
+  openRequestsExportData?: Record<string, any>[];
   currencyCode: string;
 };
 
@@ -118,12 +129,16 @@ export function ActionListTabs({
   unscheduledExportData,
   leakCandidates,
   leakingQuotesExportData,
+  openRequests = [],
+  openRequestsExportData = [],
   currencyCode,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<"ar" | "unscheduled" | "quotes">("ar");
+  console.log("ActionListTabs received openRequests:", openRequests);
+  const [activeTab, setActiveTab] = useState<"ar" | "unscheduled" | "quotes" | "requests">("ar");
   const [arShowCount, setArShowCount] = useState(INITIAL_SHOW);
   const [unscheduledShowCount, setUnscheduledShowCount] = useState(INITIAL_SHOW);
   const [quotesShowCount, setQuotesShowCount] = useState(INITIAL_SHOW);
+  const [requestsShowCount, setRequestsShowCount] = useState(INITIAL_SHOW);
   const [hoveredTab, setHoveredTab] = useState<string | null>(null);
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
   const isMobile = useIsMobile();
@@ -135,7 +150,12 @@ export function ActionListTabs({
     { id: "ar" as const, label: "Invoices", count: agedARInvoices.length, icon: "💰" },
     { id: "unscheduled" as const, label: "Unscheduled", count: unscheduledRows.length, icon: "📦" },
     { id: "quotes" as const, label: "Quotes", count: leakCandidates.length, icon: "📋" },
+    { id: "requests" as const, label: "Requests", count: openRequests.length, icon: "📥" },
   ];
+
+  const sortedRequests = [...openRequests].sort((a, b) => 
+    new Date(a.created_at_jobber ?? 0).getTime() - new Date(b.created_at_jobber ?? 0).getTime()
+  );
 
   const sortedAR = [...agedARInvoices].sort((a, b) => b.days_overdue - a.days_overdue);
   const sortedQuotes = [...leakCandidates].sort((a, b) => new Date(a.sent_at ?? 0).getTime() - new Date(b.sent_at ?? 0).getTime());
@@ -669,6 +689,114 @@ export function ActionListTabs({
             currentCount={quotesShowCount}
             totalCount={sortedQuotes.length}
             onShowMore={() => setQuotesShowCount(prev => prev + LOAD_MORE_COUNT)}
+          />
+        </div>
+      )}
+
+      {activeTab === "requests" && (
+        <div>
+          <div style={{ 
+            display: "flex", 
+            justifyContent: "space-between", 
+            alignItems: "center", 
+            flexWrap: "wrap", 
+            gap: 8, 
+            marginBottom: 8,
+            paddingTop: 4,
+          }}>
+            <div>
+              <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: isLight ? "#1e293b" : "#fff" }}>
+                Open Requests
+              </h3>
+              <p style={{ fontSize: 12, marginTop: 2, color: isLight ? "#64748b" : "rgba(255,255,255,0.5)" }}>
+                Oldest first
+              </p>
+            </div>
+            {openRequests.length > 0 && (
+              <ExportCSV data={openRequestsExportData} filename="open-requests" />
+            )}
+          </div>
+
+          {openRequests.length === 0 ? (
+            <div style={{ 
+              padding: 20, 
+              textAlign: "center", 
+              fontSize: 14,
+              color: isLight ? "#64748b" : "rgba(255,255,255,0.6)",
+            }}>
+              <div style={{ fontSize: 28, marginBottom: 6 }}>✨</div>
+              No open requests!
+            </div>
+          ) : isMobile ? (
+            <div style={{ margin: "0 -16px" }}>
+              {sortedRequests.slice(0, requestsShowCount).map((r, idx) => {
+                const age = ageDays(r.created_at_jobber || null);
+                return (
+                  <MobileCard
+                    key={idx}
+                    id={`request-${idx}`}
+                    age={age}
+                    title={r.title || "Untitled request"}
+                    subtitle={r.client_name || r.source}
+                    date={r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : undefined}
+                    url={r.jobber_url}
+                    ageThresholds={[7, 3]}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <div className="table-container">
+              <table className="data-table" style={{ fontSize: 14 }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: "10%", padding: "8px 12px" }}>Age</th>
+                    <th style={{ width: "35%", padding: "8px 12px" }}>Request</th>
+                    <th style={{ width: "20%", padding: "8px 12px" }}>Source</th>
+                    <th style={{ width: "15%", padding: "8px 12px" }}>Created</th>
+                    <th style={{ width: "20%", padding: "8px 12px" }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedRequests.slice(0, requestsShowCount).map((r, idx) => {
+                    const age = ageDays(r.created_at_jobber || null);
+                    return (
+                      <tr key={idx}>
+                        <td style={{ padding: "12px" }}>
+                          <span className={`age-badge ${age > 7 ? "critical" : age > 3 ? "warning" : "good"}`}>
+                            {age}d
+                          </span>
+                        </td>
+                        <td style={{ padding: "12px" }}>
+                          <div style={{ fontSize: 15, fontWeight: 600, color: isLight ? "#1e293b" : "#fff" }}>
+                            {r.title || "Untitled request"}
+                          </div>
+                          {r.client_name && (
+                            <div style={{ fontSize: 13, marginTop: 2, color: isLight ? "#64748b" : "rgba(255,255,255,0.6)" }}>
+                              {r.client_name}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: "12px", fontSize: 14, color: isLight ? "#64748b" : "rgba(255,255,255,0.7)" }}>
+                          {r.source || "—"}
+                        </td>
+                        <td style={{ padding: "12px", fontSize: 14, color: isLight ? "#64748b" : "rgba(255,255,255,0.7)" }}>
+                          {r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "—"}
+                        </td>
+                        <td style={{ padding: "12px" }}>
+                          <OpenLink url={r.jobber_url} id={`request-table-${idx}`} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <ShowMoreButton
+            currentCount={requestsShowCount}
+            totalCount={sortedRequests.length}
+            onShowMore={() => setRequestsShowCount(prev => prev + LOAD_MORE_COUNT)}
           />
         </div>
       )}

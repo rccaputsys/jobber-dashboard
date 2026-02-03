@@ -49,6 +49,26 @@ type QuoteNode = {
   amounts?: QuoteAmounts | null;
 };
 
+// NEW: Request type
+type RequestClient = {
+  id?: string | null;
+  name?: string | null;
+};
+
+type RequestNode = {
+  id: string;
+  title?: string | null;
+  requestStatus?: string | null;
+  source?: string | null;
+  jobberWebUri?: string | null;
+  createdAt?: string | null;
+  contactName?: string | null;
+  companyName?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  client?: RequestClient | null;
+};
+
 type PageInfo = {
   hasNextPage: boolean;
   endCursor: string | null;
@@ -214,6 +234,26 @@ export async function GET(req: Request) {
      amounts { total }`
   );
 
+  // NEW: Fetch all Requests
+  const requestResult = await fetchAllPages<RequestNode>(
+    token,
+    "requests",
+    `id
+     title
+     requestStatus
+     source
+     jobberWebUri
+     createdAt
+     contactName
+     companyName
+     email
+     phone
+     client {
+       id
+       name
+     }`
+  );
+
   // Filter to last 12 months client-side
   const jobs = jobResult.nodes.filter(j => isWithinTwelveMonths(j.createdAt, twelveMonthsAgoMs));
   const quotes = quoteResult.nodes.filter(q => isWithinTwelveMonths(q.createdAt, twelveMonthsAgoMs));
@@ -223,8 +263,11 @@ export async function GET(req: Request) {
     return isWithinTwelveMonths(inv.createdAt, twelveMonthsAgoMs);
   });
 
+  // NEW: Filter requests to last 12 months
+  const requests = requestResult.nodes.filter(r => isWithinTwelveMonths(r.createdAt, twelveMonthsAgoMs));
+
   // Log any permission errors (optional)
-  const allErrors = [...jobResult.errors, ...invoiceResult.errors, ...quoteResult.errors];
+  const allErrors = [...jobResult.errors, ...invoiceResult.errors, ...quoteResult.errors, ...requestResult.errors];
   if (allErrors.length > 0) {
     console.warn("Jobber API partial errors (some items hidden due to permissions):", allErrors.length);
   }
@@ -305,6 +348,33 @@ export async function GET(req: Request) {
     if (error) throw new Error(`fact_quotes upsert failed: ${error.message}`);
   }
 
+  // NEW: Upsert Requests
+  for (const r of requests) {
+    const { error } = await supabaseAdmin
+      .from("fact_requests")
+      .upsert(
+        {
+          connection_id: connectionId,
+          jobber_request_id: r.id,
+          title: r.title ?? null,
+          request_status: r.requestStatus ?? null,
+          source: r.source ?? null,
+          client_name: r.client?.name ?? null,
+          client_id: r.client?.id ?? null,
+          contact_name: r.contactName ?? null,
+          company_name: r.companyName ?? null,
+          email: r.email ?? null,
+          phone: r.phone ?? null,
+          jobber_url: r.jobberWebUri ?? null,
+          created_at_jobber: r.createdAt ?? null,
+          synced_at: new Date().toISOString(),
+        },
+        { onConflict: "connection_id,jobber_request_id" }
+      );
+
+    if (error) throw new Error(`fact_requests upsert failed: ${error.message}`);
+  }
+
   // Heartbeat
   const { error: hbErr } = await supabaseAdmin
     .from("jobber_connections")
@@ -312,6 +382,7 @@ export async function GET(req: Request) {
       last_sync_at: new Date().toISOString(),
       last_sync_invoices: invoices.length,
       last_sync_quotes: quotes.length,
+      // Optionally add: last_sync_requests: requests.length,
     })
     .eq("id", connectionId);
 
