@@ -13,9 +13,44 @@ function CompleteSignupForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [ownerName, setOwnerName] = useState("");
+  const [businessType, setBusinessType] = useState("");
+  const [teamSize, setTeamSize] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [agreed, setAgreed] = useState(false);
+
+  const businessTypes = [
+    "Lawn Care / Landscaping",
+    "HVAC",
+    "Plumbing",
+    "Electrical",
+    "Cleaning / Janitorial",
+    "Pest Control",
+    "Pool Service",
+    "Roofing",
+    "Painting",
+    "Handyman",
+    "Pressure Washing",
+    "Window Cleaning",
+    "Tree Service / Arborist",
+    "Fencing",
+    "Flooring",
+    "Appliance Repair",
+    "Locksmith",
+    "Junk Removal",
+    "Moving Services",
+    "Snow Removal",
+    "Other",
+  ];
+
+  const teamSizes = [
+    "Just me",
+    "2-5 employees",
+    "6-10 employees",
+    "11-25 employees",
+    "25+ employees",
+  ];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,7 +72,7 @@ function CompleteSignupForm() {
       const res = await fetch("/api/auth/complete-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, connectionId }),
+        body: JSON.stringify({ email, password, connectionId, ownerName, businessType, teamSize }),
       });
 
       const data = await res.json();
@@ -86,6 +121,18 @@ function CompleteSignupForm() {
 
       <form onSubmit={handleSubmit} style={styles.form}>
         <div>
+          <label style={styles.label}>Your Name</label>
+          <input
+            type="text"
+            value={ownerName}
+            onChange={(e) => setOwnerName(e.target.value)}
+            required
+            style={styles.input}
+            placeholder="John Smith"
+          />
+        </div>
+
+        <div>
           <label style={styles.label}>Email</label>
           <input
             type="email"
@@ -121,6 +168,36 @@ function CompleteSignupForm() {
             style={styles.input}
             placeholder="Confirm your password"
           />
+        </div>
+
+        <div>
+          <label style={styles.label}>Business Type</label>
+          <select
+            value={businessType}
+            onChange={(e) => setBusinessType(e.target.value)}
+            required
+            style={styles.input}
+          >
+            <option value="">Select your industry...</option>
+            {businessTypes.map((type) => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label style={styles.label}>Team Size</label>
+          <select
+            value={teamSize}
+            onChange={(e) => setTeamSize(e.target.value)}
+            required
+            style={styles.input}
+          >
+            <option value="">Select team size...</option>
+            {teamSizes.map((size) => (
+              <option key={size} value={size}>{size}</option>
+            ))}
+          </select>
         </div>
 
         {error && (
