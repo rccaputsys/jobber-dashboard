@@ -55,7 +55,7 @@ export default function JobberLanding() {
               lineHeight: 1.6,
             }}
           >
-            Stop digging through reports. Get action items and better visibility into 
+            Stop digging through reports. Get action items and visibility into 
             aging invoices, sales leaks, and scheduling gaps all in a single-page dashboard.
           </p>
 
