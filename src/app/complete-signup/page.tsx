@@ -20,6 +20,20 @@ function CompleteSignupForm() {
   const [loading, setLoading] = useState(false);
   const [agreed, setAgreed] = useState(false);
 
+  const getInputStyle = (value: string) => ({
+    ...styles.input,
+    borderColor: value ? "rgba(124,92,255,0.4)" : "rgba(255,255,255,0.12)",
+    background: value ? "rgba(124,92,255,0.08)" : "rgba(0,0,0,0.3)",
+  });
+
+  const getSelectStyle = (value: string) => ({
+    ...styles.select,
+    borderColor: value ? "rgba(124,92,255,0.4)" : "rgba(255,255,255,0.12)",
+    background: value 
+      ? `rgba(124,92,255,0.08) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237c5cff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 16px center`
+      : `rgba(0,0,0,0.5) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237c5cff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 16px center`,
+  });
+
   const businessTypes = [
     "Lawn Care / Landscaping",
     "HVAC",
@@ -127,7 +141,7 @@ function CompleteSignupForm() {
             value={ownerName}
             onChange={(e) => setOwnerName(e.target.value)}
             required
-            style={styles.input}
+            style={getInputStyle(ownerName)}
             placeholder="John Smith"
           />
         </div>
@@ -139,7 +153,7 @@ function CompleteSignupForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            style={styles.input}
+            style={getInputStyle(email)}
             placeholder="you@company.com"
           />
         </div>
@@ -152,7 +166,7 @@ function CompleteSignupForm() {
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={8}
-            style={styles.input}
+            style={getInputStyle(password)}
             placeholder="At least 8 characters"
           />
         </div>
@@ -165,7 +179,7 @@ function CompleteSignupForm() {
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
             minLength={8}
-            style={styles.input}
+            style={getInputStyle(confirmPassword)}
             placeholder="Confirm your password"
           />
         </div>
@@ -176,7 +190,7 @@ function CompleteSignupForm() {
             value={businessType}
             onChange={(e) => setBusinessType(e.target.value)}
             required
-            style={styles.select}
+            style={getSelectStyle(businessType)}
           >
             <option value="" style={styles.option}>Select your industry...</option>
             {businessTypes.map((type) => (
@@ -191,7 +205,7 @@ function CompleteSignupForm() {
             value={teamSize}
             onChange={(e) => setTeamSize(e.target.value)}
             required
-            style={styles.select}
+            style={getSelectStyle(teamSize)}
           >
             <option value="" style={styles.option}>Select team size...</option>
             {teamSizes.map((size) => (
@@ -199,6 +213,7 @@ function CompleteSignupForm() {
             ))}
           </select>
         </div>
+
 
         {error && (
           <div style={styles.error}>
