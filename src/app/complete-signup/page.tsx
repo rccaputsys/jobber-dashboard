@@ -176,11 +176,11 @@ function CompleteSignupForm() {
             value={businessType}
             onChange={(e) => setBusinessType(e.target.value)}
             required
-            style={styles.input}
+            style={styles.select}
           >
-            <option value="">Select your industry...</option>
+            <option value="" style={styles.option}>Select your industry...</option>
             {businessTypes.map((type) => (
-              <option key={type} value={type}>{type}</option>
+              <option key={type} value={type} style={styles.option}>{type}</option>
             ))}
           </select>
         </div>
@@ -191,11 +191,11 @@ function CompleteSignupForm() {
             value={teamSize}
             onChange={(e) => setTeamSize(e.target.value)}
             required
-            style={styles.input}
+            style={styles.select}
           >
-            <option value="">Select team size...</option>
+            <option value="" style={styles.option}>Select team size...</option>
             {teamSizes.map((size) => (
-              <option key={size} value={size}>{size}</option>
+              <option key={size} value={size} style={styles.option}>{size}</option>
             ))}
           </select>
         </div>
@@ -333,7 +333,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "rgba(234,241,255,0.8)",
     marginBottom: 8,
   },
-  input: {
+   input: {
     width: "100%",
     padding: "14px 16px",
     fontSize: 15,
@@ -343,6 +343,28 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "#EAF1FF",
     outline: "none",
     transition: "border-color 0.2s, box-shadow 0.2s",
+  },
+  select: {
+    width: "100%",
+    padding: "14px 16px",
+    fontSize: 15,
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(0,0,0,0.5)",
+    color: "#EAF1FF",
+    outline: "none",
+    transition: "border-color 0.2s, box-shadow 0.2s",
+    cursor: "pointer",
+    appearance: "none",
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237c5cff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "right 16px center",
+    paddingRight: 48,
+  },
+  option: {
+    background: "#1a1f2e",
+    color: "#EAF1FF",
+    padding: "12px 16px",
   },
   button: {
     marginTop: 8,
