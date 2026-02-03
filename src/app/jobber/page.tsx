@@ -55,8 +55,8 @@ export default function JobberLanding() {
               lineHeight: 1.6,
             }}
           >
-            Stop digging through reports. Get instant visibility into AR aging, 
-            sales leaks, and scheduling gaps — all in one dashboard.
+            Stop digging through reports. Get action items and better visibility into 
+            aging invoices, sales leaks, and scheduling gaps all in a single-page dashboard.
           </p>
 
           <a
@@ -127,9 +127,9 @@ export default function JobberLanding() {
             </div>
             
             <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 16, padding: 28, border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(90,166,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 16 }}>🎯</div>
-              <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Quote Win Rate</h3>
-              <p style={{ fontSize: 14, color: "rgba(234,241,255,0.6)", lineHeight: 1.6 }}>Track your quote-to-job conversion rate. Know if your pricing and follow-up are working.</p>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(90,166,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 16 }}>📥</div>
+              <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Open Requests</h3>
+              <p style={{ fontSize: 14, color: "rgba(234,241,255,0.6)", lineHeight: 1.6 }}>See pending work requests at a glance. Follow up fast and convert leads before they go cold.</p>
             </div>
             
             <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 16, padding: 28, border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -188,11 +188,12 @@ export default function JobberLanding() {
 
         {/* Footer */}
         <footer style={{ marginTop: 80, paddingTop: 32, borderTop: "1px solid rgba(255,255,255,0.08)", textAlign: "center", color: "rgba(234,241,255,0.4)", fontSize: 13 }}>
-          <p>© 2025 OwnerView. All rights reserved.</p>
+          <p>© 2026 OwnerView. All rights reserved.</p>
           <p style={{ marginTop: 8 }}>
             <a href="/privacy" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none", marginRight: 16 }}>Privacy Policy</a>
             <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms of Service</a>
           </p>
+          <p style={{ marginTop: 8 }}>© 2026 OwnerView. All rights reserved.</p>
         </footer>
       </div>
     </main>
