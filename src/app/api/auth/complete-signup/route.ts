@@ -6,7 +6,7 @@ import { createServerClient } from "@supabase/ssr";
 import { sendWelcomeEmail } from "@/lib/resend";
 
 export async function POST(req: Request) {
-  const { email, password, connectionId } = await req.json();
+  const { email, password, connectionId, ownerName, businessType, teamSize } = await req.json();
 
   if (!email || !password) {
     return NextResponse.json({ error: "Email and password required" }, { status: 400 });
@@ -46,10 +46,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: createError?.message || "Failed to create account" }, { status: 400 });
   }
 
-  // Link the user to the connection
+  // Link the user to the connection and save profile data
   const { error: linkError } = await supabaseAdmin
     .from("jobber_connections")
-    .update({ user_id: newUser.user.id })
+    .update({ 
+      user_id: newUser.user.id,
+      owner_name: ownerName || null,
+      business_type: businessType || null,
+      team_size: teamSize || null,
+    })
     .eq("id", connectionId);
 
   if (linkError) {
