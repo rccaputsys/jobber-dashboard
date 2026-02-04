@@ -114,9 +114,10 @@ async function saveToken(connectionId: string, accessToken: string, refreshToken
 }
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const code = searchParams.get("code");
-  const state = searchParams.get("state");
+  try {
+    const { searchParams } = new URL(req.url);
+    const code = searchParams.get("code");
+    const state = searchParams.get("state");
 
   if (!code || !state) {
     return NextResponse.redirect(new URL("/jobber?err=missing_code_state", req.url));
@@ -257,5 +258,9 @@ export async function GET(req: Request) {
   }
 
   // Redirect to complete signup (email/password collection)
-  return NextResponse.redirect(new URL(`/complete-signup?connection_id=${connectionId}`, req.url));
+    return NextResponse.redirect(new URL(`/complete-signup?connection_id=${connectionId}`, req.url));
+  } catch (error) {
+    console.error("Jobber callback failed:", error);
+    return NextResponse.redirect(new URL("/jobber?err=oauth_failed", req.url));
+  }
 }

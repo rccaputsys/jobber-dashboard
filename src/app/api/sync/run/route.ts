@@ -182,7 +182,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "Missing connection_id" }, { status: 400 });
   }
 
-  const token = await getValidAccessToken(connectionId);
+  try {
+    const token = await getValidAccessToken(connectionId);
   const twelveMonthsAgoMs = getTwelveMonthsAgoMs();
 
   // Fetch all Jobs
@@ -388,5 +389,12 @@ export async function GET(req: Request) {
 
   if (hbErr) throw new Error(`jobber_connections update failed: ${hbErr.message}`);
 
-  return NextResponse.redirect(new URL(`/jobber/dashboard?connection_id=${connectionId}`, req.url));
+  return NextResponse.redirect(new URL(`/jobber/dashboard`, req.url));
+  } catch (error) {
+    console.error("Sync failed:", error);
+    const message = error instanceof Error ? error.message : "Sync failed";
+    return NextResponse.redirect(
+      new URL(`/jobber/dashboard?sync_error=${encodeURIComponent(message)}`, req.url)
+    );
+  }
 }

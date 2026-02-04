@@ -1063,10 +1063,12 @@ export default async function DashboardPage({
     unscheduled_min_days?: string;
     checkout?: string;
     demo?: string;
+    sync_error?: string;
   }>;
 }) {
   const sp = await searchParams;
   const isDemo = sp.demo === "true";
+  const syncError = sp.sync_error;
 
   if (isDemo) {
     const money = moneyFactory(DEMO_DATA.currencyCode);
@@ -1344,12 +1346,6 @@ export default async function DashboardPage({
             fontSize: 12,
             color: "rgba(234,241,255,0.4)",
           }}>
-            <p style={{ margin: "0 0 12px" }}>
-              Need help?{" "}
-              <a href="https://ownerview.io/accuinsight-faq" target="_blank" rel="noreferrer" style={{ color: "rgba(234,241,255,0.6)", textDecoration: "none", fontWeight: 500 }}>FAQ</a>
-              {" · "}
-              <a href="https://ownerview.io/getting-started-with-accuinsight" target="_blank" rel="noreferrer" style={{ color: "rgba(234,241,255,0.6)", textDecoration: "none", fontWeight: 500 }}>Get Started Guide</a>
-            </p>
             <p style={{ margin: 0 }}>© 2026 OwnerView. All rights reserved.</p>
             <p style={{ margin: "8px 0 0" }}>
               <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms</a>
@@ -2065,6 +2061,28 @@ const quoteWonPct = quotesInLast30Days.length > 0
               >
                 ❓ FAQ
               </a>
+            </div>
+          </div>
+        )}
+
+        {/* Sync Error Banner */}
+        {syncError && (
+          <div className="animate-in delay-1" style={{
+            marginTop: 20,
+            padding: 16,
+            borderRadius: 14,
+            background: "rgba(239,68,68,0.15)",
+            border: "1px solid rgba(239,68,68,0.3)",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}>
+            <span style={{ fontSize: 20 }}>⚠️</span>
+            <div>
+              <div style={{ fontWeight: 600, color: "#fca5a5" }}>Sync failed</div>
+              <div style={{ fontSize: 13, color: "rgba(234,241,255,0.7)", marginTop: 2 }}>
+                {decodeURIComponent(syncError)}. <a href="/jobber/dashboard" style={{ color: "#5aa6ff" }}>Try again</a>
+              </div>
             </div>
           </div>
         )}
