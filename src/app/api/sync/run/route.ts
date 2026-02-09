@@ -125,7 +125,7 @@ async function fetchAllPages<T>(
   accessToken: string,
   resourceName: string,
   nodeFields: string,
-  maxPages: number = 50
+  maxPages: number = 100
 ): Promise<{ nodes: T[]; errors: unknown[] }> {
   const allNodes: T[] = [];
   const allErrors: unknown[] = [];
