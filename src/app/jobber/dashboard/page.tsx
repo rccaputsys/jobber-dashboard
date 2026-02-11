@@ -804,8 +804,18 @@ const globalStyles = `
     color: #f59e0b !important;
   }
   
-  html[data-theme="dark"] svg text {
+  html[data-theme="dark"] svg text,
+  html[data-theme="dark"] .chart-axis-label {
     fill: rgba(234,241,255,0.5) !important;
+  }
+  
+  html[data-theme="dark"] .chart-title {
+    color: #EAF1FF !important;
+  }
+  
+  html[data-theme="dark"] .chart-subtitle,
+  html[data-theme="dark"] .chart-label {
+    color: rgba(234,241,255,0.5) !important;
   }
   
   /* Tables */
