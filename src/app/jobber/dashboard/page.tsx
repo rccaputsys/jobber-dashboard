@@ -786,8 +786,18 @@ const globalStyles = `
   html[data-theme="dark"] .header-subtitle,
   html[data-theme="dark"] .header-subtitle span,
   html[data-theme="dark"] .recommendation-item,
-  html[data-theme="dark"] .recommendation-item * {
+  html[data-theme="dark"] .recommendation-item *,
+  html[data-theme="dark"] .status-pill,
+  html[data-theme="dark"] .btn,
+  html[data-theme="dark"] .btn-muted,
+  html[data-theme="dark"] .panel h2,
+  html[data-theme="dark"] .panel p {
     color: rgba(234,241,255,0.7) !important;
+  }
+  
+  html[data-theme="dark"] .text-primary,
+  html[data-theme="dark"] .panel h2 {
+    color: #EAF1FF !important;
   }
   
   /* Tables */
