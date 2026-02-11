@@ -1603,7 +1603,7 @@ export default async function DashboardPage({
   });
   
   for (const inv of unpaidInvoices) {
-    const amt = Number(inv.total_amount_cents ?? inv.total_cents ?? inv.total_amount ?? 0);
+    const amt = Number(inv.balance_cents ?? inv.total_amount_cents ?? 0);
     totalAR += amt;
     
     const due = safeDate(inv.due_at ?? inv.dueDate ?? inv.due_date);
@@ -1709,7 +1709,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
     .map((inv) => ({
       invoice_number: inv.invoice_number || "—",
       client_name: inv.client_name || "",
-      amount_cents: inv.total_amount_cents || 0,
+      amount_cents: inv.balance_cents || inv.total_amount_cents || 0,
       days_overdue: Math.max(0, Math.round((Date.now() - (safeDate(inv.due_at)?.getTime() || Date.now())) / 86400000)),
       due_date: inv.due_at,
       jobber_url: inv.jobber_url || (inv.jobber_invoice_id ? `https://secure.getjobber.com/invoices/${inv.jobber_invoice_id}` : null),
