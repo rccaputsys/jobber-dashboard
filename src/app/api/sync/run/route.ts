@@ -345,7 +345,7 @@ export async function GET(req: Request) {
       console.warn("Jobber API partial errors:", allErrors.length);
     }
 
-    // BATCH UPSERT: Jobs
+    // BATCH UPSERT: Jobs (chunked)
     if (jobs.length > 0) {
       const jobRows = jobs.map(j => ({
         connection_id: connectionId,
@@ -361,14 +361,17 @@ export async function GET(req: Request) {
         total_amount_cents: dollarsToCents(j.total),
       }));
 
-      const { error } = await supabaseAdmin
-        .from("fact_jobs")
-        .upsert(jobRows, { onConflict: "connection_id,jobber_job_id" });
-
-      if (error) throw new Error(`fact_jobs batch upsert failed: ${error.message}`);
+      const chunkSize = 500;
+      for (let i = 0; i < jobRows.length; i += chunkSize) {
+        const chunk = jobRows.slice(i, i + chunkSize);
+        const { error } = await supabaseAdmin
+          .from("fact_jobs")
+          .upsert(chunk, { onConflict: "connection_id,jobber_job_id" });
+        if (error) throw new Error(`fact_jobs batch upsert failed: ${error.message}`);
+      }
     }
 
-    // BATCH UPSERT: Invoices
+    // BATCH UPSERT: Invoices (chunked)
     if (invoices.length > 0) {
       const invoiceRows = invoices.map(inv => {
         const isPaid = (inv.invoiceStatus || '').toLowerCase() === 'paid';
@@ -389,14 +392,17 @@ export async function GET(req: Request) {
         };
       });
 
-      const { error } = await supabaseAdmin
-        .from("fact_invoices")
-        .upsert(invoiceRows, { onConflict: "connection_id,jobber_invoice_id" });
-
-      if (error) throw new Error(`fact_invoices batch upsert failed: ${error.message}`);
+      const chunkSize = 500;
+      for (let i = 0; i < invoiceRows.length; i += chunkSize) {
+        const chunk = invoiceRows.slice(i, i + chunkSize);
+        const { error } = await supabaseAdmin
+          .from("fact_invoices")
+          .upsert(chunk, { onConflict: "connection_id,jobber_invoice_id" });
+        if (error) throw new Error(`fact_invoices batch upsert failed: ${error.message}`);
+      }
     }
 
-    // BATCH UPSERT: Quotes
+    // BATCH UPSERT: Quotes (chunked)
     if (quotes.length > 0) {
       const quoteRows = quotes.map(q => ({
         connection_id: connectionId,
@@ -411,14 +417,17 @@ export async function GET(req: Request) {
         sent_at: q.sentAt ?? null,
       }));
 
-      const { error } = await supabaseAdmin
-        .from("fact_quotes")
-        .upsert(quoteRows, { onConflict: "connection_id,jobber_quote_id" });
-
-      if (error) throw new Error(`fact_quotes batch upsert failed: ${error.message}`);
+      const chunkSize = 500;
+      for (let i = 0; i < quoteRows.length; i += chunkSize) {
+        const chunk = quoteRows.slice(i, i + chunkSize);
+        const { error } = await supabaseAdmin
+          .from("fact_quotes")
+          .upsert(chunk, { onConflict: "connection_id,jobber_quote_id" });
+        if (error) throw new Error(`fact_quotes batch upsert failed: ${error.message}`);
+      }
     }
 
-    // BATCH UPSERT: Requests
+    // BATCH UPSERT: Requests (chunked)
     if (requests.length > 0) {
       const requestRows = requests.map(r => ({
         connection_id: connectionId,
@@ -437,11 +446,14 @@ export async function GET(req: Request) {
         synced_at: new Date().toISOString(),
       }));
 
-      const { error } = await supabaseAdmin
-        .from("fact_requests")
-        .upsert(requestRows, { onConflict: "connection_id,jobber_request_id" });
-
-      if (error) throw new Error(`fact_requests batch upsert failed: ${error.message}`);
+      const chunkSize = 500;
+      for (let i = 0; i < requestRows.length; i += chunkSize) {
+        const chunk = requestRows.slice(i, i + chunkSize);
+        const { error } = await supabaseAdmin
+          .from("fact_requests")
+          .upsert(chunk, { onConflict: "connection_id,jobber_request_id" });
+        if (error) throw new Error(`fact_requests batch upsert failed: ${error.message}`);
+      }
     }
 
     // Update heartbeat
