@@ -1806,11 +1806,11 @@ const quoteWonPct = quotesInLast30Days.length > 0
     const bucketEndTs = nextBucketUTC(bs, g).getTime();
     let sum = 0;
     
-    for (const inv of invoices) {
+    for (const inv of unpaidInvoices) {
       const due = safeDate(inv.due_at ?? inv.dueDate ?? inv.due_date);
       if (!due) continue;
       
-      const amt = Number(inv.total_amount_cents ?? inv.total_cents ?? inv.total_amount ?? 0);
+      const amt = Number(inv.balance_cents ?? inv.total_amount_cents ?? 0);
       const paidAt = safeDate(inv.paid_at);
       
       // Invoice enters AR 15+ at due_at + 15 days
