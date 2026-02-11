@@ -1658,8 +1658,8 @@ export default async function DashboardPage({
     return dt.getTime() >= start.getTime() && dt.getTime() < endExclusive.getTime();
   });
 
-  const leakCount = leakCandidatesInRange.length;
-  const leakDollars = leakCandidatesInRange.reduce((sum, q) => sum + Number(q.quote_total_cents ?? 0), 0);
+  const leakCount = leakCandidates.length;
+  const leakDollars = leakCandidates.reduce((sum, q) => sum + Number(q.quote_total_cents ?? 0), 0);
 
   // Quotes with changes requested
   const changesRequestedQuotes = quotes.filter((q) => {
@@ -1966,7 +1966,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
     "Jobber URL": r.jobber_url || "",
   }));
 
-  const leakingQuotesExportData = leakCandidatesInRange
+  const leakingQuotesExportData = leakCandidates
     .slice()
     .sort((a: any, b: any) => Number(b.quote_total_cents ?? 0) - Number(a.quote_total_cents ?? 0))
     .slice(0, 10)
@@ -2208,7 +2208,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 {money(leakDollars)}
               </div>
               <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
-                {leakCandidatesInRange.length} quote{leakCandidatesInRange.length !== 1 ? "s" : ""} outstanding
+                {leakCandidates.length} quote{leakCandidates.length !== 1 ? "s" : ""} outstanding
               </div>
             </div>
           </div>
@@ -2301,7 +2301,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
               agedARExportData={agedARExportData}
               unscheduledRows={unscheduledRows}
               unscheduledExportData={unscheduledExportData}
-              leakCandidates={leakCandidatesInRange.slice().sort((a: any, b: any) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime())}
+              leakCandidates={leakCandidates.slice().sort((a: any, b: any) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime())}
               leakingQuotesExportData={leakingQuotesExportData}
               openRequests={requests.filter((r: any) => {
   const status = (r.request_status || "").toUpperCase();
