@@ -780,6 +780,16 @@ const globalStyles = `
     color: #475569 !important;
   }
   
+  /* Dark mode defaults (ensure text is light) */
+  html[data-theme="dark"] .kpi-label,
+  html[data-theme="dark"] .kpi-sublabel,
+  html[data-theme="dark"] .header-subtitle,
+  html[data-theme="dark"] .header-subtitle span,
+  html[data-theme="dark"] .recommendation-item,
+  html[data-theme="dark"] .recommendation-item * {
+    color: rgba(234,241,255,0.7) !important;
+  }
+  
   /* Tables */
   html[data-theme="light"] .data-table th {
     color: #64748b !important;
