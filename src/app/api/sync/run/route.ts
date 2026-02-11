@@ -325,7 +325,13 @@ export async function GET(req: Request) {
 
     // Filter to last 12 months
     const jobs = jobResult.nodes.filter(j => isWithinTwelveMonths(j.createdAt, twelveMonthsAgoMs));
-    const invoices = invoiceResult.nodes.filter(inv => isWithinTwelveMonths(inv.createdAt, twelveMonthsAgoMs));
+    const invoices = invoiceResult.nodes.filter(inv => {
+      // Keep if created within 12 months
+      if (isWithinTwelveMonths(inv.createdAt, twelveMonthsAgoMs)) return true;
+      // Also keep if still unpaid (regardless of age)
+      const status = (inv.invoiceStatus || '').toLowerCase();
+      return status !== 'paid' && status !== 'draft' && status !== 'voided' && status !== 'bad_debt';
+    });
     const quotes = quoteResult.nodes.filter(q => isWithinTwelveMonths(q.createdAt, twelveMonthsAgoMs));
     const requests = requestResult.nodes.filter(r => isWithinTwelveMonths(r.createdAt, twelveMonthsAgoMs));
 
