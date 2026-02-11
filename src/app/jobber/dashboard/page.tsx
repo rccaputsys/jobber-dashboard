@@ -757,12 +757,27 @@ const globalStyles = `
     color: #334155 !important;
   }
   
+  html[data-theme="light"] .recommendation-item * {
+    color: #334155 !important;
+  }
+  
   html[data-theme="light"] .recommendation-item span {
     color: #334155 !important;
   }
   
   html[data-theme="light"] .focus-title {
     color: #d97706 !important;
+  }
+  
+  /* Catch-all for light mode text */
+  html[data-theme="light"] .kpi-label,
+  html[data-theme="light"] .kpi-sublabel,
+  html[data-theme="light"] .header-subtitle {
+    color: #64748b !important;
+  }
+  
+  html[data-theme="light"] .header-subtitle span {
+    color: #475569 !important;
   }
   
   /* Tables */
