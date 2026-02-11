@@ -20,6 +20,10 @@ type InvoiceClient = {
   name?: string | null;
 };
 
+type InvoiceAmounts = {
+  invoiceBalance?: number | null;
+};
+
 type InvoiceNode = {
   id: string;
   invoiceNumber?: string | null;
@@ -31,6 +35,7 @@ type InvoiceNode = {
   client?: InvoiceClient | null;
   subject?: string | null;
   invoiceStatus?: string | null;
+  amounts?: InvoiceAmounts | null;
 };
 
 type QuoteAmounts = {
@@ -282,6 +287,9 @@ export async function GET(req: Request) {
        invoiceStatus
        client {
          name
+       }
+       amounts {
+         invoiceBalance
        }`,
       lastSyncAt
     );
@@ -371,6 +379,7 @@ export async function GET(req: Request) {
           paid_at: isPaid ? inv.updatedAt : null,
           updated_at_jobber: inv.updatedAt ?? null,
           total_amount_cents: dollarsToCents(inv.total),
+          balance_cents: dollarsToCents(inv.amounts?.invoiceBalance),
           jobber_url: inv.jobberWebUri ?? null,
           client_name: inv.client?.name ?? null,
           subject: inv.subject ?? null,
