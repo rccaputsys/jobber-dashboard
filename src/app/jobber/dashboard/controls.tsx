@@ -285,6 +285,7 @@ export function Controls({ onLoadingChange }: { onLoadingChange?: (loading: bool
             type="date"
             value={startLocal}
             onChange={(e) => setStartLocal(e.target.value)}
+            max={endLocal}
             style={{
               padding: "8px 10px",
               borderRadius: 8,

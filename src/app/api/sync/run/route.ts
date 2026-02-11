@@ -239,6 +239,8 @@ async function fetchAllPagesIncremental<T>(
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const connectionId = searchParams.get("connection_id");
+  const fullSync = searchParams.get("full") === "true";
+  
   if (!connectionId) {
     return NextResponse.json({ ok: false, error: "Missing connection_id" }, { status: 400 });
   }
@@ -247,14 +249,14 @@ export async function GET(req: Request) {
     const token = await getValidAccessToken(connectionId);
     const twelveMonthsAgoMs = getTwelveMonthsAgoMs();
 
-    // Get last sync time for incremental sync
+    // Get last sync time for incremental sync (skip if full sync requested)
     const { data: connectionData } = await supabaseAdmin
       .from("jobber_connections")
       .select("last_sync_at")
       .eq("id", connectionId)
       .single();
 
-    const lastSyncAt = connectionData?.last_sync_at || null;
+    const lastSyncAt = fullSync ? null : (connectionData?.last_sync_at || null);
 
     // Fetch Jobs (no filter support, fetch all)
     const jobResult = await fetchAllPages<JobNode>(
