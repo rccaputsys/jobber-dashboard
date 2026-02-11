@@ -1,22 +1,20 @@
+// test-user-sync.ts
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
 async function test() {
   const { getValidAccessToken } = await import('./src/lib/jobberAuth');
   
-  const connectionId = '477ad612-6a40-485e-b71d-1799f13c613a';
+  const connectionId = 'f936e5ae-1a87-45b7-bc16-f0089dac7efa';
   const token = await getValidAccessToken(connectionId);
 
   const resources = ['jobs', 'invoices', 'quotes', 'requests'];
   
   for (const resource of resources) {
     const query = `query {
-      ${resource}(first: 3, filter: { updatedAt: { after: "2026-02-10T00:00:00Z" } }) {
+      ${resource}(first: 5) {
         nodes {
           id
-        }
-        pageInfo {
-          hasNextPage
         }
       }
     }`;
@@ -35,6 +33,10 @@ async function test() {
     const count = json.data?.[resource]?.nodes?.length ?? 0;
     const hasError = json.errors?.length > 0;
     console.log(`${resource}: ${hasError ? 'ERROR - ' + json.errors[0].message : count + ' results'}`);
+    
+    if (hasError) {
+      console.log('  Full error:', JSON.stringify(json.errors, null, 2));
+    }
   }
 }
 

@@ -192,13 +192,17 @@ export async function GET(req: Request) {
         .from("jobber_connections")
         .update({ 
           jobber_account_name: acct.name,
-          user_id: loggedInUser.id 
+          user_id: loggedInUser.id,
+          last_sync_at: null  // Reset to force full sync on reconnect
         })
         .eq("id", connectionId);
     } else {
       await supabaseAdmin
         .from("jobber_connections")
-        .update({ jobber_account_name: acct.name })
+        .update({ 
+          jobber_account_name: acct.name,
+          last_sync_at: null  // Reset to force full sync on reconnect
+        })
         .eq("id", connectionId);
     }
 
