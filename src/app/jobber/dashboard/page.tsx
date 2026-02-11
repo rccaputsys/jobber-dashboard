@@ -800,6 +800,14 @@ const globalStyles = `
     color: #EAF1FF !important;
   }
   
+  html[data-theme="dark"] .focus-title {
+    color: #f59e0b !important;
+  }
+  
+  html[data-theme="dark"] svg text {
+    fill: rgba(234,241,255,0.5) !important;
+  }
+  
   /* Tables */
   html[data-theme="light"] .data-table th {
     color: #64748b !important;
