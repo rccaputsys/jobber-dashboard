@@ -116,6 +116,7 @@ async function jobberGraphQLWithPartialErrors<T>(
   };
 }
 
+// Fetch all pages WITHOUT filter (for jobs)
 async function fetchAllPages<T>(
   accessToken: string,
   resourceName: string,
@@ -170,6 +171,66 @@ async function fetchAllPages<T>(
   return { nodes: allNodes, errors: allErrors };
 }
 
+// Fetch all pages WITH updatedAt filter (for invoices, quotes, requests)
+async function fetchAllPagesIncremental<T>(
+  accessToken: string,
+  resourceName: string,
+  nodeFields: string,
+  updatedAfter: string | null,
+  maxPages: number = 100
+): Promise<{ nodes: T[]; errors: unknown[] }> {
+  const allNodes: T[] = [];
+  const allErrors: unknown[] = [];
+  let cursor: string | null = null;
+  let pageCount = 0;
+
+  type PageResponse = {
+    [key: string]: { nodes: (T | null)[]; pageInfo: PageInfo } | undefined;
+  };
+
+  while (pageCount < maxPages) {
+    const afterClause: string = cursor ? `, after: "${cursor}"` : "";
+    const filterClause: string = updatedAfter 
+      ? `, filter: { updatedAt: { after: "${updatedAfter}" } }`
+      : "";
+    
+    const query: string = `query {
+      ${resourceName}(first: 100${afterClause}${filterClause}) {
+        nodes {
+          ${nodeFields}
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }`;
+
+    const result = await jobberGraphQLWithPartialErrors<PageResponse>(accessToken, query);
+
+    if (result.errors.length > 0) {
+      allErrors.push(...result.errors);
+    }
+
+    const data = result.data?.[resourceName];
+    if (!data) break;
+
+    const validNodes: T[] = [];
+    for (const n of data.nodes || []) {
+      if (n !== null) {
+        validNodes.push(n);
+      }
+    }
+    allNodes.push(...validNodes);
+
+    if (!data.pageInfo.hasNextPage) break;
+    cursor = data.pageInfo.endCursor;
+    pageCount++;
+  }
+
+  return { nodes: allNodes, errors: allErrors };
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const connectionId = searchParams.get("connection_id");
@@ -181,7 +242,16 @@ export async function GET(req: Request) {
     const token = await getValidAccessToken(connectionId);
     const twelveMonthsAgoMs = getTwelveMonthsAgoMs();
 
-    // Fetch all data
+    // Get last sync time for incremental sync
+    const { data: connectionData } = await supabaseAdmin
+      .from("jobber_connections")
+      .select("last_sync_at")
+      .eq("id", connectionId)
+      .single();
+
+    const lastSyncAt = connectionData?.last_sync_at || null;
+
+    // Fetch Jobs (no filter support, fetch all)
     const jobResult = await fetchAllPages<JobNode>(
       token,
       "jobs",
@@ -197,7 +267,8 @@ export async function GET(req: Request) {
        total`
     );
 
-    const invoiceResult = await fetchAllPages<InvoiceNode>(
+    // Fetch Invoices (incremental)
+    const invoiceResult = await fetchAllPagesIncremental<InvoiceNode>(
       token,
       "invoices",
       `id
@@ -211,10 +282,12 @@ export async function GET(req: Request) {
        invoiceStatus
        client {
          name
-       }`
+       }`,
+      lastSyncAt
     );
 
-    const quoteResult = await fetchAllPages<QuoteNode>(
+    // Fetch Quotes (incremental)
+    const quoteResult = await fetchAllPagesIncremental<QuoteNode>(
       token,
       "quotes",
       `id
@@ -225,10 +298,12 @@ export async function GET(req: Request) {
        sentAt
        quoteStatus
        jobberWebUri
-       amounts { total }`
+       amounts { total }`,
+      lastSyncAt
     );
 
-    const requestResult = await fetchAllPages<RequestNode>(
+    // Fetch Requests (incremental)
+    const requestResult = await fetchAllPagesIncremental<RequestNode>(
       token,
       "requests",
       `id
@@ -244,7 +319,8 @@ export async function GET(req: Request) {
        client {
          id
          name
-       }`
+       }`,
+      lastSyncAt
     );
 
     // Filter to last 12 months
