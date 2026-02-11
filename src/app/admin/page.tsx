@@ -1,6 +1,7 @@
 // src/app/admin/page.tsx
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { redirect } from "next/navigation";
+import { ResyncButton } from "./ResyncButton";
 
 const ADMIN_EMAILS = ["rcaputo91@gmail.com"];
 
@@ -142,6 +143,10 @@ export default async function AdminPage() {
         @keyframes fadeInUp {
           from { opacity: 0; transform: translateY(16px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
         .animate-in {
           animation: fadeInUp 0.5s ease-out forwards;
@@ -499,14 +504,7 @@ export default async function AdminPage() {
                       <td style={{ color: "rgba(234,241,255,0.6)" }}>{formatRelative(conn.last_sync_at)}</td>
                       <td style={{ color: "rgba(234,241,255,0.6)" }}>{formatDate(conn.created_at)}</td>
                       <td>
-                        <a
-                          href={`/api/sync/run?connection_id=${conn.id}&full=true`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="btn"
-                        >
-                          🔄 Resync
-                        </a>
+                        <ResyncButton connectionId={conn.id} />
                       </td>
                     </tr>
                   );
