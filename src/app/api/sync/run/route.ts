@@ -463,7 +463,7 @@ export async function GET(req: Request) {
     // Query current state from DB for accurate counts
     const { data: allInvoices } = await supabaseAdmin
       .from("fact_invoices")
-      .select("status, balance_cents, due_at")
+      .select("status, balance_cents, total_amount_cents, due_at")
       .eq("connection_id", connectionId);
     
     const { data: allJobs } = await supabaseAdmin
@@ -496,8 +496,8 @@ export async function GET(req: Request) {
       return st === "UNSCHEDULED" || st === "REQUIRES_INVOICING";
     });
     
-    const pastDueCents = pastDueInvoices.reduce((sum, inv) => sum + (inv.balance_cents || 0), 0);
-    const fifteenPlusCents = invoices15plus.reduce((sum, inv) => sum + (inv.balance_cents || 0), 0);
+    const pastDueCents = pastDueInvoices.reduce((sum, inv) => sum + (inv.balance_cents || inv.total_amount_cents || 0), 0);
+    const fifteenPlusCents = invoices15plus.reduce((sum, inv) => sum + (inv.balance_cents || inv.total_amount_cents || 0), 0);
 
     // Update heartbeat with metrics
     const { error: hbErr } = await supabaseAdmin
