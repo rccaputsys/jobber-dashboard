@@ -461,25 +461,37 @@ export async function GET(req: Request) {
     const fifteenDaysAgo = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
     
     // Query current state from DB for accurate counts
-    const { data: allInvoices } = await supabaseAdmin
-      .from("fact_invoices")
-      .select("status, balance_cents, total_amount_cents, due_at")
-      .eq("connection_id", connectionId);
-    
-    const { data: allJobs } = await supabaseAdmin
-      .from("fact_jobs")
-      .select("status")
-      .eq("connection_id", connectionId);
-    
-    const { data: allRequests } = await supabaseAdmin
-      .from("fact_requests")
-      .select("id")
-      .eq("connection_id", connectionId);
-    
-    const { data: allQuotes } = await supabaseAdmin
-      .from("fact_quotes")
-      .select("quote_status, quote_total_cents, sent_at")
-      .eq("connection_id", connectionId);
+    const [
+      { data: allInvoices },
+      { data: allJobs },
+      { count: requestCount },
+      { count: jobCount },
+      { data: allQuotes },
+    ] = await Promise.all([
+      supabaseAdmin
+        .from("fact_invoices")
+        .select("status, balance_cents, total_amount_cents, due_at")
+        .eq("connection_id", connectionId)
+        .limit(50000),
+      supabaseAdmin
+        .from("fact_jobs")
+        .select("status")
+        .eq("connection_id", connectionId)
+        .limit(50000),
+      supabaseAdmin
+        .from("fact_requests")
+        .select("*", { count: "exact", head: true })
+        .eq("connection_id", connectionId),
+      supabaseAdmin
+        .from("fact_jobs")
+        .select("*", { count: "exact", head: true })
+        .eq("connection_id", connectionId),
+      supabaseAdmin
+        .from("fact_quotes")
+        .select("quote_status, quote_total_cents, sent_at")
+        .eq("connection_id", connectionId)
+        .limit(50000),
+    ]);
     
     const unpaidInvoices = (allInvoices || []).filter(inv => {
       const st = (inv.status || "").toLowerCase();
@@ -528,8 +540,8 @@ export async function GET(req: Request) {
         last_sync_at: new Date().toISOString(),
         last_sync_invoices: invoices.length,
         last_sync_quotes: quotes.length,
-        job_count: (allJobs || []).length,
-        request_count: (allRequests || []).length,
+        job_count: jobCount || 0,
+        request_count: requestCount || 0,
         unscheduled_job_count: unscheduledJobs.length,
         invoices_past_due_count: pastDueInvoices.length,
         invoices_past_due_cents: pastDueCents,
