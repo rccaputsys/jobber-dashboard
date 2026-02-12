@@ -83,20 +83,11 @@ export default async function AdminPage() {
   const churned = allConnections.filter(c => c.billing_status === "canceled" || c.canceled_at).length;
   const mrr = activeSubscribers * 29;
 
-  // Aggregate metrics across all users
-  const totalPastDueCents = allConnections.reduce((sum, c) => sum + (c.invoices_past_due_cents || 0), 0);
-  const total15PlusCents = allConnections.reduce((sum, c) => sum + (c.invoices_15plus_cents || 0), 0);
-
   const formatCents = (cents: number) => {
-    return `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
-
-  const formatDate = (d: string | null) => {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
+    if (cents >= 100000) {
+      return `$${(cents / 100000).toFixed(1)}k`;
+    }
+    return `$${Math.round(cents / 100).toLocaleString()}`;
   };
 
   const formatRelative = (d: string | null) => {
@@ -106,11 +97,10 @@ export default async function AdminPage() {
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(hours / 24);
     if (mins < 1) return "Just now";
-    if (mins < 60) return `${mins}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days === 1) return "Yesterday";
-    if (days < 7) return `${days}d ago`;
-    return formatDate(d);
+    if (mins < 60) return `${mins}m`;
+    if (hours < 24) return `${hours}h`;
+    if (days < 7) return `${days}d`;
+    return `${Math.floor(days / 7)}w`;
   };
 
   return (
@@ -119,406 +109,206 @@ export default async function AdminPage() {
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       background: `
         radial-gradient(ellipse 80% 60% at 50% -20%, rgba(124,92,255,0.15), transparent),
-        radial-gradient(ellipse 60% 40% at 100% 0%, rgba(90,166,255,0.1), transparent),
         linear-gradient(180deg, #060811 0%, #0a1020 100%)
       `,
     }}>
       <style>{`
         * { box-sizing: border-box; }
+        .container { max-width: 500px; margin: 0 auto; padding: 16px; padding-bottom: 60px; }
         
-        .container {
-          max-width: 600px;
-          margin: 0 auto;
-          padding: 16px;
-          padding-bottom: 80px;
-        }
+        .header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+        .header h1 { font-size: 18px; font-weight: 800; color: #EAF1FF; margin: 0; }
         
-        .header {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          margin-bottom: 20px;
-        }
-        .header h1 {
-          font-size: 20px;
-          font-weight: 800;
-          color: #EAF1FF;
-          margin: 0;
-        }
-        .header p {
-          font-size: 12px;
-          color: rgba(234,241,255,0.5);
-          margin: 4px 0 0 0;
-        }
-        
-        .kpi-row {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 8px;
-          margin-bottom: 12px;
-        }
-        .kpi-box {
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 12px;
-          padding: 12px 8px;
-          text-align: center;
-        }
-        .kpi-box.highlight {
-          background: rgba(16,185,129,0.1);
-          border-color: rgba(16,185,129,0.3);
-        }
-        .kpi-label {
-          font-size: 9px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          color: rgba(234,241,255,0.5);
-          margin-bottom: 4px;
-        }
-        .kpi-value {
-          font-size: 22px;
-          font-weight: 800;
-          color: #EAF1FF;
-        }
+        .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+        .kpi { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 10px 6px; text-align: center; }
+        .kpi.green { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); }
+        .kpi-label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: rgba(234,241,255,0.5); margin-bottom: 2px; }
+        .kpi-value { font-size: 20px; font-weight: 800; color: #EAF1FF; }
         .kpi-value.green { color: #10b981; }
         .kpi-value.blue { color: #3b82f6; }
         .kpi-value.amber { color: #f59e0b; }
         .kpi-value.red { color: #ef4444; }
         
-        .section {
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 16px;
-          margin-bottom: 16px;
-          overflow: hidden;
-        }
-        .section-header {
-          padding: 14px 16px;
-          border-bottom: 1px solid rgba(255,255,255,0.06);
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        .section-header h2 {
-          font-size: 14px;
-          font-weight: 700;
-          color: #EAF1FF;
-          margin: 0;
-        }
-        .section-content {
-          padding: 12px;
-        }
+        .section { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; margin-bottom: 12px; overflow: hidden; }
+        .section-header { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; font-weight: 700; color: #EAF1FF; }
+        .section-content { padding: 10px; }
         
-        .trial-buckets {
-          display: grid;
-          grid-template-columns: repeat(5, 1fr);
-          gap: 6px;
-        }
-        .trial-bucket {
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 8px;
-          padding: 10px 4px;
-          text-align: center;
-        }
-        .trial-bucket.warning {
-          background: rgba(245,158,11,0.1);
-          border-color: rgba(245,158,11,0.3);
-        }
-        .trial-bucket.urgent {
-          background: rgba(239,68,68,0.1);
-          border-color: rgba(239,68,68,0.3);
-        }
-        .trial-bucket-label {
-          font-size: 9px;
-          font-weight: 600;
-          color: rgba(234,241,255,0.5);
-          margin-bottom: 2px;
-        }
-        .trial-bucket-value {
-          font-size: 18px;
-          font-weight: 800;
-          color: #EAF1FF;
-        }
+        .trial-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+        .trial-box { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 4px; text-align: center; }
+        .trial-box.warning { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); }
+        .trial-box.urgent { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); }
+        .trial-label { font-size: 9px; font-weight: 600; color: rgba(234,241,255,0.5); }
+        .trial-value { font-size: 18px; font-weight: 800; color: #EAF1FF; }
         
-        .user-card {
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 12px;
-          margin-bottom: 10px;
-          overflow: hidden;
-        }
-        .user-card:last-child {
-          margin-bottom: 0;
-        }
-        .user-header {
-          padding: 14px;
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          gap: 12px;
-        }
-        .user-name {
-          font-size: 14px;
-          font-weight: 700;
-          color: #EAF1FF;
-          margin: 0 0 4px 0;
-        }
-        .user-meta {
-          font-size: 11px;
-          color: rgba(234,241,255,0.5);
-        }
-        .user-status {
-          display: inline-block;
-          padding: 4px 8px;
-          border-radius: 6px;
-          font-size: 10px;
-          font-weight: 700;
-          letter-spacing: 0.3px;
-          white-space: nowrap;
-        }
-        .status-active {
-          background: rgba(16,185,129,0.15);
-          color: #10b981;
-          border: 1px solid rgba(16,185,129,0.3);
-        }
-        .status-trial {
-          background: rgba(59,130,246,0.15);
-          color: #3b82f6;
-          border: 1px solid rgba(59,130,246,0.3);
-        }
-        .status-expired {
-          background: rgba(239,68,68,0.15);
-          color: #ef4444;
-          border: 1px solid rgba(239,68,68,0.3);
-        }
-        .status-canceled {
-          background: rgba(107,114,128,0.15);
-          color: #6b7280;
-          border: 1px solid rgba(107,114,128,0.3);
-        }
+        .user { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
+        .user:last-child { margin-bottom: 0; }
+        .user-top { padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; }
+        .user-name { font-size: 13px; font-weight: 700; color: #EAF1FF; margin: 0; }
+        .user-meta { font-size: 10px; color: rgba(234,241,255,0.4); margin-top: 2px; }
+        .badge { display: inline-block; padding: 3px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; }
+        .badge-active { background: rgba(16,185,129,0.15); color: #10b981; }
+        .badge-trial { background: rgba(59,130,246,0.15); color: #3b82f6; }
+        .badge-expired { background: rgba(239,68,68,0.15); color: #ef4444; }
+        .badge-canceled { background: rgba(107,114,128,0.15); color: #6b7280; }
         
-        .user-metrics {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 1px;
-          background: rgba(255,255,255,0.06);
-          border-top: 1px solid rgba(255,255,255,0.06);
-        }
-        .metric {
-          background: #0a0f1a;
-          padding: 10px 8px;
-          text-align: center;
-        }
-        .metric-label {
-          font-size: 9px;
-          font-weight: 600;
-          text-transform: uppercase;
-          color: rgba(234,241,255,0.4);
-          margin-bottom: 2px;
-        }
-        .metric-value {
-          font-size: 14px;
-          font-weight: 700;
-          color: #EAF1FF;
-        }
+        .user-metrics { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1px; background: rgba(255,255,255,0.05); }
+        .metric { background: #080c16; padding: 8px 4px; text-align: center; }
+        .metric-label { font-size: 7px; font-weight: 700; text-transform: uppercase; color: rgba(234,241,255,0.4); margin-bottom: 1px; }
+        .metric-value { font-size: 12px; font-weight: 700; color: #EAF1FF; }
         .metric-value.red { color: #ef4444; }
         .metric-value.amber { color: #f59e0b; }
         
-        .user-footer {
-          padding: 10px 14px;
-          border-top: 1px solid rgba(255,255,255,0.06);
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-size: 11px;
-          color: rgba(234,241,255,0.5);
-        }
+        .user-footer { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); }
+        .sync-time { font-size: 10px; color: rgba(234,241,255,0.4); }
         
-        .btn {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 4px;
-          padding: 6px 12px;
-          border-radius: 8px;
-          font-weight: 600;
-          font-size: 11px;
-          text-decoration: none;
-          border: 1px solid rgba(255,255,255,0.1);
-          background: rgba(255,255,255,0.06);
-          color: rgba(234,241,255,0.8);
-          cursor: pointer;
-          transition: all 0.15s ease;
-          white-space: nowrap;
-        }
-        .btn:hover {
-          background: rgba(90,166,255,0.15);
-          border-color: rgba(90,166,255,0.4);
-          color: #5aa6ff;
-        }
+        .btn { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 6px; font-weight: 600; font-size: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: rgba(234,241,255,0.7); cursor: pointer; }
+        .btn:hover { background: rgba(90,166,255,0.15); border-color: rgba(90,166,255,0.3); color: #5aa6ff; }
         
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
 
       <div className="container">
-        {/* Header */}
         <div className="header">
-          <svg width="32" height="32" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#7c5cff" />
-                <stop offset="100%" stopColor="#5aa6ff" />
-              </linearGradient>
-            </defs>
-            <circle cx="25" cy="25" r="22" fill="none" stroke="url(#logoGrad)" strokeWidth="3"/>
-            <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#logoGrad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+          <svg width="28" height="28" viewBox="0 0 50 50">
+            <defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#7c5cff"/><stop offset="100%" stopColor="#5aa6ff"/></linearGradient></defs>
+            <circle cx="25" cy="25" r="22" fill="none" stroke="url(#g)" strokeWidth="3"/>
+            <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#g)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <div>
-            <h1>Admin</h1>
-            <p>AccuInsight Dashboard</p>
-          </div>
+          <h1>Admin</h1>
         </div>
 
         {/* Top KPIs */}
         <div className="kpi-row">
-          <div className="kpi-box">
+          <div className="kpi">
             <div className="kpi-label">Users</div>
             <div className="kpi-value">{totalUsers}</div>
           </div>
-          <div className="kpi-box highlight">
+          <div className="kpi green">
             <div className="kpi-label">Active</div>
             <div className="kpi-value green">{activeSubscribers}</div>
           </div>
-          <div className="kpi-box highlight">
+          <div className="kpi green">
             <div className="kpi-label">MRR</div>
             <div className="kpi-value green">${mrr}</div>
           </div>
-          <div className="kpi-box">
+          <div className="kpi">
             <div className="kpi-label">Trial</div>
             <div className="kpi-value blue">{trialing}</div>
           </div>
         </div>
 
         <div className="kpi-row">
-          <div className="kpi-box">
+          <div className="kpi">
             <div className="kpi-label">Expired</div>
             <div className="kpi-value amber">{expiredTrials}</div>
           </div>
-          <div className="kpi-box">
+          <div className="kpi">
             <div className="kpi-label">Churned</div>
             <div className="kpi-value red">{churned}</div>
           </div>
-          <div className="kpi-box">
-            <div className="kpi-label">Past Due</div>
-            <div className="kpi-value">{formatCents(totalPastDueCents)}</div>
-          </div>
-          <div className="kpi-box">
-            <div className="kpi-label">15+ DPD</div>
-            <div className="kpi-value">{formatCents(total15PlusCents)}</div>
-          </div>
+          <div className="kpi" style={{ gridColumn: "span 2" }}></div>
         </div>
 
         {/* Trial Countdown */}
         <div className="section">
-          <div className="section-header">
-            <span>⏰</span>
-            <h2>Trial Countdown</h2>
-          </div>
+          <div className="section-header">⏰ Trial Countdown</div>
           <div className="section-content">
-            <div className="trial-buckets">
-              <div className="trial-bucket">
-                <div className="trial-bucket-label">15-11d</div>
-                <div className="trial-bucket-value">{trial15to11}</div>
+            <div className="trial-row">
+              <div className="trial-box">
+                <div className="trial-label">15-11d</div>
+                <div className="trial-value">{trial15to11}</div>
               </div>
-              <div className="trial-bucket">
-                <div className="trial-bucket-label">10-6d</div>
-                <div className="trial-bucket-value">{trial10to6}</div>
+              <div className="trial-box">
+                <div className="trial-label">10-6d</div>
+                <div className="trial-value">{trial10to6}</div>
               </div>
-              <div className="trial-bucket">
-                <div className="trial-bucket-label">5-3d</div>
-                <div className="trial-bucket-value">{trial5to3}</div>
+              <div className="trial-box">
+                <div className="trial-label">5-3d</div>
+                <div className="trial-value">{trial5to3}</div>
               </div>
-              <div className={`trial-bucket ${trial2 > 0 ? "warning" : ""}`}>
-                <div className="trial-bucket-label" style={{ color: trial2 > 0 ? "#f59e0b" : undefined }}>2d</div>
-                <div className="trial-bucket-value" style={{ color: trial2 > 0 ? "#f59e0b" : undefined }}>{trial2}</div>
+              <div className={`trial-box ${trial2 > 0 ? "warning" : ""}`}>
+                <div className="trial-label" style={{ color: trial2 > 0 ? "#f59e0b" : undefined }}>2d</div>
+                <div className="trial-value" style={{ color: trial2 > 0 ? "#f59e0b" : undefined }}>{trial2}</div>
               </div>
-              <div className={`trial-bucket ${trial1 > 0 ? "urgent" : ""}`}>
-                <div className="trial-bucket-label" style={{ color: trial1 > 0 ? "#ef4444" : undefined }}>1d</div>
-                <div className="trial-bucket-value" style={{ color: trial1 > 0 ? "#ef4444" : undefined }}>{trial1}</div>
+              <div className={`trial-box ${trial1 > 0 ? "urgent" : ""}`}>
+                <div className="trial-label" style={{ color: trial1 > 0 ? "#ef4444" : undefined }}>1d</div>
+                <div className="trial-value" style={{ color: trial1 > 0 ? "#ef4444" : undefined }}>{trial1}</div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Users List */}
+        {/* Users */}
         <div className="section">
-          <div className="section-header">
-            <span>👤</span>
-            <h2>Users ({totalUsers})</h2>
-          </div>
+          <div className="section-header">👤 Users ({totalUsers})</div>
           <div className="section-content">
             {allConnections.map((conn) => {
               const daysLeft = getTrialDaysLeft(conn);
-              let statusClass = "status-canceled";
-              let statusText = conn.billing_status || "—";
+              let badgeClass = "badge-canceled";
+              let badgeText = conn.billing_status || "—";
               
               if (conn.billing_status === "active") {
-                statusClass = "status-active";
-                statusText = "ACTIVE";
+                badgeClass = "badge-active";
+                badgeText = "ACTIVE";
               } else if (conn.billing_status === "trialing") {
                 if (daysLeft !== null && daysLeft > 0) {
-                  statusClass = "status-trial";
-                  statusText = `${daysLeft}d LEFT`;
+                  badgeClass = "badge-trial";
+                  badgeText = `${daysLeft}d`;
                 } else {
-                  statusClass = "status-expired";
-                  statusText = "EXPIRED";
+                  badgeClass = "badge-expired";
+                  badgeText = "EXP";
                 }
               } else if (conn.billing_status === "canceled" || conn.canceled_at) {
-                statusClass = "status-canceled";
-                statusText = "CANCELED";
+                badgeClass = "badge-canceled";
+                badgeText = "CANCEL";
               }
 
               const pastDue = conn.invoices_past_due_cents || 0;
-              const fifteenPlus = conn.invoices_15plus_cents || 0;
+              const quoteLeak = conn.quote_leak_cents || 0;
+              const unscheduled = conn.unscheduled_job_count || 0;
+              const requests = conn.request_count || 0;
+              const jobs = conn.job_count || 0;
+              const quotes = conn.last_sync_quotes || 0;
 
               return (
-                <div key={conn.id} className="user-card">
-                  <div className="user-header">
+                <div key={conn.id} className="user">
+                  <div className="user-top">
                     <div>
                       <div className="user-name">{conn.jobber_account_name || conn.company_name || "Unknown"}</div>
-                      <div className="user-meta">
-                        {conn.owner_name || "—"} • {conn.business_type || "—"}
-                      </div>
+                      <div className="user-meta">{conn.owner_name || "—"}</div>
                     </div>
-                    <span className={`user-status ${statusClass}`}>{statusText}</span>
+                    <span className={`badge ${badgeClass}`}>{badgeText}</span>
                   </div>
                   
                   <div className="user-metrics">
                     <div className="metric">
                       <div className="metric-label">Jobs</div>
-                      <div className="metric-value">{conn.job_count || 0}</div>
+                      <div className="metric-value">{jobs}</div>
+                    </div>
+                    <div className="metric">
+                      <div className="metric-label">Quotes</div>
+                      <div className="metric-value">{quotes}</div>
+                    </div>
+                    <div className="metric">
+                      <div className="metric-label">Requests</div>
+                      <div className="metric-value">{requests}</div>
+                    </div>
+                    <div className="metric">
+                      <div className="metric-label">Unsched</div>
+                      <div className={`metric-value ${unscheduled > 0 ? "amber" : ""}`}>{unscheduled}</div>
+                    </div>
+                    <div className="metric">
+                      <div className="metric-label">Leak</div>
+                      <div className={`metric-value ${quoteLeak > 0 ? "amber" : ""}`}>{formatCents(quoteLeak)}</div>
                     </div>
                     <div className="metric">
                       <div className="metric-label">Past Due</div>
-                      <div className={`metric-value ${pastDue > 0 ? "amber" : ""}`}>
-                        {formatCents(pastDue)}
-                      </div>
-                    </div>
-                    <div className="metric">
-                      <div className="metric-label">15+ DPD</div>
-                      <div className={`metric-value ${fifteenPlus > 0 ? "red" : ""}`}>
-                        {formatCents(fifteenPlus)}
-                      </div>
+                      <div className={`metric-value ${pastDue > 0 ? "amber" : ""}`}>{formatCents(pastDue)}</div>
                     </div>
                   </div>
                   
                   <div className="user-footer">
-                    <span>Synced: {formatRelative(conn.last_sync_at)}</span>
+                    <span className="sync-time">Synced: {formatRelative(conn.last_sync_at)}</span>
                     <ResyncButton connectionId={conn.id} />
                   </div>
                 </div>
