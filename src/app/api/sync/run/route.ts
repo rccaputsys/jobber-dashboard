@@ -456,13 +456,63 @@ export async function GET(req: Request) {
       }
     }
 
-    // Update heartbeat
+    // Calculate metrics for admin dashboard
+    const now = new Date();
+    const fifteenDaysAgo = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
+    
+    // Query current state from DB for accurate counts
+    const { data: allInvoices } = await supabaseAdmin
+      .from("fact_invoices")
+      .select("status, balance_cents, due_at")
+      .eq("connection_id", connectionId);
+    
+    const { data: allJobs } = await supabaseAdmin
+      .from("fact_jobs")
+      .select("status")
+      .eq("connection_id", connectionId);
+    
+    const { data: allRequests } = await supabaseAdmin
+      .from("fact_requests")
+      .select("id")
+      .eq("connection_id", connectionId);
+    
+    const unpaidInvoices = (allInvoices || []).filter(inv => {
+      const st = (inv.status || "").toLowerCase();
+      return st !== "paid" && st !== "draft" && st !== "void";
+    });
+    
+    const pastDueInvoices = unpaidInvoices.filter(inv => {
+      if (!inv.due_at) return false;
+      return new Date(inv.due_at) < now;
+    });
+    
+    const invoices15plus = unpaidInvoices.filter(inv => {
+      if (!inv.due_at) return false;
+      return new Date(inv.due_at) < fifteenDaysAgo;
+    });
+    
+    const unscheduledJobs = (allJobs || []).filter(j => {
+      const st = (j.status || "").toUpperCase();
+      return st === "UNSCHEDULED" || st === "REQUIRES_INVOICING";
+    });
+    
+    const pastDueCents = pastDueInvoices.reduce((sum, inv) => sum + (inv.balance_cents || 0), 0);
+    const fifteenPlusCents = invoices15plus.reduce((sum, inv) => sum + (inv.balance_cents || 0), 0);
+
+    // Update heartbeat with metrics
     const { error: hbErr } = await supabaseAdmin
       .from("jobber_connections")
       .update({
         last_sync_at: new Date().toISOString(),
         last_sync_invoices: invoices.length,
         last_sync_quotes: quotes.length,
+        job_count: (allJobs || []).length,
+        request_count: (allRequests || []).length,
+        unscheduled_job_count: unscheduledJobs.length,
+        invoices_past_due_count: pastDueInvoices.length,
+        invoices_past_due_cents: pastDueCents,
+        invoices_15plus_count: invoices15plus.length,
+        invoices_15plus_cents: fifteenPlusCents,
       })
       .eq("id", connectionId);
 
