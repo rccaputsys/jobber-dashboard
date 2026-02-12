@@ -470,10 +470,6 @@ export async function GET(req: Request) {
       { data: allQuotes },
     ] = await Promise.all([
       supabaseAdmin
-        .from("fact_quotes")
-        .select("*", { count: "exact", head: true })
-        .eq("connection_id", connectionId),
-      supabaseAdmin
         .from("fact_invoices")
         .select("status, balance_cents, total_amount_cents, due_at")
         .eq("connection_id", connectionId)
@@ -489,6 +485,10 @@ export async function GET(req: Request) {
         .eq("connection_id", connectionId),
       supabaseAdmin
         .from("fact_jobs")
+        .select("*", { count: "exact", head: true })
+        .eq("connection_id", connectionId),
+      supabaseAdmin
+        .from("fact_quotes")
         .select("*", { count: "exact", head: true })
         .eq("connection_id", connectionId),
       supabaseAdmin
