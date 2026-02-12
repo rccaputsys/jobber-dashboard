@@ -476,6 +476,11 @@ export async function GET(req: Request) {
       .select("id")
       .eq("connection_id", connectionId);
     
+    const { data: allQuotes } = await supabaseAdmin
+      .from("fact_quotes")
+      .select("quote_status, quote_total_cents, sent_at")
+      .eq("connection_id", connectionId);
+    
     const unpaidInvoices = (allInvoices || []).filter(inv => {
       const st = (inv.status || "").toLowerCase();
       return st !== "paid" && st !== "draft" && st !== "void";
@@ -499,6 +504,23 @@ export async function GET(req: Request) {
     const pastDueCents = pastDueInvoices.reduce((sum, inv) => sum + (inv.balance_cents || inv.total_amount_cents || 0), 0);
     const fifteenPlusCents = invoices15plus.reduce((sum, inv) => sum + (inv.balance_cents || inv.total_amount_cents || 0), 0);
 
+    // Calculate quote leak
+    const statusLooksWon = (status: string) => {
+      const s = status.toUpperCase();
+      return s.includes("APPROV") || s.includes("ACCEPT") || s.includes("WON") || s.includes("CONVERT") || s.includes("BOOK");
+    };
+    
+    const leakingQuotes = (allQuotes || []).filter(q => {
+      if (!q.sent_at) return false;
+      const st = (q.quote_status || "").toLowerCase().trim();
+      if (!st) return true;
+      if (st === "archived" || st === "draft") return false;
+      return !statusLooksWon(st);
+    });
+    
+    const quoteLeakCount = leakingQuotes.length;
+    const quoteLeakCents = leakingQuotes.reduce((sum, q) => sum + (q.quote_total_cents || 0), 0);
+
     // Update heartbeat with metrics
     const { error: hbErr } = await supabaseAdmin
       .from("jobber_connections")
@@ -513,6 +535,8 @@ export async function GET(req: Request) {
         invoices_past_due_cents: pastDueCents,
         invoices_15plus_count: invoices15plus.length,
         invoices_15plus_cents: fifteenPlusCents,
+        quote_leak_count: quoteLeakCount,
+        quote_leak_cents: quoteLeakCents,
       })
       .eq("id", connectionId);
 
