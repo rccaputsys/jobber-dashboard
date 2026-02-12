@@ -468,10 +468,32 @@ export async function GET(req: Request) {
 
     if (hbErr) throw new Error(`jobber_connections update failed: ${hbErr.message}`);
 
+    // If called with json=true, return JSON. Otherwise redirect to dashboard.
+    const wantsJson = req.headers.get("accept")?.includes("application/json") || 
+                      searchParams.get("json") === "true";
+    
+    if (wantsJson) {
+      return NextResponse.json({
+        ok: true,
+        jobs: jobs.length,
+        invoices: invoices.length,
+        quotes: quotes.length,
+        requests: requests.length,
+      });
+    }
+    
     return NextResponse.redirect(new URL(`/jobber/dashboard`, req.url));
   } catch (error) {
     console.error("Sync failed:", error);
     const message = error instanceof Error ? error.message : "Sync failed";
+    
+    const wantsJson = req.headers.get("accept")?.includes("application/json") || 
+                      new URL(req.url).searchParams.get("json") === "true";
+    
+    if (wantsJson) {
+      return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    }
+    
     return NextResponse.redirect(
       new URL(`/jobber/dashboard?sync_error=${encodeURIComponent(message)}`, req.url)
     );

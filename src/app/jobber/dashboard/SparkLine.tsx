@@ -226,9 +226,9 @@ export function SparkLine(props: {
         <line x1={padL} y1={yOf(0)} x2={vbW - padR} y2={yOf(0)} stroke="rgba(255,255,255,0.06)" strokeDasharray="4,4" />
 
         {/* Y axis labels */}
-        <text x={padL - 6} y={yOf(max) + 4} fontSize="11" fontWeight="600" textAnchor="end">{formatYAxisLabel(max)}</text>
-        <text x={padL - 6} y={yOf(max / 2) + 4} fontSize="10" fontWeight="500" textAnchor="end">{formatYAxisLabel(max / 2)}</text>
-        <text x={padL - 6} y={yOf(0) + 4} fontSize="11" fontWeight="600" textAnchor="end">{formatYAxisLabel(0)}</text>
+        <text x={padL - 6} y={yOf(max) + 4} fontSize="11" fontWeight="600" textAnchor="end" className="chart-axis-label">{formatYAxisLabel(max)}</text>
+        <text x={padL - 6} y={yOf(max / 2) + 4} fontSize="10" fontWeight="500" textAnchor="end" className="chart-axis-label">{formatYAxisLabel(max / 2)}</text>
+        <text x={padL - 6} y={yOf(0) + 4} fontSize="11" fontWeight="600" textAnchor="end" className="chart-axis-label">{formatYAxisLabel(0)}</text>
 
         <g clipPath={`url(#${clipId})`}>
           {props.chartType === "line" ? (
@@ -310,7 +310,7 @@ export function SparkLine(props: {
           if (!showBySkip && !isLast) return null;
           
           return (
-            <text key={`x-${i}`} x={xOf(i)} y={vbH - 8} fontSize="9" textAnchor="middle">
+            <text key={`x-${i}`} x={xOf(i)} y={vbH - 8} fontSize="9" textAnchor="middle" className="chart-axis-label">
               {p.xLabel}
             </text>
           );

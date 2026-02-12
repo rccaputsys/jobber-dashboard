@@ -8,7 +8,7 @@ export function ResyncButton({ connectionId }: { connectionId: string }) {
   const handleResync = async () => {
     setStatus("syncing");
     try {
-      const res = await fetch(`/api/sync/run?connection_id=${connectionId}&full=true`);
+      const res = await fetch(`/api/sync/run?connection_id=${connectionId}&full=true&json=true`);
       if (res.ok) {
         setStatus("done");
         setTimeout(() => setStatus("idle"), 3000);
