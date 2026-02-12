@@ -466,8 +466,13 @@ export async function GET(req: Request) {
       { data: allJobs },
       { count: requestCount },
       { count: jobCount },
+      { count: quoteCount },
       { data: allQuotes },
     ] = await Promise.all([
+      supabaseAdmin
+        .from("fact_quotes")
+        .select("*", { count: "exact", head: true })
+        .eq("connection_id", connectionId),
       supabaseAdmin
         .from("fact_invoices")
         .select("status, balance_cents, total_amount_cents, due_at")
@@ -542,6 +547,7 @@ export async function GET(req: Request) {
         last_sync_quotes: quotes.length,
         job_count: jobCount || 0,
         request_count: requestCount || 0,
+        quote_count: quoteCount || 0,
         unscheduled_job_count: unscheduledJobs.length,
         invoices_past_due_count: pastDueInvoices.length,
         invoices_past_due_cents: pastDueCents,

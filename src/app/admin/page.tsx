@@ -268,7 +268,7 @@ export default async function AdminPage() {
               const unscheduled = conn.unscheduled_job_count || 0;
               const requests = conn.request_count || 0;
               const jobs = conn.job_count || 0;
-              const quotes = conn.last_sync_quotes || 0;
+              const quotes = conn.quote_count || 0;
 
               return (
                 <div key={conn.id} className="user">
