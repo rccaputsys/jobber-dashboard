@@ -1323,8 +1323,8 @@ export default async function DashboardPage({
                 <span style={{ fontSize: 14 }}>✏️</span>
                 <span className="text-secondary" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Changes Requested</span>
               </div>
-              <div className="kpi-value-medium text-warning">{DEMO_DATA.changesRequestedCount}</div>
-              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>Quotes to revise</div>
+              <div className="kpi-value-medium text-warning">{money(350000)}</div>
+              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>{DEMO_DATA.changesRequestedCount} quotes to revise</div>
             </div>
 
             <div className="kpi-secondary">
@@ -1332,8 +1332,8 @@ export default async function DashboardPage({
                 <span style={{ fontSize: 14 }}>✅</span>
                 <span className="text-secondary" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Approved No Job</span>
               </div>
-              <div className="kpi-value-medium text-warning">{DEMO_DATA.approvedNoJobCount}</div>
-              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>Quotes to schedule</div>
+              <div className="kpi-value-medium text-warning">{money(475000)}</div>
+              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>{DEMO_DATA.approvedNoJobCount} quotes to schedule</div>
             </div>
 
             <div className="kpi-secondary">
@@ -1341,8 +1341,8 @@ export default async function DashboardPage({
                 <span style={{ fontSize: 14 }}>📦</span>
                 <span className="text-secondary" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Unscheduled</span>
               </div>
-              <div className="kpi-value-medium text-warning">{DEMO_DATA.unscheduledCount}</div>
-              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>Jobs in backlog</div>
+              <div className="kpi-value-medium text-warning">{money(315000)}</div>
+              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>{DEMO_DATA.unscheduledCount} jobs in backlog</div>
             </div>
 
             <div className="kpi-secondary">
@@ -1351,7 +1351,7 @@ export default async function DashboardPage({
                 <span className="text-secondary" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Open Requests</span>
               </div>
               <div className="kpi-value-medium text-success">{DEMO_DATA.openRequestsCount}</div>
-              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>Pending work requests</div>
+              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>{DEMO_DATA.openRequestsCount} pending requests</div>
             </div>
           </div>
 
@@ -2278,12 +2278,12 @@ const quoteWonPct = quotesInLast30Days.length > 0
               <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Changes Requested</span>
             </div>
             <div className={`kpi-value-medium ${
-              changesRequestedCount > 5 ? "text-critical" : 
+              changesRequestedCount > 5 ? "text-critical" :
               changesRequestedCount > 2 ? "text-warning" : "text-success"
             }`}>
-              {changesRequestedCount}
+              {changesRequestedCents > 0 ? money(changesRequestedCents) : changesRequestedCount}
             </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>{changesRequestedCents > 0 ? money(changesRequestedCents) : "Quotes to revise"}</div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>{changesRequestedCount} quote{changesRequestedCount !== 1 ? "s" : ""} to revise</div>
           </div>
 
           <div className="kpi-secondary">
@@ -2292,12 +2292,12 @@ const quoteWonPct = quotesInLast30Days.length > 0
               <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Approved No Job</span>
             </div>
             <div className={`kpi-value-medium ${
-              approvedNoJobCount > 5 ? "text-critical" : 
+              approvedNoJobCount > 5 ? "text-critical" :
               approvedNoJobCount > 2 ? "text-warning" : "text-success"
             }`}>
-              {approvedNoJobCount}
+              {approvedNoJobCents > 0 ? money(approvedNoJobCents) : approvedNoJobCount}
             </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>{approvedNoJobCents > 0 ? money(approvedNoJobCents) : "Quotes to schedule"}</div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>{approvedNoJobCount} quote{approvedNoJobCount !== 1 ? "s" : ""} to schedule</div>
           </div>
 
           <div className="kpi-secondary">
@@ -2306,12 +2306,12 @@ const quoteWonPct = quotesInLast30Days.length > 0
               <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Unscheduled</span>
             </div>
             <div className={`kpi-value-medium ${
-              unscheduledCount > 10 ? "text-critical" : 
+              unscheduledCount > 10 ? "text-critical" :
               unscheduledCount > 5 ? "text-warning" : "text-success"
             }`}>
-              {unscheduledCount}
+              {unscheduledCents > 0 ? money(unscheduledCents) : unscheduledCount}
             </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>{unscheduledCents > 0 ? money(unscheduledCents) : "Jobs in backlog"}</div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>{unscheduledCount} job{unscheduledCount !== 1 ? "s" : ""} in backlog</div>
           </div>
 
           <div className="kpi-secondary">
@@ -2320,12 +2320,12 @@ const quoteWonPct = quotesInLast30Days.length > 0
               <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Open Requests</span>
             </div>
             <div className={`kpi-value-medium ${
-              openRequestsCount > 10 ? "text-critical" : 
+              openRequestsCount > 10 ? "text-critical" :
               openRequestsCount > 5 ? "text-warning" : "text-success"
             }`}>
               {openRequestsCount}
             </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Pending work requests</div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>{openRequestsCount} pending request{openRequestsCount !== 1 ? "s" : ""}</div>
           </div>
 
         </div>
