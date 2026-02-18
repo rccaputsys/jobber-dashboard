@@ -26,19 +26,28 @@ export async function GET(req: Request) {
     return new Response("Missing connection_id", { status: 400 });
   }
 
-  const { data, error } = await supabaseAdmin
-    .from("fact_jobs")
-    .select("jobber_job_id,created_at_jobber,jobber_url,scheduled_start_at")
-    .eq("connection_id", connectionId)
-    .is("scheduled_start_at", null)
-    .order("created_at_jobber", { ascending: true })
-    .limit(200);
-
-  if (error) {
-    return new Response(`Supabase error: ${error.message}`, { status: 500 });
+  // Paginate to bypass PostgREST max_rows=100
+  const allData: any[] = [];
+  let from = 0;
+  const PAGE = 100;
+  while (true) {
+    const { data: page, error } = await supabaseAdmin
+      .from("fact_jobs")
+      .select("jobber_job_id,created_at_jobber,jobber_url,scheduled_start_at")
+      .eq("connection_id", connectionId)
+      .is("scheduled_start_at", null)
+      .order("created_at_jobber", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) {
+      return new Response(`Supabase error: ${error.message}`, { status: 500 });
+    }
+    if (!page || page.length === 0) break;
+    allData.push(...page);
+    if (page.length < PAGE) break;
+    from += PAGE;
   }
 
-  let rows = (data ?? []).map((r: any) => ({
+  let rows = allData.map((r: any) => ({
     jobber_job_id: r.jobber_job_id,
     created_at_jobber: r.created_at_jobber,
     jobber_url: r.jobber_url,

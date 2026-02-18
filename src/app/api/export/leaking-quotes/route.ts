@@ -23,24 +23,31 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const connection_id = searchParams.get("connection_id");
-    const limit = Math.min(Number(searchParams.get("limit") ?? "200"), 2000);
 
     if (!connection_id) {
       return NextResponse.json({ ok: false, error: "Missing connection_id" }, { status: 400 });
     }
 
-    // Select ONLY columns we know exist in your table
-    const { data, error } = await supabaseAdmin
-      .from("fact_quotes")
-      .select("jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,sent_at")
-      .eq("connection_id", connection_id)
-      .not("sent_at", "is", null)
-      .order("sent_at", { ascending: true })
-      .limit(limit);
+    // Paginate to bypass PostgREST max_rows=100
+    const allData: any[] = [];
+    let from = 0;
+    const PAGE = 100;
+    while (true) {
+      const { data: page, error } = await supabaseAdmin
+        .from("fact_quotes")
+        .select("jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,sent_at")
+        .eq("connection_id", connection_id)
+        .not("sent_at", "is", null)
+        .order("sent_at", { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      if (!page || page.length === 0) break;
+      allData.push(...page);
+      if (page.length < PAGE) break;
+      from += PAGE;
+    }
 
-    if (error) throw error;
-
-    const rows = (data ?? [])
+    const rows = allData
       .map((q: any) => ({
         age_days: q.sent_at ? Math.max(0, Math.round((Date.now() - new Date(q.sent_at).getTime()) / 86400000)) : "",
         quote_number: q.quote_number ?? "",

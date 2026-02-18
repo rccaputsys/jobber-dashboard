@@ -1,7 +1,7 @@
 ﻿// src/app/jobber/dashboard/page.tsx
 import { ExportCSV } from "./ExportCSV";
 import React from "react";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { supabaseAdmin, fetchAllRows } from "@/lib/supabaseAdmin";
 import { SyncButton } from "./SyncButton";
 import { ThemeToggle } from "./ThemeToggle";
 import { ActionListTabs } from "./ActionListTabs";
@@ -1579,31 +1579,21 @@ export default async function DashboardPage({
 
   const lastSyncPretty = conn?.last_sync_at ? formatSyncTime(new Date(conn.last_sync_at)) : "Not synced yet";
 
-  // Fetch facts IN PARALLEL
-  const [
-    { data: invoicesData },
-    { data: jobsData },
-    { data: quotesData },
-    { data: requestsData },
-  ] = await Promise.all([
-    supabaseAdmin.from("fact_invoices").select("*").eq("connection_id", connectionId).limit(50000),
-    supabaseAdmin.from("fact_jobs").select("*").eq("connection_id", connectionId).limit(50000),
-    supabaseAdmin
-      .from("fact_quotes")
-      .select("jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,sent_at,updated_at_jobber,created_at_jobber")
-      .eq("connection_id", connectionId)
-      .limit(50000),
-    supabaseAdmin
-      .from("fact_requests")
-      .select("jobber_request_id,title,request_status,source,client_name,jobber_url,created_at_jobber")
-      .eq("connection_id", connectionId)
-      .limit(50000),
+  // Fetch facts IN PARALLEL (paginated to bypass PostgREST max_rows=100)
+  const [invoices, jobs, quotes, requests] = await Promise.all([
+    fetchAllRows("fact_invoices", "*", connectionId),
+    fetchAllRows("fact_jobs", "*", connectionId),
+    fetchAllRows(
+      "fact_quotes",
+      "jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,sent_at,updated_at_jobber,created_at_jobber",
+      connectionId,
+    ),
+    fetchAllRows(
+      "fact_requests",
+      "jobber_request_id,title,request_status,source,client_name,jobber_url,created_at_jobber",
+      connectionId,
+    ),
   ]);
-
-  const invoices = (invoicesData ?? []) as any[];
-  const jobs = (jobsData ?? []) as any[];
-  const quotes = (quotesData ?? []) as any[];
-  const requests = (requestsData ?? []) as any[];
   console.log("REQUESTS FROM DB:", requests);
   console.log("FILTERED REQUESTS:", requests.filter((r: any) => {
     const status = (r.request_status || "").toUpperCase();

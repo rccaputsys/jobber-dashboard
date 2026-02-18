@@ -1,6 +1,6 @@
 // src/app/api/sync/run/route.ts
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { supabaseAdmin, fetchAllRows } from "@/lib/supabaseAdmin";
 import { getValidAccessToken } from "@/lib/jobberAuth";
 
 type JobNode = {
@@ -507,25 +507,17 @@ export async function GET(req: Request) {
     const now = new Date();
     const fifteenDaysAgo = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
     
-    // Query current state from DB for accurate counts
+    // Query current state from DB for accurate counts (paginated to bypass max_rows=100)
     const [
-      { data: allInvoices },
-      { data: allJobs },
+      allInvoices,
+      allJobs,
       { count: requestCount },
       { count: jobCount },
       { count: quoteCount },
-      { data: allQuotes },
+      allQuotes,
     ] = await Promise.all([
-      supabaseAdmin
-        .from("fact_invoices")
-        .select("status, balance_cents, total_amount_cents, due_at")
-        .eq("connection_id", connectionId)
-        .limit(50000),
-      supabaseAdmin
-        .from("fact_jobs")
-        .select("status, scheduled_start_at")
-        .eq("connection_id", connectionId)
-        .limit(50000),
+      fetchAllRows("fact_invoices", "status, balance_cents, total_amount_cents, due_at", connectionId),
+      fetchAllRows("fact_jobs", "status, scheduled_start_at", connectionId),
       supabaseAdmin
         .from("fact_requests")
         .select("*", { count: "exact", head: true })
@@ -538,11 +530,7 @@ export async function GET(req: Request) {
         .from("fact_quotes")
         .select("*", { count: "exact", head: true })
         .eq("connection_id", connectionId),
-      supabaseAdmin
-        .from("fact_quotes")
-        .select("quote_status, quote_total_cents, sent_at")
-        .eq("connection_id", connectionId)
-        .limit(50000),
+      fetchAllRows("fact_quotes", "quote_status, quote_total_cents, sent_at", connectionId),
     ]);
     
     const unpaidInvoices = (allInvoices || []).filter(inv => {

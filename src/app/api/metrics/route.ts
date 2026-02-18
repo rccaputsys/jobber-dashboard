@@ -71,22 +71,31 @@ export async function GET(req: Request) {
   // Real mode: query invoices (will be empty until Jobber has invoices)
   const since = addDays(new Date(), -30).toISOString();
 
-  const { data: invRows, error: invErr } = await supabaseAdmin
-    .from("fact_invoices")
-    .select("created_at_jobber,due_at,total_amount_cents")
-    .eq("connection_id", connectionId)
-    .gte("created_at_jobber", since)
-    .limit(50000);
-
-  if (invErr) {
-    return NextResponse.json({ ok: false, error: invErr.message }, { status: 500 });
+  // Paginate to bypass PostgREST max_rows=100
+  const invRows: any[] = [];
+  let invFrom = 0;
+  const PAGE = 100;
+  while (true) {
+    const { data: page, error: invErr } = await supabaseAdmin
+      .from("fact_invoices")
+      .select("created_at_jobber,due_at,total_amount_cents")
+      .eq("connection_id", connectionId)
+      .gte("created_at_jobber", since)
+      .range(invFrom, invFrom + PAGE - 1);
+    if (invErr) {
+      return NextResponse.json({ ok: false, error: invErr.message }, { status: 500 });
+    }
+    if (!page || page.length === 0) break;
+    invRows.push(...page);
+    if (page.length < PAGE) break;
+    invFrom += PAGE;
   }
 
-  const invoiceCount = invRows?.length ?? 0;
-  const total30 = (invRows ?? []).reduce((s, r) => s + (r.total_amount_cents ?? 0), 0);
+  const invoiceCount = invRows.length;
+  const total30 = invRows.reduce((s, r) => s + (r.total_amount_cents ?? 0), 0);
 
   const now = Date.now();
-  const overdue30 = (invRows ?? []).reduce((s, r) => {
+  const overdue30 = (invRows).reduce((s, r) => {
     const due = r.due_at ? new Date(r.due_at).getTime() : NaN;
     if (!Number.isNaN(due) && due < now) return s + (r.total_amount_cents ?? 0);
     return s;
@@ -94,7 +103,7 @@ export async function GET(req: Request) {
 
   // Daily series
   const map = new Map<string, { invoiced_cents: number; overdue_cents: number }>();
-  for (const r of invRows ?? []) {
+  for (const r of invRows) {
     if (!r.created_at_jobber) continue;
     const day = String(r.created_at_jobber).slice(0, 10);
     if (!map.has(day)) map.set(day, { invoiced_cents: 0, overdue_cents: 0 });
