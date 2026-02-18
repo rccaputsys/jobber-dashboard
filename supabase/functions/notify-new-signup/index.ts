@@ -19,7 +19,8 @@ serve(async (req) => {
 
     const { data: allConnections } = await supabase
       .from("jobber_connections")
-      .select("billing_status, trial_ends_at");
+      .select("billing_status, trial_ends_at")
+      .limit(10000);
 
     const active = (allConnections || []).filter(c =>
       c.billing_status && c.billing_status.toLowerCase() !== "inactive" && c.billing_status.toLowerCase() !== "canceled"

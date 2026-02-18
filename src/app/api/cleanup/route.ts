@@ -21,7 +21,8 @@ export async function GET(req: Request) {
     .from("jobber_connections")
     .select("id")
     .eq("billing_status", "canceled")
-    .lt("canceled_at", thirtyDaysAgo);
+    .lt("canceled_at", thirtyDaysAgo)
+    .limit(1000);
 
   if (error) {
     console.error("Error fetching expired connections:", error);

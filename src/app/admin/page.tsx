@@ -36,7 +36,8 @@ export default async function AdminPage() {
   const { data: connections } = await supabaseAdmin
     .from("jobber_connections")
     .select("*")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(10000);
 
   const allConnections = connections || [];
 

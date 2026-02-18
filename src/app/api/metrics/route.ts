@@ -75,7 +75,8 @@ export async function GET(req: Request) {
     .from("fact_invoices")
     .select("created_at_jobber,due_at,total_amount_cents")
     .eq("connection_id", connectionId)
-    .gte("created_at_jobber", since);
+    .gte("created_at_jobber", since)
+    .limit(50000);
 
   if (invErr) {
     return NextResponse.json({ ok: false, error: invErr.message }, { status: 500 });
