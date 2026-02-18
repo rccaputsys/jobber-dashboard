@@ -1624,7 +1624,7 @@ export default async function DashboardPage({
   // AR buckets - only unpaid invoices
   const nowMs = Date.now();
   let b0_7 = 0, b8_14 = 0, b15p = 0, totalAR = 0;
-  let totalPastDueCount = 0;
+  let totalPastDueCount = 0, b15pCount = 0;
 
   // Filter to only unpaid invoices (awaiting_payment, overdue, etc.)
   const unpaidInvoices = invoices.filter((inv: any) => {
@@ -1646,7 +1646,7 @@ export default async function DashboardPage({
       totalPastDueCount += 1;
       if (days <= 7) b0_7 += amt;
       else if (days <= 14) b8_14 += amt;
-      else b15p += amt;
+      else { b15p += amt; b15pCount += 1; }
     }
   }
   const riskPct = totalAR > 0 ? b15p / totalAR : 0;
@@ -2244,7 +2244,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 {money(b15p)}
               </div>
               <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
-                {totalAR > 0 ? pct(b15p / totalAR) : "0%"} of total • {agedARInvoices.length} invoices
+                {totalAR > 0 ? pct(b15p / totalAR) : "0%"} of total • {b15pCount} invoice{b15pCount !== 1 ? "s" : ""}
               </div>
             </div>
           </div>
