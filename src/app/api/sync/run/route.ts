@@ -560,10 +560,7 @@ export async function GET(req: Request) {
       return new Date(inv.due_at) < fifteenDaysAgo;
     });
     
-    const unscheduledJobs = (allJobs || []).filter(j => {
-      const st = (j.status || "").toUpperCase();
-      return st === "UNSCHEDULED" || st === "REQUIRES_INVOICING";
-    });
+    const unscheduledJobs = (allJobs || []).filter(j => !j.scheduled_start_at);
     
     const pastDueCents = pastDueInvoices.reduce((sum, inv) => sum + (inv.balance_cents || inv.total_amount_cents || 0), 0);
     const fifteenPlusCents = invoices15plus.reduce((sum, inv) => sum + (inv.balance_cents || inv.total_amount_cents || 0), 0);
