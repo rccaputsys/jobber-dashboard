@@ -8,7 +8,7 @@ type ChartType = "line" | "bar";
 export function SparkLine(props: {
   title: string;
   subtitle: string;
-  points: { xLabel: string; value: number; tooltip: string }[];
+  points: { xLabel: string; value: number; tooltip: string; hoverLabel?: string }[];
   formatType: "money" | "number";
   chartType: ChartType;
   color?: string;
@@ -340,6 +340,11 @@ export function SparkLine(props: {
           <div style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>
             {formatY(hoveredPoint.value)}
           </div>
+          {hoveredPoint.hoverLabel && (
+            <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>
+              {hoveredPoint.hoverLabel}
+            </div>
+          )}
           {hoveredChange && (
             <div style={{
               fontSize: 12,

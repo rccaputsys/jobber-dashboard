@@ -120,7 +120,7 @@ type Props = {
 };
 
 const INITIAL_SHOW = 10;
-const LOAD_MORE_COUNT = 10;
+const LOAD_MORE_COUNT = 50;
 
 export function ActionListTabs({
   agedARInvoices,

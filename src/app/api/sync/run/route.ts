@@ -523,7 +523,7 @@ export async function GET(req: Request) {
         .limit(50000),
       supabaseAdmin
         .from("fact_jobs")
-        .select("status")
+        .select("status, scheduled_start_at")
         .eq("connection_id", connectionId)
         .limit(50000),
       supabaseAdmin

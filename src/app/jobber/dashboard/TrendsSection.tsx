@@ -10,6 +10,7 @@ type Point = {
   xLabel: string;
   value: number;
   tooltip: string;
+  hoverLabel?: string;
 };
 
 type Props = {
@@ -84,9 +85,9 @@ export function TrendsSection({
         />
         <SparkLine
           title="Unscheduled"
-          subtitle="Point-in-time backlog"
+          subtitle="Point-in-time backlog value"
           points={unschedPoints}
-          formatType="number"
+          formatType="money"
           chartType={chartType}
           color="#5aa6ff"
           loading={loading}

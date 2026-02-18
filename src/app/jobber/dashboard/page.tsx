@@ -199,7 +199,10 @@ const DEMO_DATA = {
   trendLabels: ["Dec 9", "Dec 16", "Dec 23", "Dec 30", "Jan 6", "Jan 13", "Jan 20", "Jan 27"],
   leakTrend: [1850000, 1720000, 1580000, 1450000, 1380000, 1290000, 1260000, 1234000],
   ar15Trend: [385000, 342000, 298000, 275000, 248000, 232000, 218000, 215500],
-  unschedTrend: [12, 11, 10, 9, 8, 8, 7, 7],
+  unschedTrend: [
+    { cnt: 12, cents: 480000 }, { cnt: 11, cents: 420000 }, { cnt: 10, cents: 385000 }, { cnt: 9, cents: 340000 },
+    { cnt: 8, cents: 295000 }, { cnt: 8, cents: 280000 }, { cnt: 7, cents: 250000 }, { cnt: 7, cents: 245000 },
+  ],
   recommendations: [
     { icon: "🔴", text: "$2,155 overdue 15+ days (5 invoices). Priority: Call top 3 oldest accounts today.", priority: "high" as const },
     { icon: "✏️", text: "2 quotes waiting for revisions. Hot leads - respond within 24hrs.", priority: "high" as const },
@@ -1138,11 +1141,10 @@ export default async function DashboardPage({
         value: DEMO_DATA.ar15Trend[i],
         tooltip: `${label}: ${money(DEMO_DATA.ar15Trend[i])} invoices 15+ days`,
       })),
-      unsched: DEMO_DATA.trendLabels.map((label, i) => ({
-        xLabel: label,
-        value: DEMO_DATA.unschedTrend[i],
-        tooltip: `${label}: ${DEMO_DATA.unschedTrend[i]} unscheduled jobs`,
-      })),
+      unsched: DEMO_DATA.trendLabels.map((label, i) => {
+        const { cnt, cents } = DEMO_DATA.unschedTrend[i];
+        return { xLabel: label, value: cents, tooltip: `${label}: ${money(cents)} unscheduled`, hoverLabel: `${cnt} job${cnt !== 1 ? "s" : ""}` };
+      }),
     };
 
     const chartType: ChartType = "line";
@@ -1861,28 +1863,30 @@ const quoteWonPct = quotesInLast30Days.length > 0
   const unschedByBucket = bucketStarts.map((bs) => {
     const bucketEndTs = nextBucketUTC(bs, g).getTime();
     let cnt = 0;
-    
+    let cents = 0;
+
     for (const j of jobs) {
       const createdAt = safeDate(j.created_at_jobber);
       if (!createdAt) continue;
-      
+
       const scheduledAt = safeDate(j.scheduled_start_at);
-      
+
       // Job enters backlog when created
       const enterTs = createdAt.getTime();
-      
+
       // Job exits backlog when scheduled
       const exitTs = scheduledAt ? scheduledAt.getTime() : null;
-      
+
       // Is it unscheduled at bucket end?
       const enteredBeforeBucketEnd = enterTs < bucketEndTs;
       const exitedBeforeBucketEnd = exitTs && exitTs < bucketEndTs;
-      
+
       if (enteredBeforeBucketEnd && !exitedBeforeBucketEnd) {
         cnt += 1;
+        cents += Number(j.total_amount_cents ?? 0);
       }
     }
-    return cnt;
+    return { cnt, cents };
   });
 
   const points = {
@@ -1898,8 +1902,8 @@ const quoteWonPct = quotesInLast30Days.length > 0
     }),
     unsched: bucketStarts.map((bs, i) => {
       const label = labelForBucket(bs, g);
-      const v = unschedByBucket[i];
-      return { xLabel: label, value: v, tooltip: `${label}: ${v} unscheduled jobs` };
+      const { cnt, cents } = unschedByBucket[i];
+      return { xLabel: label, value: cents, tooltip: `${label}: ${money(cents)} unscheduled`, hoverLabel: `${cnt} job${cnt !== 1 ? "s" : ""}` };
     }),
   };
 
