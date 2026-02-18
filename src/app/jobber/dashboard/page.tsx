@@ -1135,11 +1135,13 @@ export default async function DashboardPage({
         xLabel: label,
         value: DEMO_DATA.leakTrend[i],
         tooltip: `${label}: ${money(DEMO_DATA.leakTrend[i])} quote leak balance`,
+        hoverLabel: `${8 - Math.floor(i / 2)} quotes`,
       })),
       ar15: DEMO_DATA.trendLabels.map((label, i) => ({
         xLabel: label,
         value: DEMO_DATA.ar15Trend[i],
         tooltip: `${label}: ${money(DEMO_DATA.ar15Trend[i])} invoices 15+ days`,
+        hoverLabel: `${5 - Math.floor(i / 2)} invoices`,
       })),
       unsched: DEMO_DATA.trendLabels.map((label, i) => {
         const { cnt, cents } = DEMO_DATA.unschedTrend[i];
@@ -1622,25 +1624,30 @@ export default async function DashboardPage({
   // AR buckets - only unpaid invoices
   const nowMs = Date.now();
   let b0_7 = 0, b8_14 = 0, b15p = 0, totalAR = 0;
-  
+  let totalPastDueCount = 0;
+
   // Filter to only unpaid invoices (awaiting_payment, overdue, etc.)
   const unpaidInvoices = invoices.filter((inv: any) => {
     const status = (inv.status || '').toLowerCase();
     // Exclude paid, draft, and voided invoices
     return status !== 'paid' && status !== 'draft' && status !== 'voided' && status !== 'bad_debt';
   });
-  
+
   for (const inv of unpaidInvoices) {
     const amt = Number(inv.balance_cents ?? inv.total_amount_cents ?? 0);
-    totalAR += amt;
-    
+
     const due = safeDate(inv.due_at ?? inv.dueDate ?? inv.due_date);
     if (!due) continue;
     const days = (nowMs - due.getTime()) / 86400000;
-    
-    if (days > 0 && days <= 7) b0_7 += amt;
-    else if (days > 7 && days <= 14) b8_14 += amt;
-    else if (days > 14) b15p += amt;
+
+    // Only count invoices that are actually past due
+    if (days > 0) {
+      totalAR += amt;
+      totalPastDueCount += 1;
+      if (days <= 7) b0_7 += amt;
+      else if (days <= 14) b8_14 += amt;
+      else b15p += amt;
+    }
   }
   const riskPct = totalAR > 0 ? b15p / totalAR : 0;
   const arScore = clamp(riskPct * 120, 0, 100);
@@ -1796,34 +1803,36 @@ const quoteWonPct = quotesInLast30Days.length > 0
   const leakByBucket = bucketStarts.map((bs) => {
     const bucketEndTs = nextBucketUTC(bs, g).getTime();
     let sum = 0;
-    
+    let cnt = 0;
+
     for (const q of quotes) {
       const sentAt = safeDate(q.sent_at);
       if (!sentAt) continue;
-      
+
       const amt = Number(q.quote_total_cents ?? 0);
       const st = String(q.quote_status ?? "").toLowerCase().trim();
       const isWon = statusLooksWon(st);
       const wonAt = isWon ? safeDate(q.updated_at_jobber) : null;
-      
+
       // Skip archived/draft
       if (st === "archived" || st === "draft") continue;
-      
+
       // Quote enters leak when sent
       const enterTs = sentAt.getTime();
-      
+
       // Quote exits leak when won
       const exitTs = wonAt ? wonAt.getTime() : null;
-      
+
       // Is it in leak at bucket end?
       const enteredBeforeBucketEnd = enterTs < bucketEndTs;
       const exitedBeforeBucketEnd = exitTs && exitTs < bucketEndTs;
-      
+
       if (enteredBeforeBucketEnd && !exitedBeforeBucketEnd) {
         sum += amt;
+        cnt += 1;
       }
     }
-    return sum;
+    return { sum, cnt };
   });
 
   // POINT-IN-TIME AR 15+ by bucket
@@ -1832,29 +1841,31 @@ const quoteWonPct = quotesInLast30Days.length > 0
   const ar15ByBucket = bucketStarts.map((bs) => {
     const bucketEndTs = nextBucketUTC(bs, g).getTime();
     let sum = 0;
-    
+    let cnt = 0;
+
     for (const inv of unpaidInvoices) {
       const due = safeDate(inv.due_at ?? inv.dueDate ?? inv.due_date);
       if (!due) continue;
-      
+
       const amt = Number(inv.balance_cents ?? inv.total_amount_cents ?? 0);
       const paidAt = safeDate(inv.paid_at);
-      
+
       // Invoice enters AR 15+ at due_at + 15 days
       const enterTs = due.getTime() + (15 * 24 * 60 * 60 * 1000);
-      
+
       // Invoice exits AR 15+ when paid
       const exitTs = paidAt ? paidAt.getTime() : null;
-      
+
       // Is it in AR 15+ at bucket end?
       const enteredBeforeBucketEnd = enterTs < bucketEndTs;
       const exitedBeforeBucketEnd = exitTs && exitTs < bucketEndTs;
-      
+
       if (enteredBeforeBucketEnd && !exitedBeforeBucketEnd) {
         sum += amt;
+        cnt += 1;
       }
     }
-    return sum;
+    return { sum, cnt };
   });
 
   // POINT-IN-TIME Unscheduled by bucket
@@ -1892,13 +1903,13 @@ const quoteWonPct = quotesInLast30Days.length > 0
   const points = {
     leak: bucketStarts.map((bs, i) => {
       const label = labelForBucket(bs, g);
-      const v = leakByBucket[i];
-      return { xLabel: label, value: v, tooltip: `${label}: ${money(v)} quote leak balance` };
+      const { sum, cnt } = leakByBucket[i];
+      return { xLabel: label, value: sum, tooltip: `${label}: ${money(sum)} quote leak balance`, hoverLabel: `${cnt} quote${cnt !== 1 ? "s" : ""}` };
     }),
     ar15: bucketStarts.map((bs, i) => {
       const label = labelForBucket(bs, g);
-      const v = ar15ByBucket[i];
-      return { xLabel: label, value: v, tooltip: `${label}: ${money(v)} invoices 15+ days` };
+      const { sum, cnt } = ar15ByBucket[i];
+      return { xLabel: label, value: sum, tooltip: `${label}: ${money(sum)} invoices 15+ days`, hoverLabel: `${cnt} invoice${cnt !== 1 ? "s" : ""}` };
     }),
     unsched: bucketStarts.map((bs, i) => {
       const label = labelForBucket(bs, g);
@@ -2211,7 +2222,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
               </div>
               <div className="kpi-value-large text-primary">{money(totalAR)}</div>
               <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
-                {agedARInvoices.length} invoice{agedARInvoices.length !== 1 ? "s" : ""} outstanding
+                {totalPastDueCount} invoice{totalPastDueCount !== 1 ? "s" : ""} past due
               </div>
             </div>
           </div>
