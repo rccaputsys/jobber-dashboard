@@ -1558,16 +1558,18 @@ export default async function DashboardPage({
     { data: quotesData },
     { data: requestsData },
   ] = await Promise.all([
-    supabaseAdmin.from("fact_invoices").select("*").eq("connection_id", connectionId),
-    supabaseAdmin.from("fact_jobs").select("*").eq("connection_id", connectionId),
+    supabaseAdmin.from("fact_invoices").select("*").eq("connection_id", connectionId).limit(50000),
+    supabaseAdmin.from("fact_jobs").select("*").eq("connection_id", connectionId).limit(50000),
     supabaseAdmin
       .from("fact_quotes")
       .select("jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,sent_at,updated_at_jobber,created_at_jobber")
-      .eq("connection_id", connectionId),
+      .eq("connection_id", connectionId)
+      .limit(50000),
     supabaseAdmin
       .from("fact_requests")
       .select("jobber_request_id,title,request_status,source,client_name,jobber_url,created_at_jobber")
-      .eq("connection_id", connectionId),
+      .eq("connection_id", connectionId)
+      .limit(50000),
   ]);
 
   const invoices = (invoicesData ?? []) as any[];
