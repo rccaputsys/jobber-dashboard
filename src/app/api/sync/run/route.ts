@@ -287,11 +287,23 @@ export async function GET(req: Request) {
     // Get last sync time for incremental sync (skip if full sync requested)
     const { data: connectionData } = await supabaseAdmin
       .from("jobber_connections")
-      .select("last_sync_at")
+      .select("last_sync_at, jobber_account_name")
       .eq("id", connectionId)
       .single();
 
     const lastSyncAt = fullSync ? null : (connectionData?.last_sync_at || null);
+
+    // Backfill company name if missing
+    let accountName: string | null = connectionData?.jobber_account_name || null;
+    if (!accountName) {
+      try {
+        const acctResult = await jobberGraphQLWithPartialErrors<{ account: { name: string } }>(
+          token,
+          `query { account { name } }`
+        );
+        accountName = acctResult.data?.account?.name || null;
+      } catch { /* non-critical, skip */ }
+    }
 
     // Fetch Jobs (no filter support, fetch all)
     const jobResult = await fetchAllPages<JobNode>(
@@ -574,9 +586,7 @@ export async function GET(req: Request) {
     const quoteLeakCents = leakingQuotes.reduce((sum, q) => sum + (q.quote_total_cents || 0), 0);
 
     // Update heartbeat with metrics
-    const { error: hbErr } = await supabaseAdmin
-      .from("jobber_connections")
-      .update({
+    const heartbeat: Record<string, any> = {
         last_sync_at: new Date().toISOString(),
         last_sync_invoices: invoices.length,
         last_sync_quotes: quotes.length,
@@ -590,7 +600,12 @@ export async function GET(req: Request) {
         invoices_15plus_cents: fifteenPlusCents,
         quote_leak_count: quoteLeakCount,
         quote_leak_cents: quoteLeakCents,
-      })
+    };
+    if (accountName) heartbeat.jobber_account_name = accountName;
+
+    const { error: hbErr } = await supabaseAdmin
+      .from("jobber_connections")
+      .update(heartbeat)
       .eq("id", connectionId);
 
     if (hbErr) throw new Error(`jobber_connections update failed: ${hbErr.message}`);
