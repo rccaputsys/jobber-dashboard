@@ -1775,8 +1775,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
 
   const rawUn = (unsched ?? []) as any[];
 
-  let unscheduledRows = minDays > 0 ? rawUn.filter((r) => ageDays(r.created_at_jobber) >= minDays) : rawUn;
-  unscheduledRows = unscheduledRows.slice(0, 10);
+  const unscheduledRows = minDays > 0 ? rawUn.filter((r) => ageDays(r.created_at_jobber) >= minDays) : rawUn;
 
   // Buckets for trends
   const bucketStarts: Date[] = [];
@@ -1995,7 +1994,6 @@ const quoteWonPct = quotesInLast30Days.length > 0
   const leakingQuotesExportData = leakCandidates
     .slice()
     .sort((a: any, b: any) => Number(b.quote_total_cents ?? 0) - Number(a.quote_total_cents ?? 0))
-    .slice(0, 10)
     .map((q: any) => {
       const sent = safeDate(q.sent_at);
       const age = sent ? Math.max(0, Math.round((Date.now() - sent.getTime()) / 86400000)) : 0;
