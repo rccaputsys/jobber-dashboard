@@ -1773,16 +1773,14 @@ const quoteWonPct = quotesInLast30Days.length > 0
     return ageDays(j.created_at_jobber) >= 7;
   });
 
-  // Unscheduled list
-  const { data: unsched } = await supabaseAdmin
-    .from("fact_jobs")
-    .select("job_number,job_title,created_at_jobber,jobber_url,total_amount_cents,scheduled_start_at")
-    .eq("connection_id", connectionId)
-    .is("scheduled_start_at", null)
-    .order("created_at_jobber", { ascending: true })
-    .limit(200);
-
-  const rawUn = (unsched ?? []) as any[];
+  // Unscheduled list - derive from already-fetched jobs array for consistency with KPI count
+  const rawUn = jobs
+    .filter((j) => !j.scheduled_start_at)
+    .sort((a, b) => {
+      const aDate = safeDate(a.created_at_jobber)?.getTime() ?? 0;
+      const bDate = safeDate(b.created_at_jobber)?.getTime() ?? 0;
+      return aDate - bDate;
+    }) as any[];
 
   const unscheduledRows = minDays > 0 ? rawUn.filter((r) => ageDays(r.created_at_jobber) >= minDays) : rawUn;
 
