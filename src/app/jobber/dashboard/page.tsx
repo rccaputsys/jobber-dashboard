@@ -1130,26 +1130,22 @@ export default async function DashboardPage({
   if (isDemo) {
     const money = moneyFactory(DEMO_DATA.currencyCode);
     
-    const demoPoints = {
-      leak: DEMO_DATA.trendLabels.map((label, i) => ({
-        xLabel: label,
-        value: DEMO_DATA.leakTrend[i],
-        tooltip: `${label}: ${money(DEMO_DATA.leakTrend[i])} quote leak balance`,
-        hoverLabel: `${8 - Math.floor(i / 2)} quotes`,
-      })),
-      ar15: DEMO_DATA.trendLabels.map((label, i) => ({
-        xLabel: label,
-        value: DEMO_DATA.ar15Trend[i],
-        tooltip: `${label}: ${money(DEMO_DATA.ar15Trend[i])} invoices 15+ days`,
-        hoverLabel: `${5 - Math.floor(i / 2)} invoices`,
-      })),
-      unsched: DEMO_DATA.trendLabels.map((label, i) => {
-        const { cnt, cents } = DEMO_DATA.unschedTrend[i];
-        return { xLabel: label, value: cents, tooltip: `${label}: ${money(cents)} unscheduled`, hoverLabel: `${cnt} job${cnt !== 1 ? "s" : ""}` };
-      }),
-    };
-
-    const chartType: ChartType = "line";
+    // Convert demo data to event arrays for TrendsSection
+    const demoLeakEvents = DEMO_DATA.leakCandidates.map((q) => ({
+      enterAt: new Date(q.sent_at).getTime(),
+      exitAt: null,
+      amount: q.quote_total_cents,
+    }));
+    const demoArEvents = DEMO_DATA.agedARInvoices.map((inv) => ({
+      enterAt: new Date(inv.due_date).getTime() + 15 * 86400000,
+      exitAt: null,
+      amount: inv.amount_cents,
+    }));
+    const demoUnschedEvents = DEMO_DATA.unscheduledRows.map((j) => ({
+      enterAt: new Date(j.created_at_jobber).getTime(),
+      exitAt: null,
+      amount: j.total_amount_cents,
+    }));
 
     const agedARExportData = DEMO_DATA.agedARInvoices.map((inv) => ({
       "Age (days)": inv.days_overdue,
@@ -1357,12 +1353,10 @@ export default async function DashboardPage({
 
           <div className="animate-in delay-4" style={{ marginTop: 32 }}>
             <TrendsSection
-              leakPoints={demoPoints.leak}
-              ar15Points={demoPoints.ar15}
-              unschedPoints={demoPoints.unsched}
-              chartType={chartType}
-              rangeLabel="2024-12-09 → 2025-01-27"
-              granularityLabel="Weekly"
+              leakEvents={demoLeakEvents}
+              arEvents={demoArEvents}
+              unschedEvents={demoUnschedEvents}
+              currencyCode={DEMO_DATA.currencyCode}
             />
           </div>
 
@@ -1543,8 +1537,7 @@ export default async function DashboardPage({
     );
   }
 
-  const g: Granularity = (sp.g ?? "week") as Granularity;
-  const chartType: ChartType = (sp.chart ?? "line") as ChartType;
+
 
   const rangePreset = sp.range ?? "8w";
 
@@ -1778,137 +1771,36 @@ const quoteWonPct = quotesInLast30Days.length > 0
 
   const unscheduledRows = minDays > 0 ? rawUn.filter((r) => ageDays(r.created_at_jobber) >= minDays) : rawUn;
 
-  // Buckets for trends
-  const bucketStarts: Date[] = [];
-  let cur = bucketStartUTC(start, g);
-  while (cur.getTime() < endExclusive.getTime()) {
-    bucketStarts.push(cur);
-    const nxt = nextBucketUTC(cur, g);
-    if (nxt.getTime() === cur.getTime()) break;
-    cur = nxt;
-    if (bucketStarts.length > 200) break;
-  }
-
-  // POINT-IN-TIME Quote Leak by bucket
-  // A quote enters leak when sent_at is reached (if not won)
-  // A quote exits leak when it becomes won (use updated_at_jobber as proxy)
-  const leakByBucket = bucketStarts.map((bs) => {
-    const bucketEndTs = nextBucketUTC(bs, g).getTime();
-    let sum = 0;
-    let cnt = 0;
-
-    for (const q of quotes) {
-      const sentAt = safeDate(q.sent_at);
-      if (!sentAt) continue;
-
-      const amt = Number(q.quote_total_cents ?? 0);
+  // Prepare compact event arrays for client-side trend computation
+  // (TrendsSection computes buckets client-side so controls work instantly)
+  const leakEvents = quotes
+    .filter((q) => {
+      const st = String(q.quote_status ?? "").toLowerCase().trim();
+      return q.sent_at && st !== "archived" && st !== "draft";
+    })
+    .map((q) => {
+      const sentAt = safeDate(q.sent_at)!;
       const st = String(q.quote_status ?? "").toLowerCase().trim();
       const isWon = statusLooksWon(st);
       const wonAt = isWon ? safeDate(q.updated_at_jobber) : null;
+      return { enterAt: sentAt.getTime(), exitAt: wonAt ? wonAt.getTime() : null, amount: Number(q.quote_total_cents ?? 0) };
+    });
 
-      // Skip archived/draft
-      if (st === "archived" || st === "draft") continue;
-
-      // Quote enters leak when sent
-      const enterTs = sentAt.getTime();
-
-      // Quote exits leak when won
-      const exitTs = wonAt ? wonAt.getTime() : null;
-
-      // Is it in leak at bucket end?
-      const enteredBeforeBucketEnd = enterTs < bucketEndTs;
-      const exitedBeforeBucketEnd = exitTs && exitTs < bucketEndTs;
-
-      if (enteredBeforeBucketEnd && !exitedBeforeBucketEnd) {
-        sum += amt;
-        cnt += 1;
-      }
-    }
-    return { sum, cnt };
-  });
-
-  // POINT-IN-TIME AR 15+ by bucket
-  // Invoice enters AR 15+ when due_at + 15 days is reached
-  // Invoice exits AR 15+ when paid (paid_at is set)
-  const ar15ByBucket = bucketStarts.map((bs) => {
-    const bucketEndTs = nextBucketUTC(bs, g).getTime();
-    let sum = 0;
-    let cnt = 0;
-
-    for (const inv of unpaidInvoices) {
-      const due = safeDate(inv.due_at ?? inv.dueDate ?? inv.due_date);
-      if (!due) continue;
-
-      const amt = Number(inv.balance_cents ?? inv.total_amount_cents ?? 0);
+  const arEvents = unpaidInvoices
+    .filter((inv) => safeDate(inv.due_at ?? inv.dueDate ?? inv.due_date))
+    .map((inv) => {
+      const due = safeDate(inv.due_at ?? inv.dueDate ?? inv.due_date)!;
       const paidAt = safeDate(inv.paid_at);
+      return { enterAt: due.getTime() + 15 * 86400000, exitAt: paidAt ? paidAt.getTime() : null, amount: Number(inv.balance_cents ?? inv.total_amount_cents ?? 0) };
+    });
 
-      // Invoice enters AR 15+ at due_at + 15 days
-      const enterTs = due.getTime() + (15 * 24 * 60 * 60 * 1000);
-
-      // Invoice exits AR 15+ when paid
-      const exitTs = paidAt ? paidAt.getTime() : null;
-
-      // Is it in AR 15+ at bucket end?
-      const enteredBeforeBucketEnd = enterTs < bucketEndTs;
-      const exitedBeforeBucketEnd = exitTs && exitTs < bucketEndTs;
-
-      if (enteredBeforeBucketEnd && !exitedBeforeBucketEnd) {
-        sum += amt;
-        cnt += 1;
-      }
-    }
-    return { sum, cnt };
-  });
-
-  // POINT-IN-TIME Unscheduled by bucket
-  // Job enters backlog when created (created_at_jobber)
-  // Job exits backlog when scheduled (scheduled_start_at is set)
-  const unschedByBucket = bucketStarts.map((bs) => {
-    const bucketEndTs = nextBucketUTC(bs, g).getTime();
-    let cnt = 0;
-    let cents = 0;
-
-    for (const j of jobs) {
-      const createdAt = safeDate(j.created_at_jobber);
-      if (!createdAt) continue;
-
+  const unschedEvents = jobs
+    .filter((j) => safeDate(j.created_at_jobber))
+    .map((j) => {
+      const createdAt = safeDate(j.created_at_jobber)!;
       const scheduledAt = safeDate(j.scheduled_start_at);
-
-      // Job enters backlog when created
-      const enterTs = createdAt.getTime();
-
-      // Job exits backlog when scheduled
-      const exitTs = scheduledAt ? scheduledAt.getTime() : null;
-
-      // Is it unscheduled at bucket end?
-      const enteredBeforeBucketEnd = enterTs < bucketEndTs;
-      const exitedBeforeBucketEnd = exitTs && exitTs < bucketEndTs;
-
-      if (enteredBeforeBucketEnd && !exitedBeforeBucketEnd) {
-        cnt += 1;
-        cents += Number(j.total_amount_cents ?? 0);
-      }
-    }
-    return { cnt, cents };
-  });
-
-  const points = {
-    leak: bucketStarts.map((bs, i) => {
-      const label = labelForBucket(bs, g);
-      const { sum, cnt } = leakByBucket[i];
-      return { xLabel: label, value: sum, tooltip: `${label}: ${money(sum)} quote leak balance`, hoverLabel: `${cnt} quote${cnt !== 1 ? "s" : ""}` };
-    }),
-    ar15: bucketStarts.map((bs, i) => {
-      const label = labelForBucket(bs, g);
-      const { sum, cnt } = ar15ByBucket[i];
-      return { xLabel: label, value: sum, tooltip: `${label}: ${money(sum)} invoices 15+ days`, hoverLabel: `${cnt} invoice${cnt !== 1 ? "s" : ""}` };
-    }),
-    unsched: bucketStarts.map((bs, i) => {
-      const label = labelForBucket(bs, g);
-      const { cnt, cents } = unschedByBucket[i];
-      return { xLabel: label, value: cents, tooltip: `${label}: ${money(cents)} unscheduled`, hoverLabel: `${cnt} job${cnt !== 1 ? "s" : ""}` };
-    }),
-  };
+      return { enterAt: createdAt.getTime(), exitAt: scheduledAt ? scheduledAt.getTime() : null, amount: Number(j.total_amount_cents ?? 0) };
+    });
 
   // Generate recommendations
   type Recommendation = { icon: string; text: string; priority: "high" | "medium" };
@@ -2323,12 +2215,10 @@ const quoteWonPct = quotesInLast30Days.length > 0
        {/* Trends */}
         <div className="animate-in delay-4" style={{ marginTop: 32 }}>
           <TrendsSection
-            leakPoints={points.leak}
-            ar15Points={points.ar15}
-            unschedPoints={points.unsched}
-            chartType={chartType}
-            rangeLabel={`${toISODateOnlyUTC(start)} → ${toISODateOnlyUTC(end)}`}
-            granularityLabel={g === "day" ? "Daily" : g === "week" ? "Weekly" : g === "month" ? "Monthly" : "Quarterly"}
+            leakEvents={leakEvents}
+            arEvents={arEvents}
+            unschedEvents={unschedEvents}
+            currencyCode={currencyCode}
           />
         </div>
 
