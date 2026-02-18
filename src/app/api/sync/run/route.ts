@@ -167,6 +167,9 @@ async function fetchAllPages<T>(
   };
 
   while (pageCount < maxPages) {
+    // Proactive delay between pages to avoid hitting Jobber's rate limit
+    if (pageCount > 0) await delay(350);
+
     const afterClause: string = cursor ? `, after: "${cursor}"` : "";
     const query: string = `query {
       ${resourceName}(first: 100${afterClause}) {
@@ -223,11 +226,14 @@ async function fetchAllPagesIncremental<T>(
   };
 
   while (pageCount < maxPages) {
+    // Proactive delay between pages to avoid hitting Jobber's rate limit
+    if (pageCount > 0) await delay(350);
+
     const afterClause: string = cursor ? `, after: "${cursor}"` : "";
-    const filterClause: string = updatedAfter 
+    const filterClause: string = updatedAfter
       ? `, filter: { updatedAt: { after: "${updatedAfter}" } }`
       : "";
-    
+
     const query: string = `query {
       ${resourceName}(first: 100${afterClause}${filterClause}) {
         nodes {

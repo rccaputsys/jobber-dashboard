@@ -107,7 +107,11 @@ export async function GET(req: Request) {
     let updated = 0;
     let scanned = 0;
 
+    let pageCount = 0;
     while (hasNext) {
+      // Proactive delay between pages to avoid hitting Jobber's rate limit
+      if (pageCount > 0) await new Promise(r => setTimeout(r, 350));
+
       const data = await fetchJobsWithCosting(accessToken, after);
       const pageInfo = data.jobs.pageInfo;
       const nodes = data.jobs.nodes ?? [];
@@ -173,6 +177,7 @@ export async function GET(req: Request) {
       hasNext = Boolean(pageInfo?.hasNextPage);
       after = pageInfo?.endCursor ?? null;
 
+      pageCount++;
       // Safety guard to avoid runaway loops if schema behaves weirdly
       if (scanned > 5000) break;
     }
