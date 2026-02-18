@@ -1117,6 +1117,7 @@ export default async function DashboardPage({
     checkout?: string;
     demo?: string;
     sync_error?: string;
+    admin_connection_id?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -1414,24 +1415,47 @@ export default async function DashboardPage({
   const user = await getUser();
   if (!user) redirect("/login");
 
-  // Get the user's connection
-  const { data: connection } = await supabaseAdmin
-    .from("jobber_connections")
-    .select("id")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  // Admin impersonation: if admin_connection_id is set and user is admin, use that connection
+  const ADMIN_EMAILS = ["rcaputo91@gmail.com"];
+  const isAdmin = ADMIN_EMAILS.includes(user.email || "");
+  const adminConnectionId = isAdmin ? sp.admin_connection_id : undefined;
 
-  if (!connection) {
-    return (
-      <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100vh", background: "#060811" }}>
-        <h2>No Jobber account connected</h2>
-        <p style={{ marginTop: 8, color: theme.sub }}>See Your Numbers Now.</p>
-        <a href="/jobber" style={{ color: "#5aa6ff", marginTop: 16, display: "inline-block" }}>Connect Jobber →</a>
-      </div>
-    );
+  // Get the user's connection (or admin-specified connection)
+  let connectionId: string;
+  if (adminConnectionId) {
+    const { data: adminConn } = await supabaseAdmin
+      .from("jobber_connections")
+      .select("id")
+      .eq("id", adminConnectionId)
+      .maybeSingle();
+    if (!adminConn) {
+      return (
+        <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100vh", background: "#060811" }}>
+          <h2>Connection not found</h2>
+          <p style={{ marginTop: 8, color: theme.sub }}>The specified connection ID does not exist.</p>
+          <a href="/admin" style={{ color: "#5aa6ff", marginTop: 16, display: "inline-block" }}>← Back to Admin</a>
+        </div>
+      );
+    }
+    connectionId = adminConn.id;
+  } else {
+    const { data: connection } = await supabaseAdmin
+      .from("jobber_connections")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!connection) {
+      return (
+        <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100vh", background: "#060811" }}>
+          <h2>No Jobber account connected</h2>
+          <p style={{ marginTop: 8, color: theme.sub }}>See Your Numbers Now.</p>
+          <a href="/jobber" style={{ color: "#5aa6ff", marginTop: 16, display: "inline-block" }}>Connect Jobber →</a>
+        </div>
+      );
+    }
+    connectionId = connection.id;
   }
-
-  const connectionId = connection.id;
 
   // Connection summary (including billing info)
   const { data: conn } = await supabaseAdmin
@@ -1447,7 +1471,7 @@ export default async function DashboardPage({
   const trialEndsAt = conn?.trial_ends_at ? new Date(conn.trial_ends_at).getTime() : 0;
   const trialActive = billingStatus === "trialing" && trialEndsAt > Date.now();
   const subscriptionActive = billingStatus === "active";
-  const hasAccess = trialActive || subscriptionActive;
+  const hasAccess = trialActive || subscriptionActive || !!adminConnectionId;
 
   // Block entire dashboard if no access
   if (!hasAccess) {
@@ -2008,6 +2032,21 @@ const quoteWonPct = quotesInLast30Days.length > 0
       `,
     }}>
       <style>{globalStyles}</style>
+
+      {adminConnectionId && (
+        <div style={{
+          background: "linear-gradient(90deg, #7c5cff, #5aa6ff)",
+          color: "#fff",
+          textAlign: "center",
+          padding: "8px 16px",
+          fontSize: 13,
+          fontWeight: 600,
+          letterSpacing: 0.2,
+        }}>
+          Viewing as: {companyName}
+          <a href="/admin" style={{ color: "#fff", marginLeft: 12, textDecoration: "underline", opacity: 0.9 }}>← Back to Admin</a>
+        </div>
+      )}
 
       <div className="dashboard-container">
         {/* Header */}

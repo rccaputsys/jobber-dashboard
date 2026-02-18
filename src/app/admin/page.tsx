@@ -310,7 +310,10 @@ export default async function AdminPage() {
                   
                   <div className="user-footer">
                     <span className="sync-time">Synced: {formatRelative(conn.last_sync_at)}</span>
-                    <ResyncButton connectionId={conn.id} />
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <a href={`/jobber/dashboard?admin_connection_id=${conn.id}`} className="btn">View Dashboard</a>
+                      <ResyncButton connectionId={conn.id} />
+                    </div>
                   </div>
                 </div>
               );
