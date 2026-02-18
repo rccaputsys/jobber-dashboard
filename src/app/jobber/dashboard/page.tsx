@@ -1653,8 +1653,10 @@ export default async function DashboardPage({
   const arScore = clamp(riskPct * 120, 0, 100);
   const arSev = severityFromScore(arScore);
 
-  // Unscheduled count
-  const unscheduledCount = jobs.filter((j) => !j.scheduled_start_at).length;
+  // Unscheduled count & value
+  const unscheduledJobs = jobs.filter((j) => !j.scheduled_start_at);
+  const unscheduledCount = unscheduledJobs.length;
+  const unscheduledCents = unscheduledJobs.reduce((sum, j) => sum + Number(j.total_amount_cents ?? 0), 0);
 
   // Completed & profitability
   const completedDateKeys = ["completed_at_jobber", "completed_at", "completedAt", "completedAtJobber"];
@@ -1702,6 +1704,7 @@ export default async function DashboardPage({
     return st === "changes_requested";
   });
   const changesRequestedCount = changesRequestedQuotes.length;
+  const changesRequestedCents = changesRequestedQuotes.reduce((sum, q) => sum + Number(q.quote_total_cents ?? 0), 0);
 
   // Quotes approved but no job created yet (not converted)
   const approvedNoJobQuotes = quotes.filter((q) => {
@@ -1709,6 +1712,7 @@ export default async function DashboardPage({
     return st === "approved";
   });
   const approvedNoJobCount = approvedNoJobQuotes.length;
+  const approvedNoJobCents = approvedNoJobQuotes.reduce((sum, q) => sum + Number(q.quote_total_cents ?? 0), 0);
 
   // Quote Won % (last 30 days)
   // Numerator: quotes marked won in last 30 days
@@ -2279,7 +2283,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
             }`}>
               {changesRequestedCount}
             </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Quotes to revise</div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>{changesRequestedCents > 0 ? money(changesRequestedCents) : "Quotes to revise"}</div>
           </div>
 
           <div className="kpi-secondary">
@@ -2293,7 +2297,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
             }`}>
               {approvedNoJobCount}
             </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Quotes to schedule</div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>{approvedNoJobCents > 0 ? money(approvedNoJobCents) : "Quotes to schedule"}</div>
           </div>
 
           <div className="kpi-secondary">
@@ -2307,7 +2311,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
             }`}>
               {unscheduledCount}
             </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>Jobs in backlog</div>
+            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>{unscheduledCents > 0 ? money(unscheduledCents) : "Jobs in backlog"}</div>
           </div>
 
           <div className="kpi-secondary">
