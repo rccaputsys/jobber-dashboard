@@ -78,6 +78,10 @@ type PageInfo = {
   endCursor: string | null;
 };
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function dollarsToCents(n: number | null | undefined): number {
   if (n === null || n === undefined) return 0;
   if (Number.isNaN(n)) return 0;
@@ -99,26 +103,51 @@ function isWithinTwelveMonths(dateStr: string | null | undefined, cutoffMs: numb
 
 async function jobberGraphQLWithPartialErrors<T>(
   accessToken: string,
-  query: string
+  query: string,
+  maxRetries: number = 5
 ): Promise<{ data: T | null; errors: unknown[] }> {
   const version = process.env.JOBBER_GRAPHQL_VERSION!;
 
-  const res = await fetch(process.env.JOBBER_GRAPHQL_URL!, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-      "X-JOBBER-GRAPHQL-VERSION": version,
-    },
-    body: JSON.stringify({ query }),
-  });
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const res = await fetch(process.env.JOBBER_GRAPHQL_URL!, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+        "X-JOBBER-GRAPHQL-VERSION": version,
+      },
+      body: JSON.stringify({ query }),
+    });
 
-  const json = await res.json();
+    // Retry on HTTP 429 rate limiting
+    if (res.status === 429) {
+      const retryAfter = res.headers.get("Retry-After");
+      const waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : attempt * 2000;
+      console.warn(`Rate limited (HTTP 429). Waiting ${waitTime}ms before retry ${attempt}/${maxRetries}`);
+      await delay(waitTime);
+      continue;
+    }
 
-  return {
-    data: json.data as T | null,
-    errors: json.errors || [],
-  };
+    const json = await res.json();
+
+    // Retry on GraphQL-level THROTTLED errors (HTTP 200 but data is null)
+    const isThrottled = (json.errors || []).some(
+      (e: any) => e?.extensions?.code === "THROTTLED"
+    );
+    if (isThrottled && attempt < maxRetries) {
+      const waitTime = attempt * 2000;
+      console.warn(`Throttled by Jobber API. Waiting ${waitTime}ms before retry ${attempt}/${maxRetries}`);
+      await delay(waitTime);
+      continue;
+    }
+
+    return {
+      data: json.data as T | null,
+      errors: (json.errors || []).filter((e: any) => e?.extensions?.code !== "THROTTLED"),
+    };
+  }
+
+  return { data: null, errors: [{ message: "Max retries exceeded due to throttling" }] };
 }
 
 // Fetch all pages WITHOUT filter (for jobs)
