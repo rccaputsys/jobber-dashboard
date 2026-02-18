@@ -1743,7 +1743,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
       const due = safeDate(inv.due_at);
       if (!due) return false;
       const daysOverdue = Math.max(0, Math.round((Date.now() - due.getTime()) / 86400000));
-      return daysOverdue >= 15;
+      return daysOverdue > 0;
     })
     .map((inv) => ({
       invoice_number: inv.invoice_number || "—",
