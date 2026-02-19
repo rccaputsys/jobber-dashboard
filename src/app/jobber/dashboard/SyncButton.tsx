@@ -1,11 +1,13 @@
 "use client";
 import { useState } from "react";
+import { trackEvent } from "./analytics";
 
 export function SyncButton({ connectionId }: { connectionId: string }) {
   const [syncing, setSyncing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
   const handleSync = async () => {
+    trackEvent("sync_click");
     setSyncing(true);
     try {
       const res = await fetch(`/api/sync/run?connection_id=${connectionId}`);

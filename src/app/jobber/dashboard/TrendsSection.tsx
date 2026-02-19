@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { SparkLine } from "./SparkLine";
+import { trackEvent } from "./analytics";
 
 type ChartType = "line" | "bar";
 type Granularity = "day" | "week" | "month" | "quarter";
@@ -214,9 +215,13 @@ export function TrendsSection({ leakEvents, arEvents, unschedEvents, currencyCod
   const sp = useSearchParams();
 
   // Initialize from URL params, then manage locally
-  const [range, setRange] = useState(sp.get("range") ?? "8w");
-  const [g, setG] = useState<Granularity>((sp.get("g") as Granularity) ?? "week");
-  const [chart, setChart] = useState<ChartType>((sp.get("chart") as ChartType) ?? "line");
+  const [range, setRangeRaw] = useState(sp.get("range") ?? "8w");
+  const [g, setGRaw] = useState<Granularity>((sp.get("g") as Granularity) ?? "week");
+  const [chart, setChartRaw] = useState<ChartType>((sp.get("chart") as ChartType) ?? "line");
+
+  const setRange = useCallback((v: string) => { setRangeRaw(v); trackEvent("sparkline_control", { control: "range", value: v }); }, []);
+  const setG = useCallback((v: Granularity) => { setGRaw(v); trackEvent("sparkline_control", { control: "granularity", value: v }); }, []);
+  const setChart = useCallback((v: ChartType) => { setChartRaw(v); trackEvent("sparkline_control", { control: "chart_type", value: v }); }, []);
 
   const money = useMemo(() => (cents: number) => moneyFmt(cents, currencyCode), [currencyCode]);
 

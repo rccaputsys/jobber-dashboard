@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ExportCSV } from "./ExportCSV";
+import { trackEvent } from "./analytics";
 
 /* --------------------------------- helpers --------------------------------- */
 function safeDate(v: any): Date | null {
@@ -250,10 +251,11 @@ export function ActionListTabs({
     const isHovered = hoveredButton === id;
     
     return (
-      <a 
-        href={url} 
-        target="_blank" 
-        rel="noreferrer" 
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        onClick={() => trackEvent("jobber_link_click", { tab: activeTab, url })}
         onMouseEnter={() => setHoveredButton(id)}
         onMouseLeave={() => setHoveredButton(null)}
         style={{
@@ -357,7 +359,7 @@ export function ActionListTabs({
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => { setActiveTab(tab.id); trackEvent("tab_switch", { tab: tab.id }); }}
             onMouseEnter={() => setHoveredTab(tab.id)}
             onMouseLeave={() => setHoveredTab(null)}
             style={tabStyle(activeTab === tab.id, hoveredTab === tab.id)}

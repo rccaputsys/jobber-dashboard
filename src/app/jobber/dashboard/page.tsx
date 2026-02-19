@@ -9,6 +9,7 @@ import { getUser } from "@/lib/supabaseAuth";
 import { redirect } from "next/navigation";
 import { DisconnectJobberButton } from "./DisconnectButton";
 import { TrendsSection } from "./TrendsSection";
+import { AnalyticsProvider } from "./AnalyticsProvider";
 
 /* --------------------------------- helpers --------------------------------- */
 type Granularity = "day" | "week" | "month" | "quarter";
@@ -1929,6 +1930,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
       `,
     }}>
       <style>{globalStyles}</style>
+      <AnalyticsProvider connectionId={connectionId} />
 
       {adminConnectionId && (
         <div style={{
