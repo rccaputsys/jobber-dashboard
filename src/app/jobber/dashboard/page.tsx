@@ -1930,7 +1930,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
       `,
     }}>
       <style>{globalStyles}</style>
-      <AnalyticsProvider connectionId={connectionId} />
+      {!adminConnectionId && <AnalyticsProvider connectionId={connectionId} />}
 
       {adminConnectionId && (
         <div style={{
