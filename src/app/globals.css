@@ -3,6 +3,22 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Landing page palette */
+  --lp-bg-1: #060B18;
+  --lp-bg-2: #0A1628;
+  --lp-bg-3: #0F1D32;
+  --lp-accent: #3B82F6;
+  --lp-accent-glow: rgba(59, 130, 246, 0.2);
+  --lp-amber: #F59E0B;
+  --lp-emerald: #10B981;
+  --lp-red: #EF4444;
+  --lp-text: #F1F5F9;
+  --lp-text-secondary: #94A3B8;
+  --lp-text-muted: #475569;
+  --lp-card-bg: rgba(255, 255, 255, 0.03);
+  --lp-card-border: rgba(255, 255, 255, 0.06);
+  --lp-card-border-hover: rgba(59, 130, 246, 0.3);
 }
 
 @theme inline {
@@ -10,6 +26,15 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-jakarta);
+  --font-body: var(--font-dm-sans);
+  --color-lp-accent: #3B82F6;
+  --color-lp-amber: #F59E0B;
+  --color-lp-emerald: #10B981;
+  --color-lp-red: #EF4444;
+  --color-lp-text: #F1F5F9;
+  --color-lp-text-secondary: #94A3B8;
+  --color-lp-text-muted: #475569;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -23,4 +48,49 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Landing page scroll animations */
+.lp-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.lp-reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.lp-reveal-child {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+.lp-reveal-child.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Landing page perspective dashboard */
+.lp-dashboard-frame {
+  perspective: 1200px;
+}
+.lp-dashboard-img {
+  transform: rotateX(2deg) rotateY(-1deg);
+  transition: transform 0.8s ease-out, opacity 0.8s ease-out;
+  transform-origin: center center;
+  opacity: 0;
+  scale: 0.95;
+}
+.lp-dashboard-img.visible {
+  transform: rotateX(2deg) rotateY(-1deg);
+  opacity: 1;
+  scale: 1;
+}
+
+@keyframes lp-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.lp-badge-pulse {
+  animation: lp-pulse 3s ease-in-out infinite;
 }
