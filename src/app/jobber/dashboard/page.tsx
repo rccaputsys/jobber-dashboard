@@ -1768,7 +1768,11 @@ const quoteWonPct = quotesInLast30Days.length > 0
       const aDate = safeDate(a.created_at_jobber)?.getTime() ?? 0;
       const bDate = safeDate(b.created_at_jobber)?.getTime() ?? 0;
       return aDate - bDate;
-    }) as any[];
+    })
+    .map((j) => ({
+      ...j,
+      jobber_url: j.jobber_url || (j.jobber_job_id ? `https://secure.getjobber.com/jobs/${j.jobber_job_id}` : null),
+    })) as any[];
 
   const unscheduledRows = minDays > 0 ? rawUn.filter((r) => ageDays(r.created_at_jobber) >= minDays) : rawUn;
 
