@@ -18,6 +18,7 @@ import {
   X,
   ArrowRight,
   Check,
+  LayoutDashboard,
 } from "lucide-react";
 
 /* ================================ Hooks ================================ */
@@ -362,7 +363,7 @@ export default function JobberLanding() {
               >
                 <div className="rounded-2xl overflow-hidden bg-[var(--lp-bg-1)]">
                   <img
-                    src="/dashboard-preview.png"
+                    src="/dashboard-full.png"
                     alt="AccuInsight dashboard showing overdue invoices, quote tracking, and scheduling gaps"
                     className="w-full h-auto block"
                   />
@@ -382,7 +383,7 @@ export default function JobberLanding() {
                 }}
               >
                 <img
-                  src="/dashboard-preview.png"
+                  src="/dashboard-full.png"
                   alt=""
                   className="w-full h-auto block opacity-30"
                 />
@@ -482,7 +483,7 @@ export default function JobberLanding() {
                 iconColor: "var(--lp-red)",
                 title: "Overdue invoices, sorted by how late they are",
                 desc: "You have invoices sitting at 15, 30, even 60+ days. AccuInsight sorts them by age so you know exactly who to call first. One click opens the invoice in Jobber so you can follow up right now.",
-                image: "/Focus_areas_dark.png",
+                images: ["/feature-invoices.png"],
               },
               {
                 icon: FileText,
@@ -490,7 +491,7 @@ export default function JobberLanding() {
                 iconColor: "var(--lp-accent)",
                 title: "Quotes that went cold",
                 desc: "You spent time on those estimates. AccuInsight tracks which ones were sent but never approved so you can follow up before they hire someone else. See the total dollar amount sitting in unanswered quotes.",
-                image: "/Focus_areas_dark.png",
+                images: ["/feature-quotes.png", "/feature-quotes-trend.png"],
                 reverse: true,
               },
               {
@@ -499,7 +500,7 @@ export default function JobberLanding() {
                 iconColor: "var(--lp-amber)",
                 title: "Unscheduled jobs eating your calendar",
                 desc: "Jobs that are approved but not on the schedule yet. That\u2019s revenue you\u2019ve already won but aren\u2019t collecting. AccuInsight flags them so nothing falls through.",
-                image: "/Focus_areas_dark.png",
+                images: ["/feature-unscheduled.png", "/feature-unscheduled-card.png"],
               },
               {
                 icon: Inbox,
@@ -507,7 +508,7 @@ export default function JobberLanding() {
                 iconColor: "var(--lp-emerald)",
                 title: "Open requests you haven\u2019t responded to",
                 desc: "New leads are waiting. AccuInsight shows you pending work requests so you can respond fast and win the job before they call the next guy.",
-                image: "/Focus_areas_dark.png",
+                images: ["/feature-requests.png", "/feature-requests-card.png"],
                 reverse: true,
               },
               {
@@ -516,23 +517,28 @@ export default function JobberLanding() {
                 iconColor: "var(--lp-accent)",
                 title: "Trends that tell you what\u2019s coming",
                 desc: "See your quote leak, AR aging, and scheduling gaps over time. Know whether things are getting better or worse, not just where they stand today.",
-                image: "/Trends_dark.png",
+                images: ["/feature-trends.png"],
+              },
+              {
+                icon: LayoutDashboard,
+                iconBg: "rgba(124,92,255,0.12)",
+                iconColor: "#7c5cff",
+                title: "One action list to rule them all",
+                desc: "Every overdue invoice, cold quote, unscheduled job, and open request in one sortable, filterable list. Stop switching tabs \u2014 see what needs attention right now.",
+                images: ["/feature-actions.png"],
+                reverse: true,
               },
             ].map((feature, i) => (
               <RevealSection key={i}>
                 <div
                   className={`grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 items-center ${
-                    "reverse" in feature && feature.reverse
-                      ? "md:[direction:rtl]"
-                      : ""
+                    feature.reverse ? "md:[direction:rtl]" : ""
                   }`}
                 >
                   {/* Text side */}
                   <div
                     className={`lp-reveal-child ${
-                      "reverse" in feature && feature.reverse
-                        ? "md:[direction:ltr]"
-                        : ""
+                      feature.reverse ? "md:[direction:ltr]" : ""
                     }`}
                   >
                     <div
@@ -559,17 +565,22 @@ export default function JobberLanding() {
 
                   {/* Screenshot side */}
                   <div
-                    className={`lp-reveal-child rounded-2xl overflow-hidden border border-[var(--lp-card-border)] shadow-[0_16px_48px_rgba(0,0,0,0.3)] ${
-                      "reverse" in feature && feature.reverse
-                        ? "md:[direction:ltr]"
-                        : ""
+                    className={`lp-reveal-child flex flex-col gap-4 ${
+                      feature.reverse ? "md:[direction:ltr]" : ""
                     }`}
                   >
-                    <img
-                      src={feature.image}
-                      alt={feature.title}
-                      className="w-full h-auto block"
-                    />
+                    {feature.images.map((img, j) => (
+                      <div
+                        key={j}
+                        className="rounded-2xl overflow-hidden border border-[var(--lp-card-border)] shadow-[0_16px_48px_rgba(0,0,0,0.3)]"
+                      >
+                        <img
+                          src={img}
+                          alt={feature.title}
+                          className="w-full h-auto block"
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
               </RevealSection>
