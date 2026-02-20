@@ -653,9 +653,11 @@ export default function JobberLanding() {
                   the dashboard I wished I had. That&apos;s AccuInsight.
                 </p>
                 <footer className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#3B82F6] to-[#2563EB] flex items-center justify-center text-white font-bold text-base">
-                    R
-                  </div>
+                  <img
+                    src="/ryan-headshot.jpg"
+                    alt="Ryan"
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
                   <div>
                     <div
                       className="text-sm font-bold text-lp-text"
