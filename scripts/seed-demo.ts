@@ -93,10 +93,10 @@ async function seed() {
       jobber_account_name: "Greenscape Lawn & Garden",
       company_name: "Greenscape Lawn & Garden",
       owner_name: "Ryan Caputo",
-      billing_status: "active",
+      billing_status: "trialing",
       currency_code: "USD",
-      trial_started_at: daysAgo(30),
-      trial_ends_at: daysAgo(16),
+      trial_started_at: daysAgo(1),
+      trial_ends_at: daysFromNow(13),
       last_sync_at: daysAgo(0),
       job_count: 47,
       quote_count: 32,
@@ -725,58 +725,10 @@ async function seed() {
   if (reqErr) throw new Error(`Requests: ${reqErr.message}`);
   console.log(`    ${requests.length} requests inserted`);
 
-  // 6. Analytics events (for admin dashboard analytics)
-  console.log("  analytics_events...");
-  const analyticsEvents: any[] = [];
-  for (let day = 0; day < 30; day++) {
-    // Simulate 3-8 events per day
-    const eventCount = 3 + Math.floor(Math.random() * 6);
-    for (let e = 0; e < eventCount; e++) {
-      const hour = 7 + Math.floor(Math.random() * 12);
-      const minute = Math.floor(Math.random() * 60);
-      const ts = new Date(
-        Date.now() - day * 86_400_000 + (hour * 3600 + minute * 60) * 1000,
-      );
-      const eventNames = [
-        "page_view", "page_view", "page_view", // weighted toward page_view
-        "tab_switch", "tab_switch",
-        "jobber_link_click",
-        "export_csv",
-        "sync_click",
-      ];
-      analyticsEvents.push({
-        connection_id: DEMO_CONNECTION_ID,
-        event_name: eventNames[Math.floor(Math.random() * eventNames.length)],
-        metadata: {},
-        created_at: ts.toISOString(),
-      });
-    }
-    // Add heartbeat events (every 30s for a "session")
-    const sessionStart = 8 + Math.floor(Math.random() * 4);
-    for (let h = 0; h < 3; h++) {
-      const ts = new Date(
-        Date.now() -
-          day * 86_400_000 +
-          (sessionStart * 3600 + h * 30) * 1000,
-      );
-      analyticsEvents.push({
-        connection_id: DEMO_CONNECTION_ID,
-        event_name: "heartbeat",
-        metadata: {},
-        created_at: ts.toISOString(),
-      });
-    }
-  }
-
-  // Insert in batches (PostgREST limit)
-  for (let i = 0; i < analyticsEvents.length; i += 100) {
-    const batch = analyticsEvents.slice(i, i + 100);
-    const { error: aeErr } = await supabase
-      .from("analytics_events")
-      .insert(batch);
-    if (aeErr) throw new Error(`Analytics batch ${i}: ${aeErr.message}`);
-  }
-  console.log(`    ${analyticsEvents.length} analytics events inserted`);
+  // 6. Analytics events — SKIPPED for demo account
+  // Demo account should not pollute admin analytics (DAU, WAU, engagement).
+  // The per-user analytics endpoint still works (returns empty data).
+  console.log("  analytics_events: skipped (demo account excluded from analytics)");
 
   console.log("\nDone! Demo connection ID:", DEMO_CONNECTION_ID);
   console.log(

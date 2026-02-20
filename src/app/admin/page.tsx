@@ -5,6 +5,7 @@ import { AdminTabs } from "./AdminTabs";
 import type { UserAnalyticsSummary, AggregateAnalytics } from "./AdminTabs";
 
 const ADMIN_EMAILS = ["rcaputo91@gmail.com"];
+const DEMO_CONNECTION_ID = "00000000-0000-0000-0000-de0000000001";
 
 async function getAdminUser() {
   const { createServerClient } = await import("@supabase/ssr");
@@ -395,7 +396,9 @@ export default async function AdminPage() {
     console.error("Failed to fetch analytics:", err.message);
   }
 
-  const { userSummaries, aggregate } = computeAnalytics(analyticsEvents);
+  // Exclude demo account from analytics
+  const realEvents = analyticsEvents.filter((e: any) => e.connection_id !== DEMO_CONNECTION_ID);
+  const { userSummaries, aggregate } = computeAnalytics(realEvents);
 
   // KPI calculations
   const totalUsers = allConnections.length;
