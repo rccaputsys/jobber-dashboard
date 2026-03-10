@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { DisconnectJobberButton } from "./DisconnectButton";
 import { TrendsSection } from "./TrendsSection";
 import { AnalyticsProvider } from "./AnalyticsProvider";
+import { NavTabs } from "./NavTabs";
 
 /* --------------------------------- helpers --------------------------------- */
 type Granularity = "day" | "week" | "month" | "quarter";
@@ -1244,6 +1245,8 @@ export default async function DashboardPage({
             </div>
           </header>
 
+          <NavTabs />
+
           <div className="recommendation-banner animate-in delay-1" style={{ marginTop: 20 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
               <span style={{ fontSize: 16 }}>💡</span>
@@ -1986,6 +1989,8 @@ const quoteWonPct = quotesInLast30Days.length > 0
             <LogoutButton />
           </div>
         </header>
+
+        <NavTabs />
 
         {/* Empty State - Show when no data */}
         {invoices.length === 0 && jobs.length === 0 && quotes.length === 0 && (

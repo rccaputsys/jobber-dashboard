@@ -28,7 +28,7 @@ export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
   // Protected routes
-  const protectedPaths = ["/jobber/dashboard"];
+  const protectedPaths = ["/jobber/dashboard", "/jobber/sales"];
   const isProtected = protectedPaths.some((p) => path.startsWith(p));
 
   // Auth routes (redirect away if already logged in)
@@ -49,5 +49,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/jobber/dashboard/:path*", "/login", "/signup"],
+  matcher: ["/jobber/dashboard/:path*", "/jobber/sales/:path*", "/login", "/signup"],
 };
