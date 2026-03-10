@@ -409,7 +409,7 @@ export default async function SalesPage({
           </div>
         </header>
 
-        <NavTabs />
+        <NavTabs adminConnectionId={adminConnectionId} />
 
         {/* ===== Section A: Weekly Capacity KPIs ===== */}
         <div className="kpi-grid-primary animate-in delay-1" style={{ marginTop: 20 }}>

@@ -1,22 +1,22 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 const tabs = [
   { label: "Overview", href: "/jobber/dashboard" },
   { label: "Sales & Capacity", href: "/jobber/sales" },
 ];
 
-export function NavTabs() {
+export function NavTabs({ adminConnectionId }: { adminConnectionId?: string }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const adminId = searchParams.get("admin_connection_id");
 
   return (
     <nav className="nav-tabs" style={{ marginTop: 16, marginBottom: 4 }}>
       {tabs.map((tab) => {
         const isActive = pathname === tab.href;
-        const href = adminId ? `${tab.href}?admin_connection_id=${adminId}` : tab.href;
+        const href = adminConnectionId
+          ? `${tab.href}?admin_connection_id=${adminConnectionId}`
+          : tab.href;
         return (
           <Link
             key={tab.href}

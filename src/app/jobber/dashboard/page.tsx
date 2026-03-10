@@ -1990,7 +1990,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
           </div>
         </header>
 
-        <NavTabs />
+        <NavTabs adminConnectionId={adminConnectionId} />
 
         {/* Empty State - Show when no data */}
         {invoices.length === 0 && jobs.length === 0 && quotes.length === 0 && (
