@@ -305,82 +305,77 @@ export async function GET(req: Request) {
       } catch { /* non-critical, skip */ }
     }
 
-    // Fetch Jobs (no filter support, fetch all)
-    const jobResult = await fetchAllPages<JobNode>(
-      token,
-      "jobs",
-      `id
-       createdAt
-       updatedAt
-       jobStatus
-       startAt
-       endAt
-       jobNumber
-       jobberWebUri
-       title
-       total`
-    );
+    // Fetch all resources in parallel to stay within Vercel timeout
+    const [jobResult, invoiceResult, quoteResult, requestResult] = await Promise.all([
+      fetchAllPages<JobNode>(
+        token,
+        "jobs",
+        `id
+         createdAt
+         updatedAt
+         jobStatus
+         startAt
+         endAt
+         jobNumber
+         jobberWebUri
+         title
+         total`
+      ),
+      fetchAllPagesIncremental<InvoiceNode>(
+        token,
+        "invoices",
+        `id
+         invoiceNumber
+         createdAt
+         dueDate
+         updatedAt
+         total
+         jobberWebUri
+         subject
+         invoiceStatus
+         client {
+           name
+         }
+         amounts {
+           invoiceBalance
+         }`,
+        lastSyncAt
+      ),
+      fetchAllPagesIncremental<QuoteNode>(
+        token,
+        "quotes",
+        `id
+         quoteNumber
+         title
+         createdAt
+         updatedAt
+         sentAt
+         quoteStatus
+         jobberWebUri
+         amounts { total }`,
+        lastSyncAt
+      ),
+      fetchAllPagesIncremental<RequestNode>(
+        token,
+        "requests",
+        `id
+         title
+         requestStatus
+         source
+         jobberWebUri
+         createdAt
+         contactName
+         companyName
+         email
+         phone
+         client {
+           id
+           name
+         }`,
+        lastSyncAt
+      ),
+    ]);
 
-    // Fetch Invoices (incremental)
-    const invoiceResult = await fetchAllPagesIncremental<InvoiceNode>(
-      token,
-      "invoices",
-      `id
-       invoiceNumber
-       createdAt
-       dueDate
-       updatedAt
-       total
-       jobberWebUri
-       subject
-       invoiceStatus
-       client {
-         name
-       }
-       amounts {
-         invoiceBalance
-       }`,
-      lastSyncAt
-    );
-
-    // Fetch Quotes (incremental)
-    const quoteResult = await fetchAllPagesIncremental<QuoteNode>(
-      token,
-      "quotes",
-      `id
-       quoteNumber
-       title
-       createdAt
-       updatedAt
-       sentAt
-       quoteStatus
-       jobberWebUri
-       amounts { total }`,
-      lastSyncAt
-    );
-
-    // Fetch Requests (incremental)
-    const requestResult = await fetchAllPagesIncremental<RequestNode>(
-      token,
-      "requests",
-      `id
-       title
-       requestStatus
-       source
-       jobberWebUri
-       createdAt
-       contactName
-       companyName
-       email
-       phone
-       client {
-         id
-         name
-       }`,
-      lastSyncAt
-    );
-
-    // No filter - sync all data
     const jobs = jobResult.nodes;
     const invoices = invoiceResult.nodes;
     const quotes = quoteResult.nodes;
