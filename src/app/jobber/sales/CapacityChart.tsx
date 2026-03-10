@@ -39,10 +39,10 @@ export function CapacityChart({
   }
 
   const maxCents = Math.max(...weeks.map((w) => w.cents), targetCents ?? 0, 1);
-  const chartH = 180;
-  const chartW = 600;
-  const barGap = 6;
-  const barW = Math.max(20, (chartW - barGap * (weeks.length + 1)) / weeks.length);
+  const chartH = 220;
+  const barGap = 8;
+  // Use a wide viewBox — SVG scales to fill container
+  const barW = 48;
   const totalW = weeks.length * (barW + barGap) + barGap;
 
   function barColor(fillRate: number) {
@@ -54,11 +54,11 @@ export function CapacityChart({
   const targetY = targetCents ? chartH - (targetCents / maxCents) * chartH : null;
 
   return (
-    <div style={{ overflowX: "auto", paddingBottom: 4 }}>
+    <div style={{ width: "100%", overflowX: "auto", paddingBottom: 4 }}>
       <svg
-        viewBox={`0 0 ${totalW} ${chartH + 30}`}
+        viewBox={`0 0 ${totalW} ${chartH + 32}`}
         width="100%"
-        style={{ maxWidth: totalW, minWidth: 300 }}
+        style={{ minWidth: 400 }}
         preserveAspectRatio="xMidYMid meet"
       >
         {/* Grid lines */}
@@ -89,13 +89,13 @@ export function CapacityChart({
                 y={y}
                 width={barW}
                 height={h}
-                rx={4}
+                rx={5}
                 fill={barColor(w.fillRate)}
                 opacity={0.85}
               />
               <text
                 x={x + barW / 2}
-                y={chartH + 14}
+                y={chartH + 16}
                 textAnchor="middle"
                 fontSize={10}
                 fill="rgba(234,241,255,0.5)"
@@ -106,9 +106,9 @@ export function CapacityChart({
               {w.cents > 0 && (
                 <text
                   x={x + barW / 2}
-                  y={y - 4}
+                  y={y - 6}
                   textAnchor="middle"
-                  fontSize={9}
+                  fontSize={10}
                   fontWeight={600}
                   fill="rgba(234,241,255,0.7)"
                 >
@@ -133,9 +133,9 @@ export function CapacityChart({
             />
             <text
               x={totalW - 4}
-              y={targetY - 4}
+              y={targetY - 6}
               textAnchor="end"
-              fontSize={9}
+              fontSize={10}
               fontWeight={700}
               fill="#5aa6ff"
             >

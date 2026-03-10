@@ -27,30 +27,56 @@ import {
 /* ------------------------------------------------------------------ */
 /*  Page                                                               */
 /* ------------------------------------------------------------------ */
-export default async function SalesPage() {
+export default async function SalesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    admin_connection_id?: string;
+  }>;
+}) {
+  const sp = await searchParams;
   const user = await getUser();
   if (!user) redirect("/login?redirect=/jobber/sales");
 
   const isAdmin = user.email === "alex@ownerview.io";
+  const adminConnectionId = isAdmin ? sp.admin_connection_id : undefined;
 
   // Get connection
-  const { data: connection } = await supabaseAdmin
-    .from("jobber_connections")
-    .select("id")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  let connectionId: string;
+  if (adminConnectionId) {
+    const { data: adminConn } = await supabaseAdmin
+      .from("jobber_connections")
+      .select("id")
+      .eq("id", adminConnectionId)
+      .maybeSingle();
+    if (!adminConn) {
+      return (
+        <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100vh", background: "#060811" }}>
+          <h2>Connection not found</h2>
+          <p style={{ marginTop: 8, color: theme.sub }}>The specified connection ID does not exist.</p>
+          <a href="/admin" style={{ color: "#5aa6ff", marginTop: 16, display: "inline-block" }}>&larr; Back to Admin</a>
+        </div>
+      );
+    }
+    connectionId = adminConn.id;
+  } else {
+    const { data: connection } = await supabaseAdmin
+      .from("jobber_connections")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-  if (!connection) {
-    return (
-      <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100vh", background: "#060811" }}>
-        <h2>No Jobber account connected</h2>
-        <p style={{ marginTop: 8, color: theme.sub }}>See Your Numbers Now.</p>
-        <a href="/jobber" style={{ color: "#5aa6ff", marginTop: 16, display: "inline-block" }}>Connect Jobber &rarr;</a>
-      </div>
-    );
+    if (!connection) {
+      return (
+        <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100vh", background: "#060811" }}>
+          <h2>No Jobber account connected</h2>
+          <p style={{ marginTop: 8, color: theme.sub }}>See Your Numbers Now.</p>
+          <a href="/jobber" style={{ color: "#5aa6ff", marginTop: 16, display: "inline-block" }}>Connect Jobber &rarr;</a>
+        </div>
+      );
+    }
+    connectionId = connection.id;
   }
-
-  const connectionId = connection.id;
 
   // Fetch connection details + data in parallel
   const [connDetails, jobs, quotes] = await Promise.all([
@@ -79,7 +105,7 @@ export default async function SalesPage() {
   const trialEndsAt = connDetails?.trial_ends_at ? new Date(connDetails.trial_ends_at).getTime() : 0;
   const trialActive = billingStatus === "trialing" && trialEndsAt > Date.now();
   const subscriptionActive = billingStatus === "active";
-  const hasAccess = trialActive || subscriptionActive || isAdmin;
+  const hasAccess = trialActive || subscriptionActive || !!adminConnectionId;
 
   if (!hasAccess) {
     return (
@@ -313,8 +339,8 @@ export default async function SalesPage() {
   }));
 
   // SparkLine for win rate trend
-  const sparkH = 40;
-  const sparkW = 200;
+  const sparkH = 80;
+  const sparkW = 600;
   const maxRate = Math.max(...winRateTrend.map((w) => w.rate), 0.01);
   const sparkPoints = winRateTrend
     .map((w, i) => {
@@ -338,6 +364,21 @@ export default async function SalesPage() {
       `,
     }}>
       <style>{globalStyles}</style>
+
+      {adminConnectionId && (
+        <div style={{
+          background: "linear-gradient(90deg, #7c5cff, #5aa6ff)",
+          color: "#fff",
+          textAlign: "center",
+          padding: "8px 16px",
+          fontSize: 13,
+          fontWeight: 600,
+          letterSpacing: 0.2,
+        }}>
+          Viewing as: {companyName}
+          <a href="/admin" style={{ color: "#fff", marginLeft: 12, textDecoration: "underline", opacity: 0.9 }}>&larr; Back to Admin</a>
+        </div>
+      )}
 
       <div className="dashboard-container">
         {/* Header */}
@@ -443,9 +484,12 @@ export default async function SalesPage() {
 
         {/* ===== Section B: Capacity Trend Chart ===== */}
         <div className="panel animate-in delay-2" style={{ marginTop: 20, padding: 20 }}>
-          <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>
-            Capacity Trend
-          </h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
+              Capacity Trend
+            </h2>
+            <span className="info-tooltip">?<span className="tooltip-text">Shows your total scheduled revenue per week for the last 12 weeks. Bars are color-coded: green = 90%+ of target, amber = 50-89%, red = under 50%. The dashed line is your weekly target.</span></span>
+          </div>
           <p className="text-muted" style={{ fontSize: 12, marginBottom: 16 }}>
             Weekly scheduled revenue — last 12 weeks
           </p>
@@ -458,9 +502,12 @@ export default async function SalesPage() {
 
         {/* ===== Section C: Quote Pipeline ===== */}
         <div className="panel animate-in delay-3" style={{ marginTop: 20, padding: 20 }}>
-          <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>
-            Quote Pipeline
-          </h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16 }}>
+            <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
+              Quote Pipeline
+            </h2>
+            <span className="info-tooltip">?<span className="tooltip-text">Shows all your quotes grouped by status stage, from draft to won. Track how quotes flow through your sales process and where they get stuck.</span></span>
+          </div>
           <QuotePipeline
             stages={pipelineStages}
             lostCount={lostQuotes.length}
@@ -473,8 +520,11 @@ export default async function SalesPage() {
           {/* Win Rate */}
           <div className="kpi-secondary">
             <div>
-              <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
-                Win Rate (30D)
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  Win Rate (30D)
+                </span>
+                <span className="info-tooltip" style={{ width: 16, height: 16, fontSize: 10 }}>?<span className="tooltip-text">Percentage of quotes won out of all decided quotes (won + lost + pending) in the last 30 days. Higher is better — 40%+ is strong.</span></span>
               </div>
               <div className={`kpi-value-medium ${winRate >= 0.4 ? 'text-success' : winRate >= 0.2 ? 'text-warning' : 'text-critical'}`}>
                 {pct(winRate)}
@@ -541,7 +591,7 @@ export default async function SalesPage() {
               <p className="text-muted" style={{ fontSize: 12 }}>Weekly win rate — last 12 weeks</p>
             </div>
           </div>
-          <svg viewBox={`0 0 ${sparkW} ${sparkH}`} width="100%" style={{ maxWidth: sparkW, overflow: "visible" }} preserveAspectRatio="xMidYMid meet">
+          <svg viewBox={`0 0 ${sparkW} ${sparkH}`} width="100%" style={{ overflow: "visible" }} preserveAspectRatio="xMidYMid meet">
             {/* Grid */}
             <line x1={0} y1={sparkH} x2={sparkW} y2={sparkH} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
             <line x1={0} y1={0} x2={sparkW} y2={0} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />

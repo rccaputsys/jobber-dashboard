@@ -923,4 +923,135 @@ export const globalStyles = `
     border-color: rgba(124,92,255,0.2) !important;
     background: linear-gradient(135deg, rgba(124,92,255,0.03) 0%, rgba(90,166,255,0.03) 100%) !important;
   }
+
+  /* Info tooltip */
+  .info-tooltip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(234,241,255,0.5);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: help;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+  }
+
+  .info-tooltip:hover {
+    background: rgba(90,166,255,0.2);
+    border-color: rgba(90,166,255,0.5);
+    color: #5aa6ff;
+  }
+
+  .info-tooltip .tooltip-text {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 260px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(10,16,32,0.95);
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    color: rgba(234,241,255,0.85);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.5;
+    text-transform: none;
+    letter-spacing: 0;
+    white-space: normal;
+    z-index: 100;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+    pointer-events: none;
+  }
+
+  .info-tooltip .tooltip-text::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: rgba(10,16,32,0.95);
+  }
+
+  .info-tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  html[data-theme="light"] .info-tooltip {
+    background: #e2e8f0 !important;
+    border-color: #cbd5e1 !important;
+    color: #64748b !important;
+  }
+
+  html[data-theme="light"] .info-tooltip:hover {
+    background: rgba(37,99,235,0.1) !important;
+    border-color: rgba(37,99,235,0.4) !important;
+    color: #2563eb !important;
+  }
+
+  html[data-theme="light"] .info-tooltip .tooltip-text {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
+    color: #334155 !important;
+  }
+
+  html[data-theme="light"] .info-tooltip .tooltip-text::after {
+    border-top-color: #ffffff !important;
+  }
+
+  /* Capacity onboarding card */
+  .capacity-onboard {
+    border-radius: 16px;
+    border: 1px solid rgba(90,166,255,0.3);
+    background: linear-gradient(135deg, rgba(124,92,255,0.1) 0%, rgba(90,166,255,0.08) 100%);
+    padding: 24px;
+    margin-top: 16px;
+  }
+
+  html[data-theme="light"] .capacity-onboard {
+    background: linear-gradient(135deg, rgba(124,92,255,0.06) 0%, rgba(90,166,255,0.04) 100%) !important;
+    border-color: rgba(90,166,255,0.2) !important;
+  }
+
+  .capacity-onboard input {
+    width: 160px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(90,166,255,0.4);
+    background: rgba(255,255,255,0.06);
+    color: #EAF1FF;
+    font-size: 18px;
+    font-weight: 700;
+    outline: none;
+    transition: all 0.15s ease;
+  }
+
+  .capacity-onboard input:focus {
+    border-color: rgba(90,166,255,0.7);
+    box-shadow: 0 0 0 3px rgba(90,166,255,0.15);
+  }
+
+  html[data-theme="light"] .capacity-onboard input {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #1e293b !important;
+  }
+
+  html[data-theme="light"] .capacity-onboard input:focus {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1) !important;
+  }
 `;
