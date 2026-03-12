@@ -274,15 +274,470 @@ async function fetchAllPagesIncremental<T>(
   return { nodes: allNodes, errors: allErrors };
 }
 
+// ---- Step-based sync helpers (used by multi-step SyncButton flow) ----
+
+async function handleSyncJobsStep(
+  connectionId: string,
+  token: string,
+): Promise<{ jobCount: number }> {
+  const jobResult = await fetchAllPages<JobNode>(
+    token,
+    "jobs",
+    `id
+     createdAt
+     updatedAt
+     jobStatus
+     startAt
+     endAt
+     jobNumber
+     jobberWebUri
+     title
+     total`
+  );
+
+  if (jobResult.errors.length > 0) {
+    console.warn("Jobber API job errors:", jobResult.errors.length);
+  }
+
+  const jobs = jobResult.nodes;
+  if (jobs.length > 0) {
+    const jobRows = jobs.map(j => ({
+      connection_id: connectionId,
+      jobber_job_id: j.id,
+      job_number: j.jobNumber ?? null,
+      job_title: j.title ?? null,
+      jobber_url: j.jobberWebUri ?? null,
+      status: j.jobStatus ?? null,
+      scheduled_start_at: j.startAt ?? null,
+      scheduled_end_at: j.endAt ?? null,
+      created_at_jobber: j.createdAt ?? null,
+      updated_at_jobber: j.updatedAt ?? null,
+      total_amount_cents: dollarsToCents(j.total),
+    }));
+
+    const chunkSize = 1000;
+    for (let i = 0; i < jobRows.length; i += chunkSize) {
+      const chunk = jobRows.slice(i, i + chunkSize);
+      const { error } = await supabaseAdmin
+        .from("fact_jobs")
+        .upsert(chunk, { onConflict: "connection_id,jobber_job_id" });
+      if (error) throw new Error(`fact_jobs batch upsert failed: ${error.message}`);
+    }
+  }
+
+  return { jobCount: jobs.length };
+}
+
+async function handleSyncOtherStep(
+  connectionId: string,
+  token: string,
+  lastSyncAt: string | null,
+): Promise<{ invoiceCount: number; quoteCount: number; requestCount: number }> {
+  const [invoiceResult, quoteResult, requestResult] = await Promise.all([
+    fetchAllPagesIncremental<InvoiceNode>(
+      token,
+      "invoices",
+      `id
+       invoiceNumber
+       createdAt
+       dueDate
+       updatedAt
+       total
+       jobberWebUri
+       subject
+       invoiceStatus
+       client {
+         name
+       }
+       amounts {
+         invoiceBalance
+       }`,
+      lastSyncAt
+    ),
+    fetchAllPagesIncremental<QuoteNode>(
+      token,
+      "quotes",
+      `id
+       quoteNumber
+       title
+       createdAt
+       updatedAt
+       sentAt
+       quoteStatus
+       jobberWebUri
+       amounts { total }`,
+      lastSyncAt
+    ),
+    fetchAllPagesIncremental<RequestNode>(
+      token,
+      "requests",
+      `id
+       title
+       requestStatus
+       source
+       jobberWebUri
+       createdAt
+       contactName
+       companyName
+       email
+       phone
+       client {
+         id
+         name
+       }`,
+      lastSyncAt
+    ),
+  ]);
+
+  const invoices = invoiceResult.nodes;
+  const quotes = quoteResult.nodes;
+  const requests = requestResult.nodes;
+
+  const allErrors = [...invoiceResult.errors, ...quoteResult.errors, ...requestResult.errors];
+  if (allErrors.length > 0) {
+    console.warn("Jobber API partial errors:", allErrors.length);
+  }
+
+  // BATCH UPSERT: Invoices
+  if (invoices.length > 0) {
+    const invoiceRows = invoices.map(inv => {
+      const isPaid = (inv.invoiceStatus || '').toLowerCase() === 'paid';
+      return {
+        connection_id: connectionId,
+        jobber_invoice_id: inv.id,
+        invoice_number: inv.invoiceNumber ?? null,
+        created_at_jobber: inv.createdAt ?? null,
+        due_at: inv.dueDate ?? null,
+        paid_at: isPaid ? inv.updatedAt : null,
+        updated_at_jobber: inv.updatedAt ?? null,
+        total_amount_cents: dollarsToCents(inv.total),
+        balance_cents: dollarsToCents(inv.amounts?.invoiceBalance),
+        jobber_url: inv.jobberWebUri ?? null,
+        client_name: inv.client?.name ?? null,
+        subject: inv.subject ?? null,
+        status: inv.invoiceStatus ?? null,
+      };
+    });
+
+    const chunkSize = 1000;
+    for (let i = 0; i < invoiceRows.length; i += chunkSize) {
+      const chunk = invoiceRows.slice(i, i + chunkSize);
+      const { error } = await supabaseAdmin
+        .from("fact_invoices")
+        .upsert(chunk, { onConflict: "connection_id,jobber_invoice_id" });
+      if (error) throw new Error(`fact_invoices batch upsert failed: ${error.message}`);
+    }
+  }
+
+  // BATCH UPSERT: Quotes
+  if (quotes.length > 0) {
+    const quoteRows = quotes.map(q => ({
+      connection_id: connectionId,
+      jobber_quote_id: q.id,
+      quote_number: q.quoteNumber ?? null,
+      quote_title: q.title ?? null,
+      quote_status: q.quoteStatus ?? null,
+      quote_url: q.jobberWebUri ?? null,
+      quote_total_cents: dollarsToCents(q.amounts?.total ?? 0),
+      created_at_jobber: q.createdAt ?? null,
+      updated_at_jobber: q.updatedAt ?? null,
+      sent_at: q.sentAt ?? null,
+    }));
+
+    const chunkSize = 1000;
+    for (let i = 0; i < quoteRows.length; i += chunkSize) {
+      const chunk = quoteRows.slice(i, i + chunkSize);
+      const { error } = await supabaseAdmin
+        .from("fact_quotes")
+        .upsert(chunk, { onConflict: "connection_id,jobber_quote_id" });
+      if (error) throw new Error(`fact_quotes batch upsert failed: ${error.message}`);
+    }
+  }
+
+  // BATCH UPSERT: Requests
+  if (requests.length > 0) {
+    const requestRows = requests.map(r => ({
+      connection_id: connectionId,
+      jobber_request_id: r.id,
+      title: r.title ?? null,
+      request_status: r.requestStatus ?? null,
+      source: r.source ?? null,
+      client_name: r.client?.name ?? null,
+      client_id: r.client?.id ?? null,
+      contact_name: r.contactName ?? null,
+      company_name: r.companyName ?? null,
+      email: r.email ?? null,
+      phone: r.phone ?? null,
+      jobber_url: r.jobberWebUri ?? null,
+      created_at_jobber: r.createdAt ?? null,
+      synced_at: new Date().toISOString(),
+    }));
+
+    const chunkSize = 1000;
+    for (let i = 0; i < requestRows.length; i += chunkSize) {
+      const chunk = requestRows.slice(i, i + chunkSize);
+      const { error } = await supabaseAdmin
+        .from("fact_requests")
+        .upsert(chunk, { onConflict: "connection_id,jobber_request_id" });
+      if (error) throw new Error(`fact_requests batch upsert failed: ${error.message}`);
+    }
+  }
+
+  return {
+    invoiceCount: invoices.length,
+    quoteCount: quotes.length,
+    requestCount: requests.length,
+  };
+}
+
+async function handleSyncMetricsStep(
+  connectionId: string,
+  syncCounts: { jobs: number; invoices: number; quotes: number; requests: number },
+): Promise<void> {
+  const now = new Date();
+  const fifteenDaysAgo = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
+
+  // Read accountName from connection (may have been backfilled in step=jobs)
+  const { data: connData } = await supabaseAdmin
+    .from("jobber_connections")
+    .select("jobber_account_name")
+    .eq("id", connectionId)
+    .single();
+  const accountName = connData?.jobber_account_name || null;
+
+  // Always use DB path (data isn't in memory across requests)
+  const [
+    dbInvoices,
+    dbJobs,
+    { count: dbRequestCount },
+    { count: dbJobCount },
+    { count: dbQuoteCount },
+    dbQuotes,
+  ] = await Promise.all([
+    fetchAllRows("fact_invoices", "status, balance_cents, total_amount_cents, due_at", connectionId),
+    fetchAllRows("fact_jobs", "status, scheduled_start_at", connectionId),
+    supabaseAdmin
+      .from("fact_requests")
+      .select("*", { count: "exact", head: true })
+      .eq("connection_id", connectionId),
+    supabaseAdmin
+      .from("fact_jobs")
+      .select("*", { count: "exact", head: true })
+      .eq("connection_id", connectionId),
+    supabaseAdmin
+      .from("fact_quotes")
+      .select("*", { count: "exact", head: true })
+      .eq("connection_id", connectionId),
+    fetchAllRows("fact_quotes", "quote_status, quote_total_cents, sent_at", connectionId),
+  ]);
+
+  const allInvoices: any[] = dbInvoices || [];
+  const allJobs: any[] = dbJobs || [];
+  const allQuotes: any[] = dbQuotes || [];
+  const jobCount = dbJobCount || 0;
+  const requestCount = dbRequestCount || 0;
+  const quoteCount = dbQuoteCount || 0;
+
+  const unpaidInvoices = allInvoices.filter(inv => {
+    const st = (inv.status || "").toLowerCase();
+    return st !== "paid" && st !== "draft" && st !== "void";
+  });
+
+  const pastDueInvoices = unpaidInvoices.filter(inv => {
+    if (!inv.due_at) return false;
+    return new Date(inv.due_at) < now;
+  });
+
+  const invoices15plus = unpaidInvoices.filter(inv => {
+    if (!inv.due_at) return false;
+    return new Date(inv.due_at) < fifteenDaysAgo;
+  });
+
+  const unscheduledJobs = allJobs.filter((j: any) => !j.scheduled_start_at);
+
+  const pastDueCents = pastDueInvoices.reduce((sum: number, inv: any) => sum + (inv.balance_cents || inv.total_amount_cents || 0), 0);
+  const fifteenPlusCents = invoices15plus.reduce((sum: number, inv: any) => sum + (inv.balance_cents || inv.total_amount_cents || 0), 0);
+
+  const statusLooksWon = (status: string) => {
+    const s = status.toUpperCase();
+    return s.includes("APPROV") || s.includes("ACCEPT") || s.includes("WON") || s.includes("CONVERT") || s.includes("BOOK");
+  };
+
+  const leakingQuotes = allQuotes.filter((q: any) => {
+    if (!q.sent_at) return false;
+    const st = (q.quote_status || "").toLowerCase().trim();
+    if (!st) return true;
+    if (st === "archived" || st === "draft") return false;
+    return !statusLooksWon(st);
+  });
+
+  const quoteLeakCount = leakingQuotes.length;
+  const quoteLeakCents = leakingQuotes.reduce((sum: number, q: any) => sum + (q.quote_total_cents || 0), 0);
+
+  const heartbeat: Record<string, any> = {
+    last_sync_at: new Date().toISOString(),
+    sync_status: "complete",
+    sync_error: null,
+    last_sync_invoices: syncCounts.invoices,
+    last_sync_quotes: syncCounts.quotes,
+    job_count: jobCount,
+    request_count: requestCount,
+    quote_count: quoteCount,
+    unscheduled_job_count: unscheduledJobs.length,
+    invoices_past_due_count: pastDueInvoices.length,
+    invoices_past_due_cents: pastDueCents,
+    invoices_15plus_count: invoices15plus.length,
+    invoices_15plus_cents: fifteenPlusCents,
+    quote_leak_count: quoteLeakCount,
+    quote_leak_cents: quoteLeakCents,
+  };
+  if (accountName) heartbeat.jobber_account_name = accountName;
+
+  const { error: hbErr } = await supabaseAdmin
+    .from("jobber_connections")
+    .update(heartbeat)
+    .eq("id", connectionId);
+
+  if (hbErr) throw new Error(`jobber_connections update failed: ${hbErr.message}`);
+}
+
+async function handleStepSync(
+  req: Request,
+  connectionId: string,
+  step: string,
+  searchParams: URLSearchParams,
+): Promise<NextResponse> {
+  try {
+    if (step === "jobs") {
+      const token = await getValidAccessToken(connectionId);
+
+      const { data: connectionData } = await supabaseAdmin
+        .from("jobber_connections")
+        .select("jobber_account_name, sync_status, sync_started_at")
+        .eq("id", connectionId)
+        .single();
+
+      // Prevent concurrent syncs
+      if (connectionData?.sync_status === "syncing" && connectionData?.sync_started_at) {
+        const startedAt = new Date(connectionData.sync_started_at).getTime();
+        const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+        if (startedAt > fiveMinutesAgo) {
+          return NextResponse.json({ ok: false, error: "Sync already in progress" }, { status: 409 });
+        }
+      }
+
+      // Mark sync as started
+      await supabaseAdmin
+        .from("jobber_connections")
+        .update({ sync_status: "syncing", sync_started_at: new Date().toISOString(), sync_error: null })
+        .eq("id", connectionId);
+
+      // Backfill company name if missing
+      if (!connectionData?.jobber_account_name) {
+        try {
+          const acctResult = await jobberGraphQLWithPartialErrors<{ account: { name: string } }>(
+            token,
+            `query { account { name } }`
+          );
+          const name = acctResult.data?.account?.name || null;
+          if (name) {
+            await supabaseAdmin
+              .from("jobber_connections")
+              .update({ jobber_account_name: name })
+              .eq("id", connectionId);
+          }
+        } catch { /* non-critical */ }
+      }
+
+      const { jobCount } = await handleSyncJobsStep(connectionId, token);
+      return NextResponse.json({ ok: true, jobs: jobCount });
+
+    } else if (step === "other") {
+      const { data: connectionData } = await supabaseAdmin
+        .from("jobber_connections")
+        .select("sync_status, last_sync_at")
+        .eq("id", connectionId)
+        .single();
+
+      if (connectionData?.sync_status !== "syncing") {
+        return NextResponse.json({ ok: false, error: "No sync in progress" }, { status: 409 });
+      }
+
+      const token = await getValidAccessToken(connectionId);
+      const fullSync = searchParams.get("full") === "true";
+      const lastSyncAt = fullSync ? null : (connectionData?.last_sync_at || null);
+
+      const counts = await handleSyncOtherStep(connectionId, token, lastSyncAt);
+      return NextResponse.json({
+        ok: true,
+        invoices: counts.invoiceCount,
+        quotes: counts.quoteCount,
+        requests: counts.requestCount,
+      });
+
+    } else if (step === "metrics") {
+      const { data: connectionData } = await supabaseAdmin
+        .from("jobber_connections")
+        .select("sync_status")
+        .eq("id", connectionId)
+        .single();
+
+      if (connectionData?.sync_status !== "syncing") {
+        return NextResponse.json({ ok: false, error: "No sync in progress" }, { status: 409 });
+      }
+
+      const syncCounts = {
+        jobs: parseInt(searchParams.get("jobs") || "0", 10),
+        invoices: parseInt(searchParams.get("invoices") || "0", 10),
+        quotes: parseInt(searchParams.get("quotes") || "0", 10),
+        requests: parseInt(searchParams.get("requests") || "0", 10),
+      };
+
+      await handleSyncMetricsStep(connectionId, syncCounts);
+      return NextResponse.json({ ok: true });
+
+    } else {
+      return NextResponse.json({ ok: false, error: `Unknown step: ${step}` }, { status: 400 });
+    }
+  } catch (error) {
+    console.error(`Sync step=${step} failed:`, error);
+    const message = error instanceof Error ? error.message : "Sync failed";
+
+    await supabaseAdmin
+      .from("jobber_connections")
+      .update({ sync_status: "failed", sync_error: message })
+      .eq("id", connectionId);
+
+    try {
+      await sendSyncFailureEmail({
+        connectionId,
+        accountName: null,
+        error: message,
+      });
+    } catch (emailErr) {
+      console.error("Failed to send sync failure email:", emailErr);
+    }
+
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const connectionId = searchParams.get("connection_id");
   const fullSync = searchParams.get("full") === "true";
-  
+
   if (!connectionId) {
     return NextResponse.json({ ok: false, error: "Missing connection_id" }, { status: 400 });
   }
 
+  // Multi-step sync: dispatch to step handler if step param is present
+  const step = searchParams.get("step");
+  if (step) {
+    return handleStepSync(req, connectionId, step, searchParams);
+  }
+
+  // Legacy single-call flow (unchanged) — used by ResyncButton, complete-signup, email retry links
   try {
     const token = await getValidAccessToken(connectionId);
     const twelveMonthsAgoMs = getTwelveMonthsAgoMs();
