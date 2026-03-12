@@ -131,7 +131,31 @@ async function jobberGraphQLWithPartialErrors<T>(
       continue;
     }
 
-    const json = await res.json();
+    // Retry on server errors (5xx) and auth errors (401/403)
+    if (!res.ok && res.status !== 429) {
+      if (attempt < maxRetries && res.status >= 500) {
+        const waitTime = attempt * 2000;
+        console.warn(`Jobber API HTTP ${res.status}. Waiting ${waitTime}ms before retry ${attempt}/${maxRetries}`);
+        await delay(waitTime);
+        continue;
+      }
+      const body = await res.text().catch(() => "");
+      return { data: null, errors: [{ message: `Jobber API error: HTTP ${res.status} — ${body.slice(0, 200)}` }] };
+    }
+
+    // Parse JSON safely — malformed responses shouldn't crash the sync
+    let json: any;
+    try {
+      json = await res.json();
+    } catch {
+      if (attempt < maxRetries) {
+        const waitTime = attempt * 2000;
+        console.warn(`Invalid JSON from Jobber API. Retry ${attempt}/${maxRetries}`);
+        await delay(waitTime);
+        continue;
+      }
+      return { data: null, errors: [{ message: "Invalid JSON response from Jobber API" }] };
+    }
 
     // Retry on GraphQL-level THROTTLED errors (HTTP 200 but data is null)
     const isThrottled = (json.errors || []).some(
@@ -204,11 +228,18 @@ async function fetchAllPages<T>(
     allNodes.push(...validNodes);
 
     if (!data.pageInfo.hasNextPage) break;
+    if (!data.pageInfo.endCursor) break; // Prevent infinite loop on null cursor
     cursor = data.pageInfo.endCursor;
     pageCount++;
   }
 
-  return { nodes: allNodes, errors: allErrors };
+  // Deduplicate — API can return the same entity on multiple pages
+  const deduped = new Map<string, T>();
+  for (const node of allNodes) {
+    deduped.set((node as any).id, node);
+  }
+
+  return { nodes: Array.from(deduped.values()), errors: allErrors };
 }
 
 // Fetch all pages WITH updatedAt filter (for invoices, quotes, requests)
@@ -267,11 +298,18 @@ async function fetchAllPagesIncremental<T>(
     allNodes.push(...validNodes);
 
     if (!data.pageInfo.hasNextPage) break;
+    if (!data.pageInfo.endCursor) break; // Prevent infinite loop on null cursor
     cursor = data.pageInfo.endCursor;
     pageCount++;
   }
 
-  return { nodes: allNodes, errors: allErrors };
+  // Deduplicate — API can return the same entity on multiple pages
+  const deduped = new Map<string, T>();
+  for (const node of allNodes) {
+    deduped.set((node as any).id, node);
+  }
+
+  return { nodes: Array.from(deduped.values()), errors: allErrors };
 }
 
 // ---- Step-based sync helpers (used by multi-step SyncButton flow) ----
