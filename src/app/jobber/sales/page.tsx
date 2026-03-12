@@ -38,7 +38,8 @@ export default async function SalesPage({
   const user = await getUser();
   if (!user) redirect("/login?redirect=/jobber/sales");
 
-  const isAdmin = user.email === "alex@ownerview.io";
+  const ADMIN_EMAILS = ["rcaputo91@gmail.com"];
+  const isAdmin = ADMIN_EMAILS.includes(user.email || "");
   const adminConnectionId = isAdmin ? sp.admin_connection_id : undefined;
 
   // Get connection
@@ -317,8 +318,7 @@ export default async function SalesPage({
       };
     })
     .filter((q: any) => q.sent_at) // only show sent quotes
-    .sort((a: any, b: any) => b.days_quiet - a.days_quiet)
-    .slice(0, 25);
+    .sort((a: any, b: any) => b.days_quiet - a.days_quiet);
 
   function ageSev(days: number): "critical" | "warning" | "good" {
     if (days >= 14) return "critical";
@@ -326,8 +326,24 @@ export default async function SalesPage({
     return "good";
   }
 
+  // Group quotes by age bucket (coldest first)
+  const ageBuckets = [
+    { key: "cold", label: "Cold", range: "30+ days quiet", color: "#ef4444", bg: "rgba(239,68,68,0.08)", quotes: [] as typeof followUpQuotes },
+    { key: "going-cold", label: "Going Cold", range: "15\u201330 days quiet", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", quotes: [] as typeof followUpQuotes },
+    { key: "warm", label: "Warm", range: "8\u201314 days quiet", color: "#5aa6ff", bg: "rgba(90,166,255,0.08)", quotes: [] as typeof followUpQuotes },
+    { key: "hot", label: "Hot", range: "0\u20137 days quiet", color: "#10b981", bg: "rgba(16,185,129,0.08)", quotes: [] as typeof followUpQuotes },
+  ];
+  for (const q of followUpQuotes) {
+    if (q.days_quiet >= 30) ageBuckets[0].quotes.push(q);
+    else if (q.days_quiet >= 15) ageBuckets[1].quotes.push(q);
+    else if (q.days_quiet >= 8) ageBuckets[2].quotes.push(q);
+    else ageBuckets[3].quotes.push(q);
+  }
+  const nonEmptyBuckets = ageBuckets.filter(b => b.quotes.length > 0);
+
   // Export data
   const followUpExportData = followUpQuotes.map((q) => ({
+    "Age Group": q.days_quiet >= 30 ? "Cold" : q.days_quiet >= 15 ? "Going Cold" : q.days_quiet >= 8 ? "Warm" : "Hot",
     "Days Quiet": q.days_quiet,
     "Quote #": q.quote_number,
     "Title": q.quote_title,
@@ -624,15 +640,18 @@ export default async function SalesPage({
           </div>
         </div>
 
-        {/* ===== Section D: Quote Follow-Up Table ===== */}
+        {/* ===== Section D: Quote Follow-Up ===== */}
         <div className="panel animate-in delay-4" style={{ marginTop: 20, padding: 20 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
             <div>
-              <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>
-                Quote Follow-Up
-              </h2>
-              <p className="text-muted" style={{ fontSize: 12 }}>
-                Open quotes sorted by staleness — {followUpQuotes.length} quotes
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
+                  Quote Follow-Up
+                </h2>
+                <span className="info-tooltip">?<span className="tooltip-text">Open quotes grouped by how long since last activity. Cold quotes need urgent attention — they represent revenue slipping away.</span></span>
+              </div>
+              <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
+                {followUpQuotes.length} open {followUpQuotes.length === 1 ? "quote" : "quotes"} grouped by age
               </p>
             </div>
             {followUpExportData.length > 0 && (
@@ -644,7 +663,81 @@ export default async function SalesPage({
             <div className="text-muted" style={{ textAlign: "center", padding: 24, fontSize: 14 }}>
               No open quotes to follow up on.
             </div>
-          ) : (
+          ) : (<>
+            {/* Aging distribution bar */}
+            {(() => {
+              const totalCents = followUpQuotes.reduce((s, q) => s + q.amount_cents, 0);
+              return (
+                <div style={{ marginBottom: 20 }}>
+                  {/* Stacked bar */}
+                  <div style={{
+                    display: "flex", height: 32, borderRadius: 8, overflow: "hidden",
+                    background: "rgba(255,255,255,0.04)",
+                  }}>
+                    {ageBuckets.map((bucket) => {
+                      const bucketCents = bucket.quotes.reduce((s, q) => s + q.amount_cents, 0);
+                      const widthPct = totalCents > 0 ? (bucketCents / totalCents) * 100 : 0;
+                      if (widthPct === 0) return null;
+                      return (
+                        <div
+                          key={bucket.key}
+                          style={{
+                            width: `${widthPct}%`,
+                            minWidth: widthPct > 0 ? 2 : 0,
+                            background: bucket.color,
+                            opacity: 0.85,
+                            transition: "width 0.3s ease",
+                            position: "relative",
+                          }}
+                          title={`${bucket.label}: ${bucket.quotes.length} quotes — ${money(bucketCents)}`}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* Bucket legend */}
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4, 1fr)",
+                    gap: 8,
+                    marginTop: 10,
+                  }}>
+                    {ageBuckets.map((bucket) => {
+                      const bucketCents = bucket.quotes.reduce((s, q) => s + q.amount_cents, 0);
+                      const pctOfTotal = totalCents > 0 ? Math.round((bucketCents / totalCents) * 100) : 0;
+                      return (
+                        <div key={bucket.key} style={{
+                          padding: "8px 10px",
+                          borderRadius: 8,
+                          background: bucket.quotes.length > 0 ? bucket.bg : "transparent",
+                          borderLeft: `3px solid ${bucket.quotes.length > 0 ? bucket.color : 'rgba(255,255,255,0.06)'}`,
+                          opacity: bucket.quotes.length > 0 ? 1 : 0.4,
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: bucket.color }}>
+                              {bucket.label}
+                            </span>
+                            {bucket.quotes.length > 0 && (
+                              <span className="text-muted" style={{ fontSize: 10 }}>
+                                {pctOfTotal}%
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: bucket.quotes.length > 0 ? bucket.color : 'rgba(255,255,255,0.2)' }}>
+                            {bucket.quotes.length > 0 ? money(bucketCents) : "\u2014"}
+                          </div>
+                          <div className="text-muted" style={{ fontSize: 11, marginTop: 1 }}>
+                            {bucket.quotes.length} {bucket.quotes.length === 1 ? "quote" : "quotes"}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Grouped detail table */}
             <div className="table-container">
               <table className="data-table">
                 <thead>
@@ -659,59 +752,94 @@ export default async function SalesPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {followUpQuotes.map((q) => (
-                    <tr key={q.quote_number}>
-                      <td>
-                        <span className={`age-badge ${ageSev(q.days_quiet)}`}>
-                          {q.days_quiet}d
-                        </span>
-                      </td>
-                      <td>
-                        <div className="cell-primary" style={{ fontWeight: 600 }}>#{q.quote_number}</div>
-                        <div className="cell-secondary" style={{ fontSize: 11, marginTop: 2 }}>{q.quote_title}</div>
-                      </td>
-                      <td className="cell-muted" style={{ whiteSpace: "nowrap" }}>
-                        {q.sent_at?.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                      </td>
-                      <td className="cell-primary" style={{ fontWeight: 600, whiteSpace: "nowrap" }}>
-                        {money(q.amount_cents)}
-                      </td>
-                      <td className="cell-muted" style={{ whiteSpace: "nowrap" }}>
-                        {q.updated_at?.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                      </td>
-                      <td>
-                        <span style={{
-                          display: "inline-block",
-                          padding: "3px 8px",
-                          borderRadius: 6,
-                          fontSize: 11,
-                          fontWeight: 600,
-                          background: "rgba(90,166,255,0.15)",
-                          color: "#5aa6ff",
-                          textTransform: "capitalize",
+                  {nonEmptyBuckets.map((bucket) => (
+                    <React.Fragment key={bucket.key}>
+                      <tr>
+                        <td colSpan={7} style={{
+                          padding: "10px 14px",
+                          background: bucket.bg,
+                          borderLeft: `3px solid ${bucket.color}`,
+                          borderBottom: "1px solid rgba(255,255,255,0.06)",
                         }}>
-                          {(q.status || "").replace(/_/g, " ").toLowerCase()}
-                        </span>
-                      </td>
-                      <td>
-                        {q.quote_url && (
-                          <a
-                            href={q.quote_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="btn"
-                            style={{ padding: "4px 10px", fontSize: 11 }}
-                          >
-                            View &rarr;
-                          </a>
-                        )}
-                      </td>
-                    </tr>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{
+                                width: 8, height: 8, borderRadius: "50%",
+                                background: bucket.color, display: "inline-block",
+                              }} />
+                              <span style={{ fontWeight: 700, fontSize: 13, color: bucket.color }}>
+                                {bucket.label}
+                              </span>
+                              <span className="text-muted" style={{ fontSize: 11 }}>
+                                {bucket.range}
+                              </span>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                              <span className="text-muted" style={{ fontSize: 12 }}>
+                                {bucket.quotes.length} {bucket.quotes.length === 1 ? "quote" : "quotes"}
+                              </span>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: bucket.color }}>
+                                {money(bucket.quotes.reduce((s, q) => s + q.amount_cents, 0))}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      {bucket.quotes.map((q) => (
+                        <tr key={q.quote_number}>
+                          <td>
+                            <span className={`age-badge ${ageSev(q.days_quiet)}`}>
+                              {q.days_quiet}d
+                            </span>
+                          </td>
+                          <td>
+                            <div className="cell-primary" style={{ fontWeight: 600 }}>#{q.quote_number}</div>
+                            <div className="cell-secondary" style={{ fontSize: 11, marginTop: 2 }}>{q.quote_title}</div>
+                          </td>
+                          <td className="cell-muted" style={{ whiteSpace: "nowrap" }}>
+                            {q.sent_at?.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                          </td>
+                          <td className="cell-primary" style={{ fontWeight: 600, whiteSpace: "nowrap" }}>
+                            {money(q.amount_cents)}
+                          </td>
+                          <td className="cell-muted" style={{ whiteSpace: "nowrap" }}>
+                            {q.updated_at?.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                          </td>
+                          <td>
+                            <span style={{
+                              display: "inline-block",
+                              padding: "3px 8px",
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              background: "rgba(90,166,255,0.15)",
+                              color: "#5aa6ff",
+                              textTransform: "capitalize",
+                            }}>
+                              {(q.status || "").replace(/_/g, " ").toLowerCase()}
+                            </span>
+                          </td>
+                          <td>
+                            {q.quote_url && (
+                              <a
+                                href={q.quote_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn"
+                                style={{ padding: "4px 10px", fontSize: 11 }}
+                              >
+                                View &rarr;
+                              </a>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
+          </>)}
         </div>
 
         {/* ===== Section E: Coming Soon ===== */}

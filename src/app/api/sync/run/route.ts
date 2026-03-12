@@ -208,7 +208,13 @@ async function fetchAllPages<T>(
     pageCount++;
   }
 
-  return { nodes: allNodes, errors: allErrors };
+  // Deduplicate — API can return the same entity on multiple pages
+  const deduped = new Map<string, T>();
+  for (const node of allNodes) {
+    deduped.set((node as any).id, node);
+  }
+
+  return { nodes: Array.from(deduped.values()), errors: allErrors };
 }
 
 // Fetch all pages WITH updatedAt filter (for invoices, quotes, requests)
@@ -271,7 +277,13 @@ async function fetchAllPagesIncremental<T>(
     pageCount++;
   }
 
-  return { nodes: allNodes, errors: allErrors };
+  // Deduplicate — API can return the same entity on multiple pages
+  const deduped = new Map<string, T>();
+  for (const node of allNodes) {
+    deduped.set((node as any).id, node);
+  }
+
+  return { nodes: Array.from(deduped.values()), errors: allErrors };
 }
 
 // ---- Step-based sync helpers (used by multi-step SyncButton flow) ----
