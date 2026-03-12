@@ -177,11 +177,12 @@ async function jobberGraphQLWithPartialErrors<T>(
   return { data: null, errors: [{ message: "Max retries exceeded due to throttling" }] };
 }
 
-// Fetch all pages WITHOUT filter (for jobs)
+// Fetch all pages with optional updatedAt filter
 async function fetchAllPages<T>(
   accessToken: string,
   resourceName: string,
   nodeFields: string,
+  updatedAfter: string | null = null,
   maxPages: number = 250
 ): Promise<{ nodes: T[]; errors: unknown[] }> {
   const allNodes: T[] = [];
@@ -194,80 +195,12 @@ async function fetchAllPages<T>(
   };
 
   while (pageCount < maxPages) {
-    // Proactive delay between pages to avoid hitting Jobber's rate limit
-    if (pageCount > 0) await delay(200);
-
-    const afterClause: string = cursor ? `, after: "${cursor}"` : "";
-    const query: string = `query {
-      ${resourceName}(first: 100${afterClause}) {
-        nodes {
-          ${nodeFields}
-        }
-        pageInfo {
-          hasNextPage
-          endCursor
-        }
-      }
-    }`;
-
-    const result = await jobberGraphQLWithPartialErrors<PageResponse>(accessToken, query);
-
-    if (result.errors.length > 0) {
-      allErrors.push(...result.errors);
-    }
-
-    const data = result.data?.[resourceName];
-    if (!data) break;
-
-    const validNodes: T[] = [];
-    for (const n of data.nodes || []) {
-      if (n !== null) {
-        validNodes.push(n);
-      }
-    }
-    allNodes.push(...validNodes);
-
-    if (!data.pageInfo.hasNextPage) break;
-    if (!data.pageInfo.endCursor) break; // Prevent infinite loop on null cursor
-    cursor = data.pageInfo.endCursor;
-    pageCount++;
-  }
-
-  // Deduplicate — API can return the same entity on multiple pages
-  const deduped = new Map<string, T>();
-  for (const node of allNodes) {
-    deduped.set((node as any).id, node);
-  }
-
-  return { nodes: Array.from(deduped.values()), errors: allErrors };
-}
-
-// Fetch all pages WITH updatedAt filter (for invoices, quotes, requests)
-async function fetchAllPagesIncremental<T>(
-  accessToken: string,
-  resourceName: string,
-  nodeFields: string,
-  updatedAfter: string | null,
-  maxPages: number = 250
-): Promise<{ nodes: T[]; errors: unknown[] }> {
-  const allNodes: T[] = [];
-  const allErrors: unknown[] = [];
-  let cursor: string | null = null;
-  let pageCount = 0;
-
-  type PageResponse = {
-    [key: string]: { nodes: (T | null)[]; pageInfo: PageInfo } | undefined;
-  };
-
-  while (pageCount < maxPages) {
-    // Proactive delay between pages to avoid hitting Jobber's rate limit
-    if (pageCount > 0) await delay(200);
+    // No artificial delay — throttle retry handles rate limiting automatically
 
     const afterClause: string = cursor ? `, after: "${cursor}"` : "";
     const filterClause: string = updatedAfter
       ? `, filter: { updatedAt: { after: "${updatedAfter}" } }`
       : "";
-
     const query: string = `query {
       ${resourceName}(first: 100${afterClause}${filterClause}) {
         nodes {
@@ -317,6 +250,7 @@ async function fetchAllPagesIncremental<T>(
 async function handleSyncJobsStep(
   connectionId: string,
   token: string,
+  lastSyncAt: string | null = null,
 ): Promise<{ jobCount: number }> {
   const jobResult = await fetchAllPages<JobNode>(
     token,
@@ -330,7 +264,8 @@ async function handleSyncJobsStep(
      jobNumber
      jobberWebUri
      title
-     total`
+     total`,
+    lastSyncAt
   );
 
   if (jobResult.errors.length > 0) {
@@ -372,7 +307,7 @@ async function handleSyncOtherStep(
   lastSyncAt: string | null,
 ): Promise<{ invoiceCount: number; quoteCount: number; requestCount: number }> {
   const [invoiceResult, quoteResult, requestResult] = await Promise.all([
-    fetchAllPagesIncremental<InvoiceNode>(
+    fetchAllPages<InvoiceNode>(
       token,
       "invoices",
       `id
@@ -392,7 +327,7 @@ async function handleSyncOtherStep(
        }`,
       lastSyncAt
     ),
-    fetchAllPagesIncremental<QuoteNode>(
+    fetchAllPages<QuoteNode>(
       token,
       "quotes",
       `id
@@ -406,7 +341,7 @@ async function handleSyncOtherStep(
        amounts { total }`,
       lastSyncAt
     ),
-    fetchAllPagesIncremental<RequestNode>(
+    fetchAllPages<RequestNode>(
       token,
       "requests",
       `id
@@ -651,7 +586,7 @@ async function handleStepSync(
 
       const { data: connectionData } = await supabaseAdmin
         .from("jobber_connections")
-        .select("jobber_account_name, sync_status, sync_started_at")
+        .select("jobber_account_name, sync_status, sync_started_at, last_sync_at")
         .eq("id", connectionId)
         .single();
 
@@ -687,7 +622,9 @@ async function handleStepSync(
         } catch { /* non-critical */ }
       }
 
-      const { jobCount } = await handleSyncJobsStep(connectionId, token);
+      const fullSync = searchParams.get("full") === "true";
+      const lastSyncAt = fullSync ? null : (connectionData?.last_sync_at || null);
+      const { jobCount } = await handleSyncJobsStep(connectionId, token, lastSyncAt);
       return NextResponse.json({ ok: true, jobs: jobCount });
 
     } else if (step === "other") {
@@ -835,9 +772,10 @@ export async function GET(req: Request) {
          jobNumber
          jobberWebUri
          title
-         total`
+         total`,
+        lastSyncAt
       ),
-      fetchAllPagesIncremental<InvoiceNode>(
+      fetchAllPages<InvoiceNode>(
         token,
         "invoices",
         `id
@@ -857,7 +795,7 @@ export async function GET(req: Request) {
          }`,
         lastSyncAt
       ),
-      fetchAllPagesIncremental<QuoteNode>(
+      fetchAllPages<QuoteNode>(
         token,
         "quotes",
         `id
@@ -871,7 +809,7 @@ export async function GET(req: Request) {
          amounts { total }`,
         lastSyncAt
       ),
-      fetchAllPagesIncremental<RequestNode>(
+      fetchAllPages<RequestNode>(
         token,
         "requests",
         `id
