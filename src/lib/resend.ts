@@ -3,6 +3,36 @@ import { Resend } from "resend";
 
 export const resend = new Resend(process.env.RESEND_API_KEY);
 
+export async function sendSyncFailureEmail(details: {
+  connectionId: string;
+  accountName: string | null;
+  error: string;
+  recordCounts?: { jobs?: number; invoices?: number; quotes?: number; requests?: number };
+}) {
+  const label = details.accountName || details.connectionId;
+  const counts = details.recordCounts;
+  const countsHtml = counts
+    ? `<p><strong>Records fetched before failure:</strong><br/>
+        Jobs: ${counts.jobs ?? "n/a"}, Invoices: ${counts.invoices ?? "n/a"},
+        Quotes: ${counts.quotes ?? "n/a"}, Requests: ${counts.requests ?? "n/a"}</p>`
+    : "";
+
+  await resend.emails.send({
+    from: "Ryan <ryan@ownerview.io>",
+    to: "ryan@ownerview.io",
+    subject: `Sync Failed: ${label}`,
+    html: `
+      <h2>Sync Failure</h2>
+      <p><strong>Account:</strong> ${label}</p>
+      <p><strong>Connection ID:</strong> ${details.connectionId}</p>
+      <p><strong>Error:</strong> ${details.error}</p>
+      ${countsHtml}
+      <p><strong>Time:</strong> ${new Date().toISOString()}</p>
+      <p><a href="https://app.ownerview.io/api/sync/run?connection_id=${details.connectionId}&full=true&json=true">Retry Full Sync</a></p>
+    `,
+  });
+}
+
 export async function sendWelcomeEmail(email: string, firstName?: string) {
   const name = firstName || "there";
   
