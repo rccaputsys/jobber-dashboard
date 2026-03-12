@@ -51,32 +51,50 @@ export function SyncButton({ connectionId }: { connectionId: string }) {
   const handleSync = async () => {
     trackEvent("sync_click");
     setSyncing(true);
-    setStatusText("Starting sync...");
+    setStatusText("Syncing jobs...");
+
+    // Polling is a safety net — detects if a step times out and server sets "failed"
+    startPolling();
 
     try {
-      // Fire-and-forget the sync call, poll for status
-      startPolling();
-
-      const res = await fetch(
-        `/api/sync/run?connection_id=${connectionId}&json=true`
+      // Step 1: Sync jobs
+      const jobsRes = await fetch(
+        `/api/sync/run?connection_id=${connectionId}&json=true&step=jobs`
       );
-      const data = await res.json();
+      const jobsData = await jobsRes.json();
+      if (!jobsData.ok) throw new Error(jobsData.error || "Jobs sync failed");
+
+      const jobCount = jobsData.jobs || 0;
+      setStatusText(`Synced ${jobCount.toLocaleString()} jobs. Syncing invoices & quotes...`);
+
+      // Step 2: Sync invoices, quotes, requests
+      const otherRes = await fetch(
+        `/api/sync/run?connection_id=${connectionId}&json=true&step=other`
+      );
+      const otherData = await otherRes.json();
+      if (!otherData.ok) throw new Error(otherData.error || "Invoice/quote sync failed");
+
+      const invoiceCount = otherData.invoices || 0;
+      const quoteCount = otherData.quotes || 0;
+      const requestCount = otherData.requests || 0;
+      setStatusText("Computing metrics...");
+
+      // Step 3: Compute metrics and finalize
+      const metricsRes = await fetch(
+        `/api/sync/run?connection_id=${connectionId}&json=true&step=metrics&jobs=${jobCount}&invoices=${invoiceCount}&quotes=${quoteCount}&requests=${requestCount}`
+      );
+      const metricsData = await metricsRes.json();
+      if (!metricsData.ok) throw new Error(metricsData.error || "Metrics computation failed");
 
       stopPolling();
-
-      if (data.ok) {
-        const counts = `${data.jobs} jobs, ${data.invoices} invoices, ${data.quotes} quotes, ${data.requests} requests`;
-        setStatusText(`Synced ${counts}`);
-        setTimeout(() => window.location.reload(), 2000);
-      } else {
-        setSyncing(false);
-        setStatusText(data.error || "Sync failed");
-        setTimeout(() => setStatusText(""), 8000);
-      }
-    } catch {
+      const counts = `${jobCount.toLocaleString()} jobs, ${invoiceCount} invoices, ${quoteCount} quotes, ${requestCount} requests`;
+      setStatusText(`Synced ${counts}`);
+      setTimeout(() => window.location.reload(), 2000);
+    } catch (err) {
       stopPolling();
       setSyncing(false);
-      setStatusText("Sync failed. Please try again.");
+      const msg = err instanceof Error ? err.message : "Sync failed. Please try again.";
+      setStatusText(msg);
       setTimeout(() => setStatusText(""), 8000);
     }
   };
