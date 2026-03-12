@@ -2,6 +2,9 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, fetchAllRows } from "@/lib/supabaseAdmin";
 import { getValidAccessToken } from "@/lib/jobberAuth";
+import { sendSyncFailureEmail } from "@/lib/resend";
+
+export const maxDuration = 300; // Tell Vercel this route needs full 300s
 
 type JobNode = {
   id: string;
@@ -168,7 +171,7 @@ async function fetchAllPages<T>(
 
   while (pageCount < maxPages) {
     // Proactive delay between pages to avoid hitting Jobber's rate limit
-    if (pageCount > 0) await delay(350);
+    if (pageCount > 0) await delay(200);
 
     const afterClause: string = cursor ? `, after: "${cursor}"` : "";
     const query: string = `query {
@@ -227,7 +230,7 @@ async function fetchAllPagesIncremental<T>(
 
   while (pageCount < maxPages) {
     // Proactive delay between pages to avoid hitting Jobber's rate limit
-    if (pageCount > 0) await delay(350);
+    if (pageCount > 0) await delay(200);
 
     const afterClause: string = cursor ? `, after: "${cursor}"` : "";
     const filterClause: string = updatedAfter
@@ -287,9 +290,29 @@ export async function GET(req: Request) {
     // Get last sync time for incremental sync (skip if full sync requested)
     const { data: connectionData } = await supabaseAdmin
       .from("jobber_connections")
-      .select("last_sync_at, jobber_account_name")
+      .select("last_sync_at, jobber_account_name, sync_status, sync_started_at")
       .eq("id", connectionId)
       .single();
+
+    // Prevent concurrent syncs — if already syncing and started within last 5 minutes, bail
+    if (connectionData?.sync_status === "syncing" && connectionData?.sync_started_at) {
+      const startedAt = new Date(connectionData.sync_started_at).getTime();
+      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+      if (startedAt > fiveMinutesAgo) {
+        const wantsJson = req.headers.get("accept")?.includes("application/json") ||
+                          searchParams.get("json") === "true";
+        if (wantsJson) {
+          return NextResponse.json({ ok: false, error: "Sync already in progress" }, { status: 409 });
+        }
+        return NextResponse.redirect(new URL(`/jobber/dashboard?sync_error=${encodeURIComponent("Sync already in progress")}`, req.url));
+      }
+    }
+
+    // Mark sync as started
+    await supabaseAdmin
+      .from("jobber_connections")
+      .update({ sync_status: "syncing", sync_started_at: new Date().toISOString(), sync_error: null })
+      .eq("id", connectionId);
 
     const lastSyncAt = fullSync ? null : (connectionData?.last_sync_at || null);
 
@@ -403,7 +426,7 @@ export async function GET(req: Request) {
         total_amount_cents: dollarsToCents(j.total),
       }));
 
-      const chunkSize = 500;
+      const chunkSize = 1000;
       for (let i = 0; i < jobRows.length; i += chunkSize) {
         const chunk = jobRows.slice(i, i + chunkSize);
         const { error } = await supabaseAdmin
@@ -434,7 +457,7 @@ export async function GET(req: Request) {
         };
       });
 
-      const chunkSize = 500;
+      const chunkSize = 1000;
       for (let i = 0; i < invoiceRows.length; i += chunkSize) {
         const chunk = invoiceRows.slice(i, i + chunkSize);
         const { error } = await supabaseAdmin
@@ -459,7 +482,7 @@ export async function GET(req: Request) {
         sent_at: q.sentAt ?? null,
       }));
 
-      const chunkSize = 500;
+      const chunkSize = 1000;
       for (let i = 0; i < quoteRows.length; i += chunkSize) {
         const chunk = quoteRows.slice(i, i + chunkSize);
         const { error } = await supabaseAdmin
@@ -488,7 +511,7 @@ export async function GET(req: Request) {
         synced_at: new Date().toISOString(),
       }));
 
-      const chunkSize = 500;
+      const chunkSize = 1000;
       for (let i = 0; i < requestRows.length; i += chunkSize) {
         const chunk = requestRows.slice(i, i + chunkSize);
         const { error } = await supabaseAdmin
@@ -501,78 +524,115 @@ export async function GET(req: Request) {
     // Calculate metrics for admin dashboard
     const now = new Date();
     const fifteenDaysAgo = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
-    
-    // Query current state from DB for accurate counts (paginated to bypass max_rows=100)
-    const [
-      allInvoices,
-      allJobs,
-      { count: requestCount },
-      { count: jobCount },
-      { count: quoteCount },
-      allQuotes,
-    ] = await Promise.all([
-      fetchAllRows("fact_invoices", "status, balance_cents, total_amount_cents, due_at", connectionId),
-      fetchAllRows("fact_jobs", "status, scheduled_start_at", connectionId),
-      supabaseAdmin
-        .from("fact_requests")
-        .select("*", { count: "exact", head: true })
-        .eq("connection_id", connectionId),
-      supabaseAdmin
-        .from("fact_jobs")
-        .select("*", { count: "exact", head: true })
-        .eq("connection_id", connectionId),
-      supabaseAdmin
-        .from("fact_quotes")
-        .select("*", { count: "exact", head: true })
-        .eq("connection_id", connectionId),
-      fetchAllRows("fact_quotes", "quote_status, quote_total_cents, sent_at", connectionId),
-    ]);
-    
-    const unpaidInvoices = (allInvoices || []).filter(inv => {
+    const isFullSync = !lastSyncAt;
+
+    // For full sync: compute metrics from in-memory arrays (skip redundant DB re-fetch)
+    // For incremental sync: use lightweight count queries (we only have the delta in memory)
+    let allInvoices: any[];
+    let allJobs: any[];
+    let allQuotes: any[];
+    let jobCount: number;
+    let requestCount: number;
+    let quoteCount: number;
+
+    if (isFullSync) {
+      // Full sync — we have ALL data in memory, no need to re-query DB
+      allInvoices = invoices.map(inv => ({
+        status: inv.invoiceStatus,
+        balance_cents: dollarsToCents(inv.amounts?.invoiceBalance),
+        total_amount_cents: dollarsToCents(inv.total),
+        due_at: inv.dueDate,
+      }));
+      allJobs = jobs.map(j => ({ scheduled_start_at: j.startAt }));
+      allQuotes = quotes.map(q => ({
+        quote_status: q.quoteStatus,
+        quote_total_cents: dollarsToCents(q.amounts?.total ?? 0),
+        sent_at: q.sentAt,
+      }));
+      jobCount = jobs.length;
+      requestCount = requests.length;
+      quoteCount = quotes.length;
+    } else {
+      // Incremental sync — need DB for totals (we only fetched the delta)
+      const [
+        dbInvoices,
+        dbJobs,
+        { count: dbRequestCount },
+        { count: dbJobCount },
+        { count: dbQuoteCount },
+        dbQuotes,
+      ] = await Promise.all([
+        fetchAllRows("fact_invoices", "status, balance_cents, total_amount_cents, due_at", connectionId),
+        fetchAllRows("fact_jobs", "status, scheduled_start_at", connectionId),
+        supabaseAdmin
+          .from("fact_requests")
+          .select("*", { count: "exact", head: true })
+          .eq("connection_id", connectionId),
+        supabaseAdmin
+          .from("fact_jobs")
+          .select("*", { count: "exact", head: true })
+          .eq("connection_id", connectionId),
+        supabaseAdmin
+          .from("fact_quotes")
+          .select("*", { count: "exact", head: true })
+          .eq("connection_id", connectionId),
+        fetchAllRows("fact_quotes", "quote_status, quote_total_cents, sent_at", connectionId),
+      ]);
+      allInvoices = dbInvoices || [];
+      allJobs = dbJobs || [];
+      allQuotes = dbQuotes || [];
+      jobCount = dbJobCount || 0;
+      requestCount = dbRequestCount || 0;
+      quoteCount = dbQuoteCount || 0;
+    }
+
+    const unpaidInvoices = allInvoices.filter(inv => {
       const st = (inv.status || "").toLowerCase();
       return st !== "paid" && st !== "draft" && st !== "void";
     });
-    
+
     const pastDueInvoices = unpaidInvoices.filter(inv => {
       if (!inv.due_at) return false;
       return new Date(inv.due_at) < now;
     });
-    
+
     const invoices15plus = unpaidInvoices.filter(inv => {
       if (!inv.due_at) return false;
       return new Date(inv.due_at) < fifteenDaysAgo;
     });
-    
-    const unscheduledJobs = (allJobs || []).filter(j => !j.scheduled_start_at);
-    
-    const pastDueCents = pastDueInvoices.reduce((sum, inv) => sum + (inv.balance_cents || inv.total_amount_cents || 0), 0);
-    const fifteenPlusCents = invoices15plus.reduce((sum, inv) => sum + (inv.balance_cents || inv.total_amount_cents || 0), 0);
+
+    const unscheduledJobs = allJobs.filter(j => !j.scheduled_start_at);
+
+    const pastDueCents = pastDueInvoices.reduce((sum: number, inv: any) => sum + (inv.balance_cents || inv.total_amount_cents || 0), 0);
+    const fifteenPlusCents = invoices15plus.reduce((sum: number, inv: any) => sum + (inv.balance_cents || inv.total_amount_cents || 0), 0);
 
     // Calculate quote leak
     const statusLooksWon = (status: string) => {
       const s = status.toUpperCase();
       return s.includes("APPROV") || s.includes("ACCEPT") || s.includes("WON") || s.includes("CONVERT") || s.includes("BOOK");
     };
-    
-    const leakingQuotes = (allQuotes || []).filter(q => {
+
+    const leakingQuotes = allQuotes.filter(q => {
       if (!q.sent_at) return false;
       const st = (q.quote_status || "").toLowerCase().trim();
       if (!st) return true;
       if (st === "archived" || st === "draft") return false;
       return !statusLooksWon(st);
     });
-    
+
     const quoteLeakCount = leakingQuotes.length;
-    const quoteLeakCents = leakingQuotes.reduce((sum, q) => sum + (q.quote_total_cents || 0), 0);
+    const quoteLeakCents = leakingQuotes.reduce((sum: number, q: any) => sum + (q.quote_total_cents || 0), 0);
 
     // Update heartbeat with metrics
     const heartbeat: Record<string, any> = {
         last_sync_at: new Date().toISOString(),
+        sync_status: "complete",
+        sync_error: null,
         last_sync_invoices: invoices.length,
         last_sync_quotes: quotes.length,
-        job_count: jobCount || 0,
-        request_count: requestCount || 0,
-        quote_count: quoteCount || 0,
+        job_count: jobCount,
+        request_count: requestCount,
+        quote_count: quoteCount,
         unscheduled_job_count: unscheduledJobs.length,
         invoices_past_due_count: pastDueInvoices.length,
         invoices_past_due_cents: pastDueCents,
@@ -608,14 +668,31 @@ export async function GET(req: Request) {
   } catch (error) {
     console.error("Sync failed:", error);
     const message = error instanceof Error ? error.message : "Sync failed";
-    
-    const wantsJson = req.headers.get("accept")?.includes("application/json") || 
+
+    // Update sync status to failed
+    await supabaseAdmin
+      .from("jobber_connections")
+      .update({ sync_status: "failed", sync_error: message })
+      .eq("id", connectionId);
+
+    // Send failure notification email (best-effort, don't let email errors mask the sync error)
+    try {
+      await sendSyncFailureEmail({
+        connectionId,
+        accountName: null,
+        error: message,
+      });
+    } catch (emailErr) {
+      console.error("Failed to send sync failure email:", emailErr);
+    }
+
+    const wantsJson = req.headers.get("accept")?.includes("application/json") ||
                       new URL(req.url).searchParams.get("json") === "true";
-    
+
     if (wantsJson) {
       return NextResponse.json({ ok: false, error: message }, { status: 500 });
     }
-    
+
     return NextResponse.redirect(
       new URL(`/jobber/dashboard?sync_error=${encodeURIComponent(message)}`, req.url)
     );
