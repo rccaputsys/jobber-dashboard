@@ -622,12 +622,20 @@ export const globalStyles = `
   html[data-theme="light"] .kpi-secondary {
     background: #ffffff !important;
     border-color: #e2e8f0 !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
   }
 
   html[data-theme="light"] .kpi-secondary:hover {
     background: #f8fafc !important;
     border-color: #cbd5e1 !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
   }
+
+  html[data-theme="light"] .kpi-secondary[data-accent="green"]  { background: linear-gradient(135deg, rgba(16,185,129,0.06), #ffffff) !important; }
+  html[data-theme="light"] .kpi-secondary[data-accent="amber"]  { background: linear-gradient(135deg, rgba(245,158,11,0.06), #ffffff) !important; }
+  html[data-theme="light"] .kpi-secondary[data-accent="red"]    { background: linear-gradient(135deg, rgba(239,68,68,0.06), #ffffff) !important; }
+  html[data-theme="light"] .kpi-secondary[data-accent="blue"]   { background: linear-gradient(135deg, rgba(90,166,255,0.06), #ffffff) !important; }
+  html[data-theme="light"] .kpi-secondary[data-accent="purple"] { background: linear-gradient(135deg, rgba(139,92,246,0.06), #ffffff) !important; }
 
   /* ALL TEXT - Default dark for light mode */
   html[data-theme="light"] h1,
@@ -969,7 +977,7 @@ export const globalStyles = `
     text-transform: none;
     letter-spacing: 0;
     white-space: normal;
-    z-index: 100;
+    z-index: 9999;
     transition: opacity 0.15s ease, visibility 0.15s ease;
     pointer-events: none;
   }

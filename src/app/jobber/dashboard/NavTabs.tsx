@@ -4,7 +4,8 @@ import { usePathname } from "next/navigation";
 
 const tabs = [
   { label: "Overview", href: "/jobber/dashboard" },
-  { label: "Sales & Capacity", href: "/jobber/sales" },
+  { label: "Sales", href: "/jobber/sales" },
+  { label: "Capacity", href: "/jobber/capacity" },
 ];
 
 export function NavTabs({ adminConnectionId }: { adminConnectionId?: string }) {

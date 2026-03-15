@@ -7,19 +7,18 @@ import { ExportCSV } from "../dashboard/ExportCSV";
 import { ThemeToggle } from "../dashboard/ThemeToggle";
 import { SyncButton } from "../dashboard/SyncButton";
 import { NavTabs } from "../dashboard/NavTabs";
-import { CapacityEditor } from "./CapacityEditor";
 import { QuotePipeline } from "./QuotePipeline";
-import { CapacityChart } from "./CapacityChart";
+import { SalesTrendsSection } from "./SalesTrendsSection";
+import { SalesKpiCards } from "./SalesKpiCards";
+import { QuoteFollowUpTable } from "./QuoteFollowUpTable";
 import {
   safeDate,
   startOfDayUTC,
-  startOfWeekUTC,
   addDaysUTC,
   moneyFactory,
   formatSyncTime,
   statusLooksWon,
   statusLooksLost,
-  pct,
   globalStyles,
   theme,
 } from "@/lib/dashboardHelpers";
@@ -79,15 +78,14 @@ export default async function SalesPage({
     connectionId = connection.id;
   }
 
-  // Fetch connection details + data in parallel
-  const [connDetails, jobs, quotes] = await Promise.all([
+  // Fetch connection details + quotes
+  const [connDetails, quotes] = await Promise.all([
     supabaseAdmin
       .from("jobber_connections")
-      .select("last_sync_at,trial_started_at,trial_ends_at,billing_status,currency_code,company_name,jobber_account_name,weekly_capacity_cents")
+      .select("last_sync_at,trial_started_at,trial_ends_at,billing_status,currency_code,company_name,jobber_account_name")
       .eq("id", connectionId)
       .maybeSingle()
       .then((r) => r.data),
-    fetchAllRows("fact_jobs", "*", connectionId),
     fetchAllRows(
       "fact_quotes",
       "jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,sent_at,updated_at_jobber,created_at_jobber",
@@ -99,7 +97,6 @@ export default async function SalesPage({
   const currencyCode = (connDetails?.currency_code || "USD").toUpperCase();
   const money = moneyFactory(currencyCode);
   const lastSyncPretty = connDetails?.last_sync_at ? formatSyncTime(new Date(connDetails.last_sync_at)) : "Not synced yet";
-  const weeklyCapacityCents: number | null = connDetails?.weekly_capacity_cents ?? null;
 
   // Billing gate
   const billingStatus = connDetails?.billing_status ?? "trialing";
@@ -149,63 +146,7 @@ export default async function SalesPage({
   const now = new Date();
   const todayUTC = startOfDayUTC(now);
 
-  // Current week (Mon-Sun)
-  const thisWeekStart = startOfWeekUTC(todayUTC);
-  const thisWeekEnd = addDaysUTC(thisWeekStart, 7);
-
-  // Next week
-  const nextWeekStart = thisWeekEnd;
-  const nextWeekEnd = addDaysUTC(nextWeekStart, 7);
-
-  // Jobs scheduled this week / next week
-  function weekJobs(start: Date, end: Date) {
-    return jobs.filter((j: any) => {
-      const sched = safeDate(j.scheduled_start_at);
-      if (!sched) return false;
-      return sched >= start && sched < end;
-    });
-  }
-
-  const thisWeekJobs = weekJobs(thisWeekStart, thisWeekEnd);
-  const nextWeekJobs = weekJobs(nextWeekStart, nextWeekEnd);
-
-  const thisWeekRevenue = thisWeekJobs.reduce((s: number, j: any) => s + Number(j.total_amount_cents ?? 0), 0);
-  const nextWeekRevenue = nextWeekJobs.reduce((s: number, j: any) => s + Number(j.total_amount_cents ?? 0), 0);
-
-  const thisWeekFill = weeklyCapacityCents ? thisWeekRevenue / weeklyCapacityCents : 0;
-  const nextWeekFill = weeklyCapacityCents ? nextWeekRevenue / weeklyCapacityCents : 0;
-
-  function fillSeverity(fill: number): "critical" | "warning" | "good" {
-    if (fill >= 0.9) return "good";
-    if (fill >= 0.5) return "warning";
-    return "critical";
-  }
-
-  function fillColorClass(fill: number) {
-    const sev = fillSeverity(fill);
-    if (sev === "good") return "text-success";
-    if (sev === "warning") return "text-warning";
-    return "text-critical";
-  }
-
-  // Capacity trend: last 12 weeks
-  const capacityWeeks: { label: string; cents: number; fillRate: number }[] = [];
-  for (let i = 11; i >= 0; i--) {
-    const wStart = addDaysUTC(thisWeekStart, -7 * i);
-    const wEnd = addDaysUTC(wStart, 7);
-    const wJobs = weekJobs(wStart, wEnd);
-    const wRevenue = wJobs.reduce((s: number, j: any) => s + Number(j.total_amount_cents ?? 0), 0);
-    const label = wStart.toLocaleString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
-    capacityWeeks.push({
-      label,
-      cents: wRevenue,
-      fillRate: weeklyCapacityCents ? wRevenue / weeklyCapacityCents : 0,
-    });
-  }
-
   /* ----------- Quote pipeline ----------- */
-  const now30d = addDaysUTC(todayUTC, -30);
-
   // Pipeline stages
   const draftQuotes = quotes.filter((q: any) => {
     const s = (q.quote_status || "").toUpperCase();
@@ -238,32 +179,6 @@ export default async function SalesPage({
     { label: "Won", count: wonQuotes.length, value: money(sumCents(wonQuotes)) },
   ];
 
-  // 30-day win rate
-  const recentQuotes = quotes.filter((q: any) => {
-    const updated = safeDate(q.updated_at_jobber);
-    return updated && updated >= now30d;
-  });
-  const recentWon = recentQuotes.filter((q: any) => statusLooksWon(q.quote_status || ""));
-  const recentLost = recentQuotes.filter((q: any) => statusLooksLost(q.quote_status || ""));
-  const recentSent = recentQuotes.filter((q: any) => {
-    const s = (q.quote_status || "").toUpperCase();
-    return s === "AWAITING_RESPONSE" || s === "SENT";
-  });
-  const winRateDenom = recentWon.length + recentLost.length + recentSent.length;
-  const winRate = winRateDenom > 0 ? recentWon.length / winRateDenom : 0;
-
-  // Avg days to close
-  const wonWithDates = wonQuotes.filter((q: any) => safeDate(q.sent_at) && safeDate(q.updated_at_jobber));
-  const avgDaysToClose = wonWithDates.length > 0
-    ? Math.round(
-        wonWithDates.reduce((s: number, q: any) => {
-          const sent = safeDate(q.sent_at)!;
-          const closed = safeDate(q.updated_at_jobber)!;
-          return s + (closed.getTime() - sent.getTime()) / 86400000;
-        }, 0) / wonWithDates.length
-      )
-    : 0;
-
   // Pipeline value (all open/sent, not won/lost)
   const openQuotes = quotes.filter((q: any) => {
     const s = (q.quote_status || "").toUpperCase();
@@ -271,34 +186,73 @@ export default async function SalesPage({
   });
   const pipelineValue = sumCents(openQuotes);
 
-  // Quotes sent this month
+  /* ----------- Period-scoped KPI computation ----------- */
   const thisMonthStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth(), 1));
-  const quotesSentThisMonth = quotes.filter((q: any) => {
-    const sent = safeDate(q.sent_at);
-    return sent && sent >= thisMonthStart;
-  }).length;
+  const lastMonthStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() - 1, 1));
+  const thisMonthName = new Date().toLocaleString(undefined, { month: "long" });
+  const lastMonthName = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() - 1, 15)).toLocaleString(undefined, { month: "long" });
 
-  // Win rate trend (weekly, last 12 weeks)
-  const winRateTrend: { label: string; rate: number }[] = [];
-  for (let i = 11; i >= 0; i--) {
-    const wStart = addDaysUTC(thisWeekStart, -7 * i);
-    const wEnd = addDaysUTC(wStart, 7);
-    const wQuotes = quotes.filter((q: any) => {
-      const updated = safeDate(q.updated_at_jobber);
-      return updated && updated >= wStart && updated < wEnd;
+  function computeKpi(periodStart: Date | null, periodEnd: Date | null, periodLabel: string, winRateLabel: string) {
+    const inPeriod = (d: Date | null) => {
+      if (!d || !periodStart || !periodEnd) return true; // all-time
+      return d >= periodStart && d < periodEnd;
+    };
+
+    // Win Rate: quotes closed in period
+    const periodWon = wonQuotes.filter((q: any) => inPeriod(safeDate(q.updated_at_jobber)));
+    const periodLost = lostQuotes.filter((q: any) => inPeriod(safeDate(q.updated_at_jobber)));
+    const periodSentOpen = sentQuotes.filter((q: any) => {
+      const sent = safeDate(q.sent_at);
+      return periodStart ? (sent && sent >= periodStart && sent < (periodEnd || todayUTC)) : true;
     });
-    const wWon = wQuotes.filter((q: any) => statusLooksWon(q.quote_status || "")).length;
-    const wLost = wQuotes.filter((q: any) => statusLooksLost(q.quote_status || "")).length;
-    const wSent = wQuotes.filter((q: any) => {
-      const s = (q.quote_status || "").toUpperCase();
-      return s === "AWAITING_RESPONSE" || s === "SENT";
-    }).length;
-    const denom = wWon + wLost + wSent;
-    winRateTrend.push({
-      label: wStart.toLocaleString(undefined, { month: "short", day: "numeric", timeZone: "UTC" }),
-      rate: denom > 0 ? wWon / denom : 0,
+    const winDenom = periodWon.length + periodLost.length + periodSentOpen.length;
+    const winRate = winDenom > 0 ? periodWon.length / winDenom : 0;
+
+    // Avg days to close for won quotes in period
+    const wonWithDates = periodWon.filter((q: any) => safeDate(q.sent_at) && safeDate(q.updated_at_jobber));
+    const avgDaysToClose = wonWithDates.length > 0
+      ? Math.round(
+          wonWithDates.reduce((s: number, q: any) => {
+            const sent = safeDate(q.sent_at)!;
+            const closed = safeDate(q.updated_at_jobber)!;
+            return s + (closed.getTime() - sent.getTime()) / 86400000;
+          }, 0) / wonWithDates.length
+        )
+      : 0;
+
+    // Quotes sent in period
+    const periodQuotesSent = quotes.filter((q: any) => {
+      const sent = safeDate(q.sent_at);
+      return sent && inPeriod(sent);
     });
+    const quotesSent = periodQuotesSent.length;
+    const quotesSentValue = sumCents(periodQuotesSent);
+
+    const wonRevenue = sumCents(periodWon);
+
+    return {
+      winRate,
+      winRateLabel,
+      avgDaysToClose,
+      wonCount: periodWon.length,
+      wonRevenue: money(wonRevenue),
+      quotesSent,
+      quotesSentValue: money(quotesSentValue),
+      monthLabel: periodLabel,
+    };
   }
+
+  const thisMonthKpi = computeKpi(thisMonthStart, addDaysUTC(todayUTC, 1), thisMonthName, "Win Rate (This Month)");
+  const lastMonthKpi = computeKpi(lastMonthStart, thisMonthStart, lastMonthName, "Win Rate (Last Month)");
+  const allTimeKpi = computeKpi(null, null, "All Time", "Win Rate (All Time)");
+
+  // Event arrays for SalesTrendsSection
+  const wonQuoteEvents = wonQuotes
+    .filter((q: any) => safeDate(q.updated_at_jobber))
+    .map((q: any) => ({ closedAt: safeDate(q.updated_at_jobber)!.getTime(), amount: Number(q.quote_total_cents ?? 0) }));
+  const allClosureEvents = quotes
+    .filter((q: any) => (statusLooksWon(q.quote_status) || statusLooksLost(q.quote_status)) && safeDate(q.updated_at_jobber))
+    .map((q: any) => ({ closedAt: safeDate(q.updated_at_jobber)!.getTime(), won: statusLooksWon(q.quote_status) }));
 
   // Quote follow-up table: open quotes sorted by staleness
   const followUpQuotes = openQuotes
@@ -320,12 +274,6 @@ export default async function SalesPage({
     .filter((q: any) => q.sent_at) // only show sent quotes
     .sort((a: any, b: any) => b.days_quiet - a.days_quiet);
 
-  function ageSev(days: number): "critical" | "warning" | "good" {
-    if (days >= 14) return "critical";
-    if (days >= 7) return "warning";
-    return "good";
-  }
-
   // Group quotes by age bucket (coldest first)
   const ageBuckets = [
     { key: "cold", label: "Cold", range: "30+ days quiet", color: "#ef4444", bg: "rgba(239,68,68,0.08)", quotes: [] as typeof followUpQuotes },
@@ -339,8 +287,6 @@ export default async function SalesPage({
     else if (q.days_quiet >= 8) ageBuckets[2].quotes.push(q);
     else ageBuckets[3].quotes.push(q);
   }
-  const nonEmptyBuckets = ageBuckets.filter(b => b.quotes.length > 0);
-
   // Export data
   const followUpExportData = followUpQuotes.map((q) => ({
     "Age Group": q.days_quiet >= 30 ? "Cold" : q.days_quiet >= 15 ? "Going Cold" : q.days_quiet >= 8 ? "Warm" : "Hot",
@@ -353,18 +299,6 @@ export default async function SalesPage({
     "Status": q.status,
     "Jobber URL": q.quote_url,
   }));
-
-  // SparkLine for win rate trend
-  const sparkH = 80;
-  const sparkW = 600;
-  const maxRate = Math.max(...winRateTrend.map((w) => w.rate), 0.01);
-  const sparkPoints = winRateTrend
-    .map((w, i) => {
-      const x = (i / Math.max(winRateTrend.length - 1, 1)) * sparkW;
-      const y = sparkH - (w.rate / maxRate) * sparkH;
-      return `${x},${y}`;
-    })
-    .join(" ");
 
   /* ------------------------------------------------------------------ */
   /*  Render                                                             */
@@ -427,97 +361,17 @@ export default async function SalesPage({
 
         <NavTabs adminConnectionId={adminConnectionId} />
 
-        {/* ===== Section A: Weekly Capacity KPIs ===== */}
-        <div className="kpi-grid-primary animate-in delay-1" style={{ marginTop: 20 }}>
-          {/* This Week's Revenue */}
-          <div className={`kpi-primary hover-lift ${weeklyCapacityCents ? '' : 'gradient-purple'}`} style={weeklyCapacityCents ? {
-            background: `linear-gradient(145deg, ${thisWeekFill >= 0.9 ? 'rgba(16,185,129,0.15)' : thisWeekFill >= 0.5 ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)'} 0%, rgba(255,255,255,0.02) 100%)`,
-            borderColor: `${thisWeekFill >= 0.9 ? 'rgba(16,185,129,0.4)' : thisWeekFill >= 0.5 ? 'rgba(245,158,11,0.4)' : 'rgba(239,68,68,0.4)'}`,
-          } : undefined}>
-            <div style={{ position: "relative", zIndex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 20 }}>&#128176;</span>
-                <span className="text-secondary" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  This Week&apos;s Revenue
-                </span>
-              </div>
-              <div className={`kpi-value-large ${weeklyCapacityCents ? fillColorClass(thisWeekFill) : 'text-primary'}`}>
-                {money(thisWeekRevenue)}
-              </div>
-              <div className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>
-                {weeklyCapacityCents
-                  ? `of ${money(weeklyCapacityCents)} target • ${thisWeekJobs.length} jobs`
-                  : `${thisWeekJobs.length} jobs scheduled`
-                }
-              </div>
-            </div>
-          </div>
-
-          {/* Capacity Fill Rate */}
-          <div className="kpi-primary gradient-purple hover-lift">
-            <div style={{ position: "relative", zIndex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 20 }}>&#128200;</span>
-                <span className="text-secondary" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  Capacity Fill Rate
-                </span>
-              </div>
-              <div className={`kpi-value-large ${weeklyCapacityCents ? fillColorClass(thisWeekFill) : 'text-muted'}`}>
-                {weeklyCapacityCents ? pct(thisWeekFill) : "—"}
-              </div>
-              <div className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>
-                {weeklyCapacityCents
-                  ? `${thisWeekJobs.length} jobs scheduled this week`
-                  : "Set a weekly target to track"
-                }
-              </div>
-            </div>
-          </div>
-
-          {/* Next Week Preview */}
-          <div className="kpi-primary hover-lift" style={weeklyCapacityCents ? {
-            background: `linear-gradient(145deg, ${nextWeekFill >= 0.9 ? 'rgba(16,185,129,0.08)' : nextWeekFill >= 0.5 ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)'} 0%, rgba(255,255,255,0.02) 100%)`,
-          } : undefined}>
-            <div style={{ position: "relative", zIndex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 20 }}>&#128197;</span>
-                <span className="text-secondary" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  Next Week Preview
-                </span>
-              </div>
-              <div className={`kpi-value-large ${weeklyCapacityCents ? fillColorClass(nextWeekFill) : 'text-primary'}`}>
-                {money(nextWeekRevenue)}
-              </div>
-              <div className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>
-                {weeklyCapacityCents
-                  ? `${pct(nextWeekFill)} of target • ${nextWeekJobs.length} jobs`
-                  : `${nextWeekJobs.length} jobs scheduled`
-                }
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ===== Section B: Capacity Trend Chart ===== */}
-        <div className="panel animate-in delay-2" style={{ marginTop: 20, padding: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-            <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
-              Capacity Trend
-            </h2>
-            <span className="info-tooltip">?<span className="tooltip-text">Shows your total scheduled revenue per week for the last 12 weeks. Bars are color-coded: green = 90%+ of target, amber = 50-89%, red = under 50%. The dashed line is your weekly target.</span></span>
-          </div>
-          <p className="text-muted" style={{ fontSize: 12, marginBottom: 16 }}>
-            Weekly scheduled revenue — last 12 weeks
-          </p>
-          <CapacityChart
-            weeks={capacityWeeks}
-            targetCents={weeklyCapacityCents}
+        {/* Quote KPIs with period toggle */}
+        <div className="animate-in delay-1" style={{ marginTop: 20 }}>
+          <SalesKpiCards
+            thisMonth={thisMonthKpi}
+            lastMonth={lastMonthKpi}
+            allTime={allTimeKpi}
           />
-          <CapacityEditor currentCents={weeklyCapacityCents} />
         </div>
 
-        {/* ===== Section C: Quote Pipeline ===== */}
-        <div className="panel animate-in delay-3" style={{ marginTop: 20, padding: 20 }}>
+        {/* ===== Quote Pipeline ===== */}
+        <div className="panel animate-in delay-1" style={{ marginTop: 16, padding: 20, overflow: "visible" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16 }}>
             <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
               Quote Pipeline
@@ -531,117 +385,15 @@ export default async function SalesPage({
           />
         </div>
 
-        {/* Quote KPIs */}
-        <div className="kpi-grid-secondary animate-in delay-3" style={{ marginTop: 16 }}>
-          {/* Win Rate */}
-          <div className="kpi-secondary">
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <span className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  Win Rate (30D)
-                </span>
-                <span className="info-tooltip" style={{ width: 16, height: 16, fontSize: 10 }}>?<span className="tooltip-text">Percentage of quotes won out of all decided quotes (won + lost + pending) in the last 30 days. Higher is better — 40%+ is strong.</span></span>
-              </div>
-              <div className={`kpi-value-medium ${winRate >= 0.4 ? 'text-success' : winRate >= 0.2 ? 'text-warning' : 'text-critical'}`}>
-                {pct(winRate)}
-              </div>
-            </div>
-            <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>
-              {recentWon.length}W / {recentLost.length}L / {recentSent.length}P
-            </div>
-          </div>
-
-          {/* Avg Days to Close */}
-          <div className="kpi-secondary">
-            <div>
-              <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
-                Avg Days to Close
-              </div>
-              <div className="kpi-value-medium text-primary">
-                {avgDaysToClose || "—"}
-              </div>
-            </div>
-            <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>
-              {wonWithDates.length} won quotes
-            </div>
-          </div>
-
-          {/* Pipeline Value */}
-          <div className="kpi-secondary">
-            <div>
-              <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
-                Pipeline Value
-              </div>
-              <div className="kpi-value-medium text-primary">
-                {money(pipelineValue)}
-              </div>
-            </div>
-            <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>
-              {openQuotes.length} open quotes
-            </div>
-          </div>
-
-          {/* Quotes Sent This Month */}
-          <div className="kpi-secondary">
-            <div>
-              <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
-                Quotes Sent (Month)
-              </div>
-              <div className="kpi-value-medium text-primary">
-                {quotesSentThisMonth}
-              </div>
-            </div>
-            <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>
-              {new Date().toLocaleString(undefined, { month: "long" })}
-            </div>
-          </div>
-        </div>
-
-        {/* Conversion Trend SparkLine */}
-        <div className="panel animate-in delay-4" style={{ marginTop: 16, padding: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <div>
-              <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>
-                Conversion Trend
-              </h2>
-              <p className="text-muted" style={{ fontSize: 12 }}>Weekly win rate — last 12 weeks</p>
-            </div>
-          </div>
-          <svg viewBox={`0 0 ${sparkW} ${sparkH}`} width="100%" style={{ overflow: "visible" }} preserveAspectRatio="xMidYMid meet">
-            {/* Grid */}
-            <line x1={0} y1={sparkH} x2={sparkW} y2={sparkH} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
-            <line x1={0} y1={0} x2={sparkW} y2={0} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
-            {/* Area */}
-            <polygon
-              points={`0,${sparkH} ${sparkPoints} ${sparkW},${sparkH}`}
-              fill="rgba(90,166,255,0.1)"
-            />
-            {/* Line */}
-            <polyline
-              points={sparkPoints}
-              fill="none"
-              stroke="#5aa6ff"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            {/* Dots */}
-            {winRateTrend.map((w, i) => {
-              const x = (i / Math.max(winRateTrend.length - 1, 1)) * sparkW;
-              const y = sparkH - (w.rate / maxRate) * sparkH;
-              return (
-                <circle key={i} cx={x} cy={y} r={2.5} fill="#5aa6ff" />
-              );
-            })}
-          </svg>
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
-            <span className="text-muted" style={{ fontSize: 10 }}>{winRateTrend[0]?.label}</span>
-            <span className="text-muted" style={{ fontSize: 10 }}>{winRateTrend[winRateTrend.length - 1]?.label}</span>
-          </div>
-        </div>
+        {/* Sales Trends */}
+        <SalesTrendsSection
+          wonQuoteEvents={wonQuoteEvents}
+          allClosureEvents={allClosureEvents}
+          currencyCode={currencyCode}
+        />
 
         {/* ===== Section D: Quote Follow-Up ===== */}
-        <div className="panel animate-in delay-4" style={{ marginTop: 20, padding: 20 }}>
+        <div className="panel animate-in delay-2" style={{ marginTop: 20, padding: 20 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -737,120 +489,19 @@ export default async function SalesPage({
               );
             })()}
 
-            {/* Grouped detail table */}
-            <div className="table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Days Quiet</th>
-                    <th>Quote</th>
-                    <th>Sent</th>
-                    <th>Amount</th>
-                    <th>Last Activity</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {nonEmptyBuckets.map((bucket) => (
-                    <React.Fragment key={bucket.key}>
-                      <tr>
-                        <td colSpan={7} style={{
-                          padding: "10px 14px",
-                          background: bucket.bg,
-                          borderLeft: `3px solid ${bucket.color}`,
-                          borderBottom: "1px solid rgba(255,255,255,0.06)",
-                        }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <span style={{
-                                width: 8, height: 8, borderRadius: "50%",
-                                background: bucket.color, display: "inline-block",
-                              }} />
-                              <span style={{ fontWeight: 700, fontSize: 13, color: bucket.color }}>
-                                {bucket.label}
-                              </span>
-                              <span className="text-muted" style={{ fontSize: 11 }}>
-                                {bucket.range}
-                              </span>
-                            </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                              <span className="text-muted" style={{ fontSize: 12 }}>
-                                {bucket.quotes.length} {bucket.quotes.length === 1 ? "quote" : "quotes"}
-                              </span>
-                              <span style={{ fontSize: 13, fontWeight: 700, color: bucket.color }}>
-                                {money(bucket.quotes.reduce((s, q) => s + q.amount_cents, 0))}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                      {bucket.quotes.map((q) => (
-                        <tr key={q.quote_number}>
-                          <td>
-                            <span className={`age-badge ${ageSev(q.days_quiet)}`}>
-                              {q.days_quiet}d
-                            </span>
-                          </td>
-                          <td>
-                            <div className="cell-primary" style={{ fontWeight: 600 }}>#{q.quote_number}</div>
-                            <div className="cell-secondary" style={{ fontSize: 11, marginTop: 2 }}>{q.quote_title}</div>
-                          </td>
-                          <td className="cell-muted" style={{ whiteSpace: "nowrap" }}>
-                            {q.sent_at?.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                          </td>
-                          <td className="cell-primary" style={{ fontWeight: 600, whiteSpace: "nowrap" }}>
-                            {money(q.amount_cents)}
-                          </td>
-                          <td className="cell-muted" style={{ whiteSpace: "nowrap" }}>
-                            {q.updated_at?.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                          </td>
-                          <td>
-                            <span style={{
-                              display: "inline-block",
-                              padding: "3px 8px",
-                              borderRadius: 6,
-                              fontSize: 11,
-                              fontWeight: 600,
-                              background: "rgba(90,166,255,0.15)",
-                              color: "#5aa6ff",
-                              textTransform: "capitalize",
-                            }}>
-                              {(q.status || "").replace(/_/g, " ").toLowerCase()}
-                            </span>
-                          </td>
-                          <td>
-                            {q.quote_url && (
-                              <a
-                                href={q.quote_url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="btn"
-                                style={{ padding: "4px 10px", fontSize: 11 }}
-                              >
-                                View &rarr;
-                              </a>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {/* Collapsible grouped detail table */}
+            <QuoteFollowUpTable
+              buckets={ageBuckets.map(b => ({
+                ...b,
+                quotes: b.quotes.map(q => ({
+                  ...q,
+                  sent_at: q.sent_at?.toISOString() ?? null,
+                  updated_at: q.updated_at?.toISOString() ?? null,
+                })),
+              }))}
+              currencyCode={currencyCode}
+            />
           </>)}
-        </div>
-
-        {/* ===== Section E: Coming Soon ===== */}
-        <div className="coming-soon-banner animate-in delay-5" style={{ marginTop: 20 }}>
-          <span style={{ fontSize: 24, display: "block", marginBottom: 8 }}>&#128101;</span>
-          <h3 className="text-primary" style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>
-            Sales Person Tracking — Coming Soon
-          </h3>
-          <p className="text-muted" style={{ fontSize: 13, maxWidth: 400, margin: "0 auto" }}>
-            Track revenue by team member, compare close rates, and identify top performers. Staff data sync will be added in Phase 2.
-          </p>
         </div>
 
         {/* Bottom spacer */}

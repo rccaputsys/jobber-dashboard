@@ -8,17 +8,23 @@ type ChartType = "line" | "bar";
 export function SparkLine(props: {
   title: string;
   subtitle: string;
-  points: { xLabel: string; value: number; tooltip: string; hoverLabel?: string }[];
-  formatType: "money" | "number";
+  points: { xLabel: string; value: number; tooltip: string; hoverLabel?: string; pointColor?: string }[];
+  formatType: "money" | "number" | "percent";
   chartType: ChartType;
   color?: string;
   loading?: boolean;
+  targetValue?: number;
+  targetLabel?: string;
+  invertChangeColor?: boolean;
 }) {
-  const formatY = (cents: number): string => {
-    if (props.formatType === "number") {
-      return `${Math.round(cents)}`;
+  const formatY = (v: number): string => {
+    if (props.formatType === "percent") {
+      return `${Math.round(v)}%`;
     }
-    const dollars = Math.round(cents / 100);
+    if (props.formatType === "number") {
+      return `${Math.round(v)}`;
+    }
+    const dollars = Math.round(v / 100);
     if (dollars >= 1000000) {
       const rounded = Math.round(dollars / 10000) * 10000;
       return `$${(rounded / 1000000).toFixed(2)}M`;
@@ -38,18 +44,24 @@ export function SparkLine(props: {
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
+  const hasTarget = props.targetValue != null && props.targetValue > 0;
   const vbW = 360;
-  const vbH = 140;
-  const padL = 48;
-  const padR = 12;
-  const padT = 14;
-  const padB = 28;
+  const vbH = 190;
+  const padL = hasTarget ? 72 : 54;
+  const padR = 14;
+  const padT = 24;
+  const padB = 50;
 
-  const chartColor = props.color || "#5aa6ff";
-  const glowColor = props.color ? `${props.color}30` : "rgba(90,166,255,0.2)";
+  // When a target is set, use a refined neutral for lines so only dots/bars show target performance
+  const chartColor = hasTarget ? "rgba(165,180,210,0.7)" : (props.color || "#5aa6ff");
+  const glowColor = hasTarget ? "rgba(165,180,210,0.12)" : (props.color ? `${props.color}30` : "rgba(90,166,255,0.2)");
+  const accentColor = props.color || "#5aa6ff";
 
   const vals = props.points.map((p) => p.value);
   const dataMax = vals.length ? Math.max(...vals, 1) : 1;
+
+  // If there's a target, make sure the chart can show it
+  const effectiveMax = props.targetValue != null ? Math.max(dataMax, props.targetValue * 1.1) : dataMax;
 
   function getNiceInterval(maxValue: number): number {
     if (maxValue <= 0) return 100;
@@ -64,8 +76,8 @@ export function SparkLine(props: {
     return niceNormalized * magnitude;
   }
 
-  const interval = getNiceInterval(dataMax);
-  const niceMax = Math.ceil(dataMax / interval) * interval;
+  const interval = getNiceInterval(effectiveMax);
+  const niceMax = Math.ceil(effectiveMax / interval) * interval;
   const min = 0;
   const max = niceMax || 1;
   const span = Math.max(1e-9, max - min);
@@ -91,19 +103,36 @@ export function SparkLine(props: {
   const gradientId = `gradient-${safeTitle}`;
 
   const barW = Math.max(4, (vbW - padL - padR) / Math.max(1, props.points.length) - 4);
-  
+
+  // When a target is set, color points relative to it
+  function targetColor(value: number): string | undefined {
+    if (props.targetValue == null || props.targetValue <= 0 || value === 0) return undefined;
+    const ratio = value / props.targetValue;
+    if (ratio >= 1.0) return "#10b981";   // at or above target = green
+    if (ratio >= 0.75) return "#f59e0b";  // within 25% below = amber
+    return "#ef4444";                      // more than 25% below = red
+  }
+
   // Smart label skipping - aim for ~6-8 labels max
   const pointCount = props.points.length;
-  const labelSkip = 
+  const labelSkip =
     pointCount > 60 ? Math.ceil(pointCount / 6) :
     pointCount > 30 ? Math.ceil(pointCount / 7) :
     pointCount > 16 ? 4 :
-    pointCount > 10 ? 3 : 
+    pointCount > 10 ? 3 :
     pointCount > 6 ? 2 : 1;
 
-  const currentValue = props.points.length > 0 ? props.points[props.points.length - 1].value : 0;
+  // Data point labels: show when few enough points to fit
+  const showDataLabels = pointCount > 0 && pointCount <= 12;
+
+  // Period average (excludes zero-value periods for a meaningful average)
+  const nonZeroVals = vals.filter(v => v > 0);
+  const periodAvg = nonZeroVals.length > 0 ? nonZeroVals.reduce((a, b) => a + b, 0) / nonZeroVals.length : 0;
 
   function formatYAxisLabel(value: number): string {
+    if (props.formatType === "percent") {
+      return `${Math.round(value)}%`;
+    }
     if (props.formatType === "number") {
       return `${Math.round(value)}`;
     }
@@ -114,14 +143,27 @@ export function SparkLine(props: {
     }
     if (dollars >= 1000) {
       const k = dollars / 1000;
-      const rounded = Math.round(k * 2) / 2;
-      return rounded % 1 === 0 ? `$${rounded}k` : `$${rounded.toFixed(1)}k`;
+      return k % 1 === 0 ? `$${k}k` : `$${k.toFixed(1)}k`;
     }
     if (dollars >= 100) {
       const rounded = Math.round(dollars / 100) * 100;
       return `$${rounded}`;
     }
     return `$${Math.round(dollars)}`;
+  }
+
+  function formatDataLabel(value: number): string {
+    if (props.formatType === "percent") {
+      return `${Math.round(value)}%`;
+    }
+    if (props.formatType === "number") {
+      return `${Math.round(value)}`;
+    }
+    const dollars = Math.round(value / 100);
+    if (dollars >= 1000) {
+      return `$${(dollars / 1000).toFixed(1)}k`;
+    }
+    return `$${dollars}`;
   }
 
   function getChange(index: number): { value: number; percent: number } | null {
@@ -197,10 +239,10 @@ export function SparkLine(props: {
           <div className="chart-subtitle" style={{ fontSize: 11, marginTop: 2 }}>{props.subtitle}</div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: chartColor, letterSpacing: -0.5 }}>
-            {formatY(currentValue)}
+          <div style={{ fontSize: 20, fontWeight: 800, color: hasTarget ? (targetColor(periodAvg) || accentColor) : accentColor, letterSpacing: -0.5 }}>
+            {formatY(periodAvg)}
           </div>
-          <div className="chart-label" style={{ fontSize: 10, marginTop: 2 }}>Current</div>
+          <div className="chart-label" style={{ fontSize: 10, marginTop: 2 }}>Avg / Period</div>
         </div>
       </div>
 
@@ -208,7 +250,7 @@ export function SparkLine(props: {
         width="100%"
         viewBox={`0 0 ${vbW} ${vbH}`}
         preserveAspectRatio="xMidYMid meet"
-        style={{ display: "block", overflow: "visible" }}
+        style={{ display: "block" }}
       >
         <defs>
           <clipPath id={clipId}>
@@ -260,7 +302,7 @@ export function SparkLine(props: {
                     width={barW}
                     height={Math.max(2, h)}
                     rx={4}
-                    fill={chartColor}
+                    fill={targetColor(p.value) || p.pointColor || chartColor}
                     opacity={hoveredIndex === i ? 1 : 0.85}
                     style={{ pointerEvents: "none" }}
                   />
@@ -269,6 +311,89 @@ export function SparkLine(props: {
             })
           )}
         </g>
+
+        {/* Data point labels (when few enough points to fit) */}
+        {showDataLabels && (() => {
+          const dotRadius = 6; // largest dot size
+          const labelOffset = 16; // distance from data point center
+          const minLabelGap = 13;
+          const chartBottom = vbH - padB;
+
+          const barLabelGap = 12; // fixed distance above bar top
+
+          // First pass: compute positions
+          const positions = props.points.map((p, i) => {
+            if (p.value === 0) return null;
+            const isBar = props.chartType === "bar";
+            const x = isBar
+              ? padL + i * ((vbW - padL - padR) / Math.max(1, props.points.length)) + barW / 2 + 2
+              : xOf(i);
+            const pointY = yOf(p.value);
+
+            if (isBar) {
+              // Bars: always a fixed gap above the bar top
+              const y = pointY - barLabelGap;
+              return { i, x, y: Math.max(8, y), value: p.value, color: targetColor(p.value) || p.pointColor || chartColor };
+            }
+
+            // Line charts: smart above/below based on local slope
+            let placeBelow = false;
+            const prevY = i > 0 ? yOf(props.points[i - 1].value) : pointY;
+            const nextY = i < props.points.length - 1 ? yOf(props.points[i + 1].value) : pointY;
+            const isLocalMax = pointY <= prevY && pointY <= nextY;
+            const isLocalMin = pointY >= prevY && pointY >= nextY;
+            if (isLocalMin && pointY + labelOffset + 10 < chartBottom) {
+              placeBelow = true;
+            } else if (!isLocalMax && i % 2 === 1 && pointY + labelOffset + 10 < chartBottom) {
+              placeBelow = true;
+            }
+
+            const y = placeBelow ? pointY + labelOffset : pointY - labelOffset;
+            return { i, x, y: Math.max(8, Math.min(chartBottom - 4, y)), value: p.value, color: targetColor(p.value) || p.pointColor || chartColor };
+          }).filter(Boolean) as { i: number; x: number; y: number; value: number; color: string }[];
+
+          // Second pass: collision avoidance (line charts only — bars are horizontally spaced)
+          let yMap = new Map<number, number>();
+          if (props.chartType === "line") {
+            const sorted = [...positions].sort((a, b) => a.y - b.y);
+            for (let j = 1; j < sorted.length; j++) {
+              const prev = sorted[j - 1];
+              const curr = sorted[j];
+              if (Math.abs(curr.x - prev.x) < 45 && curr.y - prev.y < minLabelGap) {
+                curr.y = prev.y + minLabelGap;
+              }
+            }
+            yMap = new Map(sorted.map(s => [s.i, s.y]));
+          }
+
+          return positions.map((pos) => {
+            const finalY = yMap.get(pos.i) ?? pos.y;
+            const label = formatDataLabel(pos.value);
+            const bgW = label.length * 4.8 + 6;
+            return (
+              <g key={`dl-${pos.i}`} style={{ pointerEvents: "none" }}>
+                <rect
+                  x={pos.x - bgW / 2}
+                  y={finalY - 6.5}
+                  width={bgW}
+                  height={9}
+                  rx={2.5}
+                  fill="rgba(6,8,17,0.7)"
+                />
+                <text
+                  x={pos.x}
+                  y={finalY + 0.5}
+                  fontSize="7"
+                  fontWeight="700"
+                  textAnchor="middle"
+                  fill={pos.color}
+                >
+                  {label}
+                </text>
+              </g>
+            );
+          });
+        })()}
 
         {/* Dots rendered OUTSIDE clip path so they don't get cut off */}
         {props.chartType === "line" && props.points.map((p, i) => (
@@ -286,7 +411,7 @@ export function SparkLine(props: {
               cx={xOf(i)}
               cy={yOf(p.value)}
               r={hoveredIndex === i ? 6 : (i === props.points.length - 1 ? 5 : 3)}
-              fill={chartColor}
+              fill={targetColor(p.value) || p.pointColor || chartColor}
               style={{ pointerEvents: "none" }}
             />
             {(i === props.points.length - 1 || hoveredIndex === i) && (
@@ -295,22 +420,44 @@ export function SparkLine(props: {
           </g>
         ))}
 
+        {/* Target line — clean, on top of data */}
+        {props.targetValue != null && props.targetValue > 0 && (() => {
+          const targetY = yOf(props.targetValue);
+          return (
+            <g>
+              <line x1={padL} y1={targetY} x2={vbW - padR} y2={targetY} stroke="rgba(16,185,129,0.45)" strokeWidth={1.5} strokeDasharray="4 3" />
+              {/* "TARGET" + value stacked in the far-left gutter, clear of axis labels */}
+              <text x={2} y={targetY - 4} fontSize="6.5" fontWeight="800" textAnchor="start" fill="#10b981" opacity={0.7} letterSpacing="0.6">
+                TARGET
+              </text>
+              <text x={2} y={targetY + 5} fontSize="8" fontWeight="700" textAnchor="start" fill="#10b981" opacity={0.9}>
+                {formatYAxisLabel(props.targetValue)}
+              </text>
+            </g>
+          );
+        })()}
+
         {/* X axis labels */}
         {props.points.map((p, i) => {
           const isLast = i === props.points.length - 1;
           const showBySkip = i % labelSkip === 0;
-          
+
           // Skip last label if it would overlap with the previous shown label
           if (isLast) {
             const prevShownIndex = Math.floor((props.points.length - 2) / labelSkip) * labelSkip;
             const gap = props.points.length - 1 - prevShownIndex;
             if (gap < labelSkip * 0.7) return null; // Too close, skip last
           }
-          
+
           if (!showBySkip && !isLast) return null;
-          
+
+          // For bar charts, center label under the bar; for line charts, use point position
+          const labelX = props.chartType === "bar"
+            ? padL + i * ((vbW - padL - padR) / Math.max(1, props.points.length)) + barW / 2 + 2
+            : xOf(i);
+
           return (
-            <text key={`x-${i}`} x={xOf(i)} y={vbH - 8} fontSize="9" textAnchor="middle" className="chart-axis-label">
+            <text key={`x-${i}`} x={labelX} y={vbH - 10} fontSize="9" textAnchor="middle" className="chart-axis-label">
               {p.xLabel}
             </text>
           );
@@ -345,16 +492,21 @@ export function SparkLine(props: {
               {hoveredPoint.hoverLabel}
             </div>
           )}
-          {hoveredChange && (
-            <div style={{
-              fontSize: 12,
-              fontWeight: 600,
-              marginTop: 4,
-              color: hoveredChange.value === 0 ? "#888" : hoveredChange.value > 0 ? "#ef4444" : "#10b981",
-            }}>
-              {hoveredChange.value === 0 ? "—" : hoveredChange.value > 0 ? "↑" : "↓"} {formatY(Math.abs(hoveredChange.value))} ({hoveredChange.percent > 0 ? "+" : ""}{hoveredChange.percent.toFixed(0)}%)
-            </div>
-          )}
+          {hoveredChange && (() => {
+            const invert = props.invertChangeColor !== false; // default true (up=red for overview problems)
+            const upColor = invert ? "#ef4444" : "#10b981";
+            const downColor = invert ? "#10b981" : "#ef4444";
+            return (
+              <div style={{
+                fontSize: 12,
+                fontWeight: 600,
+                marginTop: 4,
+                color: hoveredChange.value === 0 ? "#888" : hoveredChange.value > 0 ? upColor : downColor,
+              }}>
+                {hoveredChange.value === 0 ? "\u2014" : hoveredChange.value > 0 ? "\u2191" : "\u2193"} {formatY(Math.abs(hoveredChange.value))} ({hoveredChange.percent > 0 ? "+" : ""}{hoveredChange.percent.toFixed(0)}%)
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>
