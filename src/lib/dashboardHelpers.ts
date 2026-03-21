@@ -495,6 +495,7 @@ export const globalStyles = `
     text-transform: uppercase;
     border-bottom: 1px solid rgba(255,255,255,0.08);
     white-space: nowrap;
+    color: rgba(234,241,255,0.5);
   }
 
   @media (min-width: 640px) {
@@ -508,7 +509,11 @@ export const globalStyles = `
     padding: 12px;
     border-bottom: 1px solid rgba(255,255,255,0.05);
     vertical-align: middle;
+    color: rgba(234,241,255,0.85);
   }
+  .cell-primary { color: #EAF1FF; }
+  .cell-secondary { color: rgba(234,241,255,0.7); }
+  .cell-muted { color: rgba(234,241,255,0.5); }
 
   @media (min-width: 640px) {
     .data-table td {
