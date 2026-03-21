@@ -6,6 +6,18 @@ import { sendSyncFailureEmail } from "@/lib/resend";
 
 export const maxDuration = 300; // Tell Vercel this route needs full 300s
 
+type VisitNode = {
+  id: string;
+  title?: string | null;
+  startAt?: string | null;
+  endAt?: string | null;
+  completedAt?: string | null;
+  visitStatus?: string | null;
+  isComplete?: boolean | null;
+  duration?: number | null;
+  createdAt?: string | null;
+};
+
 type JobNode = {
   id: string;
   createdAt?: string | null;
@@ -17,6 +29,7 @@ type JobNode = {
   jobberWebUri?: string | null;
   title?: string | null;
   total?: number | null;
+  visits?: { totalCount?: number; nodes?: VisitNode[] } | null;
 };
 
 type InvoiceClient = {
@@ -251,7 +264,8 @@ async function handleSyncJobsStep(
   connectionId: string,
   token: string,
   lastSyncAt: string | null = null,
-): Promise<{ jobCount: number }> {
+): Promise<{ jobCount: number; visitCount: number }> {
+  // Step 1: Fetch jobs (without visits — visits are synced separately to avoid query issues)
   const jobResult = await fetchAllPages<JobNode>(
     token,
     "jobs",
@@ -298,7 +312,58 @@ async function handleSyncJobsStep(
     }
   }
 
-  return { jobCount: jobs.length };
+  // Step 2: Fetch visits as a top-level resource
+  type VisitWithJob = VisitNode & { job?: { id?: string; jobNumber?: number } };
+  const visitResult = await fetchAllPages<VisitWithJob>(
+    token,
+    "visits",
+    `id
+     title
+     startAt
+     endAt
+     completedAt
+     visitStatus
+     isComplete
+     duration
+     createdAt
+     job { id jobNumber }`,
+    lastSyncAt
+  );
+
+  if (visitResult.errors.length > 0) {
+    console.warn("Jobber API visit errors:", visitResult.errors.length);
+  }
+
+  const visits = visitResult.nodes;
+  let visitCount = 0;
+  if (visits.length > 0) {
+    const visitRows = visits.map((v: any) => ({
+      connection_id: connectionId,
+      jobber_visit_id: v.id,
+      jobber_job_id: v.job?.id ?? null,
+      job_number: v.job?.jobNumber ?? null,
+      title: v.title ?? null,
+      visit_status: v.visitStatus ?? null,
+      is_complete: v.isComplete ?? false,
+      start_at: v.startAt ?? null,
+      end_at: v.endAt ?? null,
+      completed_at: v.completedAt ?? null,
+      duration_minutes: v.duration ?? null,
+      created_at_jobber: v.createdAt ?? null,
+    }));
+
+    const chunkSize = 1000;
+    for (let i = 0; i < visitRows.length; i += chunkSize) {
+      const chunk = visitRows.slice(i, i + chunkSize);
+      const { error } = await supabaseAdmin
+        .from("fact_visits")
+        .upsert(chunk, { onConflict: "connection_id,jobber_visit_id" });
+      if (error) throw new Error(`fact_visits batch upsert failed: ${error.message}`);
+    }
+    visitCount = visitRows.length;
+  }
+
+  return { jobCount: jobs.length, visitCount };
 }
 
 async function handleSyncOtherStep(
@@ -624,8 +689,8 @@ async function handleStepSync(
 
       const fullSync = searchParams.get("full") === "true";
       const lastSyncAt = fullSync ? null : (connectionData?.last_sync_at || null);
-      const { jobCount } = await handleSyncJobsStep(connectionId, token, lastSyncAt);
-      return NextResponse.json({ ok: true, jobs: jobCount });
+      const { jobCount, visitCount } = await handleSyncJobsStep(connectionId, token, lastSyncAt);
+      return NextResponse.json({ ok: true, jobs: jobCount, visits: visitCount });
 
     } else if (step === "other") {
       const { data: connectionData } = await supabaseAdmin

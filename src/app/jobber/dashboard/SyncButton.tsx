@@ -50,7 +50,8 @@ export function SyncButton({ connectionId }: { connectionId: string }) {
       if (!jobsData.ok) throw new Error(jobsData.error || "Jobs sync failed");
 
       const jobCount = jobsData.jobs || 0;
-      setStatusText(`Synced ${jobCount.toLocaleString()} jobs. Syncing invoices & quotes...`);
+      const visitCount = jobsData.visits || 0;
+      setStatusText(`Synced ${jobCount.toLocaleString()} jobs, ${visitCount} visits. Syncing invoices & quotes...`);
 
       const otherRes = await fetch(`/api/sync/run?connection_id=${connectionId}&json=true&step=other`);
       const otherData = await otherRes.json();
