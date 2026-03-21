@@ -75,7 +75,7 @@ export default async function CapacityPage({
   }
 
   // Fetch connection details + jobs
-  const [connDetails, jobs] = await Promise.all([
+  const [connDetails, jobs, visits] = await Promise.all([
     supabaseAdmin
       .from("jobber_connections")
       .select("last_sync_at,trial_started_at,trial_ends_at,billing_status,currency_code,company_name,jobber_account_name,weekly_capacity_cents")
@@ -83,7 +83,87 @@ export default async function CapacityPage({
       .maybeSingle()
       .then((r) => r.data),
     fetchAllRows("fact_jobs", "*", connectionId),
+    fetchAllRows("fact_visits", "*", connectionId),
   ]);
+
+  // Build unified schedule items: visits first, then backfill jobs without visits
+  const jobIdsWithVisits = new Set(visits.map((v: any) => v.jobber_job_id).filter(Boolean));
+  const visitlessJobs = jobs.filter((j: any) => !jobIdsWithVisits.has(j.jobber_job_id));
+
+  // Unified "schedule items" — each has a start time, amount, and identity
+  type ScheduleItem = {
+    type: "visit" | "job";
+    id: string;
+    title: string;
+    jobNumber: number | null;
+    startAt: string | null;
+    endAt: string | null;
+    completedAt: string | null;
+    status: string;
+    amountCents: number;
+    jobberUrl: string;
+    createdAt: string | null;
+    durationMinutes: number | null;
+    isComplete: boolean;
+  };
+
+  const scheduleItems: ScheduleItem[] = [
+    // All visits become schedule items
+    ...visits.map((v: any) => ({
+      type: "visit" as const,
+      id: v.jobber_visit_id || v.id,
+      title: v.title || "",
+      jobNumber: v.job_number ?? null,
+      startAt: v.start_at ?? null,
+      endAt: v.end_at ?? null,
+      completedAt: v.completed_at ?? null,
+      status: v.visit_status || "",
+      amountCents: 0, // visits don't have individual amounts — we'll use job total / visit count
+      jobberUrl: "",
+      createdAt: v.created_at_jobber ?? null,
+      durationMinutes: v.duration_minutes ?? null,
+      isComplete: v.is_complete ?? false,
+    })),
+    // Jobs without visits become schedule items (one-offs that Jobber didn't create a visit for)
+    ...visitlessJobs.map((j: any) => ({
+      type: "job" as const,
+      id: j.jobber_job_id || j.id,
+      title: j.job_title || "",
+      jobNumber: j.job_number ?? null,
+      startAt: j.scheduled_start_at ?? null,
+      endAt: j.scheduled_end_at ?? null,
+      completedAt: null,
+      status: j.status || "",
+      amountCents: Number(j.total_amount_cents ?? 0),
+      jobberUrl: j.jobber_url || "",
+      createdAt: j.created_at_jobber ?? null,
+      durationMinutes: null,
+      isComplete: false,
+    })),
+  ];
+
+  // For revenue calculations, distribute job total across its visits
+  const jobVisitCounts = new Map<string, number>();
+  const jobTotals = new Map<string, number>();
+  for (const v of visits) {
+    const jid = v.jobber_job_id;
+    if (jid) jobVisitCounts.set(jid, (jobVisitCounts.get(jid) || 0) + 1);
+  }
+  for (const j of jobs) {
+    jobTotals.set(j.jobber_job_id, Number(j.total_amount_cents ?? 0));
+  }
+  // Assign per-visit revenue: job total / number of visits for that job
+  for (const item of scheduleItems) {
+    if (item.type === "visit") {
+      // Find the parent job's total and split across visits
+      const jobId = visits.find((v: any) => (v.jobber_visit_id || v.id) === item.id)?.jobber_job_id;
+      if (jobId) {
+        const total = jobTotals.get(jobId) || 0;
+        const count = jobVisitCounts.get(jobId) || 1;
+        item.amountCents = Math.round(total / count);
+      }
+    }
+  }
 
   const companyName = connDetails?.jobber_account_name || connDetails?.company_name || "Your Company";
   const currencyCode = (connDetails?.currency_code || "USD").toUpperCase();
@@ -160,17 +240,17 @@ export default async function CapacityPage({
   const nextMonthStart = thisMonthEnd;
   const nextMonthEnd = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() + 2, 1));
 
-  function periodJobs(start: Date, end: Date) {
-    return jobs.filter((j: any) => {
-      const sched = safeDate(j.scheduled_start_at);
+  function periodItems(start: Date, end: Date) {
+    return scheduleItems.filter((item) => {
+      const sched = safeDate(item.startAt);
       return sched && sched >= start && sched < end;
     });
   }
 
   // For monthly periods: use monthlyCapacityCents if set, otherwise fall back to weekly × weeks-in-period
   function computePeriodMetrics(start: Date, end: Date, weeklyTarget: number | null, periodLabel: string, monthlyTarget?: number | null) {
-    const pJobs = periodJobs(start, end);
-    const revenueCents = pJobs.reduce((s: number, j: any) => s + Number(j.total_amount_cents ?? 0), 0);
+    const pItems = periodItems(start, end);
+    const revenueCents = pItems.reduce((s: number, item) => s + item.amountCents, 0);
 
     const daysInPeriod = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     const weeksInPeriod = daysInPeriod / 7;
@@ -189,12 +269,12 @@ export default async function CapacityPage({
     // Prior period comparison (same duration, shifted back)
     const priorStart = addDaysUTC(start, -daysInPeriod);
     const priorEnd = start;
-    const priorJobs = periodJobs(priorStart, priorEnd);
-    const priorRevenueCents = priorJobs.reduce((s: number, j: any) => s + Number(j.total_amount_cents ?? 0), 0);
-    const priorJobCount = priorJobs.length;
+    const priorItems = periodItems(priorStart, priorEnd);
+    const priorRevenueCents = priorItems.reduce((s: number, item) => s + item.amountCents, 0);
+    const priorJobCount = priorItems.length;
 
-    // Revenue per job
-    const revenuePerJobCents = pJobs.length > 0 ? Math.round(revenueCents / pJobs.length) : 0;
+    // Revenue per item
+    const revenuePerJobCents = pItems.length > 0 ? Math.round(revenueCents / pItems.length) : 0;
     const priorRevenuePerJobCents = priorJobCount > 0 ? Math.round(priorRevenueCents / priorJobCount) : 0;
 
     return {
@@ -207,7 +287,7 @@ export default async function CapacityPage({
       avgRevenuePerDay: money(avgPerDayCents),
       avgRevenuePerDayCents: avgPerDayCents,
       dailyTargetCents,
-      jobCount: pJobs.length,
+      jobCount: pItems.length,
       periodLabel,
       priorRevenueCents,
       revenuePerJobCents,
@@ -229,7 +309,7 @@ export default async function CapacityPage({
     for (let i = 0; i < PROJ_WEEKS; i++) {
       const wStart = addDaysUTC(thisWeekStart, i * 7);
       const wEnd = addDaysUTC(wStart, 7);
-      const rev = periodJobs(wStart, wEnd).reduce((s: number, j: any) => s + Number(j.total_amount_cents ?? 0), 0);
+      const rev = periodItems(wStart, wEnd).reduce((s: number, item) => s + item.amountCents, 0);
       totalScheduled += rev;
     }
     const totalTarget = weeklyCapacityCents * PROJ_WEEKS;
@@ -245,40 +325,52 @@ export default async function CapacityPage({
   const thisWeekDaily = dayLabels.map((label, i) => {
     const dayStart = addDaysUTC(thisWeekStart, i);
     const dayEnd = addDaysUTC(dayStart, 1);
-    const dayJobs = periodJobs(dayStart, dayEnd);
-    const revenue = dayJobs.reduce((s: number, j: any) => s + Number(j.total_amount_cents ?? 0), 0);
-    return { label, revenue, jobCount: dayJobs.length, date: dayStart.toISOString() };
+    const dayItems = periodItems(dayStart, dayEnd);
+    const revenue = dayItems.reduce((s: number, item) => s + item.amountCents, 0);
+    return { label, revenue, jobCount: dayItems.length, date: dayStart.toISOString() };
   });
   const nextWeekDaily = dayLabels.map((label, i) => {
     const dayStart = addDaysUTC(nextWeekStart, i);
     const dayEnd = addDaysUTC(dayStart, 1);
-    const dayJobs = periodJobs(dayStart, dayEnd);
-    const revenue = dayJobs.reduce((s: number, j: any) => s + Number(j.total_amount_cents ?? 0), 0);
-    return { label, revenue, jobCount: dayJobs.length, date: dayStart.toISOString() };
+    const dayItems = periodItems(dayStart, dayEnd);
+    const revenue = dayItems.reduce((s: number, item) => s + item.amountCents, 0);
+    return { label, revenue, jobCount: dayItems.length, date: dayStart.toISOString() };
   });
 
-  // Historical job events for trends
-  const jobEvents = jobs
-    .filter((j: any) => safeDate(j.scheduled_start_at))
-    .map((j: any) => ({ scheduledAt: safeDate(j.scheduled_start_at)!.getTime(), amount: Number(j.total_amount_cents ?? 0) }));
+  // Historical events for trends (from unified schedule items)
+  const jobEvents = scheduleItems
+    .filter((item) => safeDate(item.startAt))
+    .map((item) => ({ scheduledAt: safeDate(item.startAt)!.getTime(), amount: item.amountCents }));
 
-  // Unscheduled jobs — no scheduled_start_at
-  const unscheduledJobs = jobs
-    .filter((j: any) => !j.scheduled_start_at)
-    .map((j: any) => ({
-      job_number: Number(j.job_number ?? 0),
-      job_title: j.job_title || "",
-      total_amount_cents: Number(j.total_amount_cents ?? 0),
-      jobber_url: j.jobber_url || "",
-      status: j.status || "",
-      created_at: j.created_at_jobber || j.created_at || null,
-    }))
-    .sort((a, b) => {
-      // Sort by age descending (oldest unscheduled first)
-      const aTime = a.created_at ? new Date(a.created_at).getTime() : Infinity;
-      const bTime = b.created_at ? new Date(b.created_at).getTime() : Infinity;
-      return aTime - bTime;
-    });
+  // Unscheduled: jobs without visits that have no schedule, plus visits with no startAt
+  const unscheduledJobs = [
+    // Jobs without visits and no schedule
+    ...visitlessJobs
+      .filter((j: any) => !j.scheduled_start_at)
+      .map((j: any) => ({
+        job_number: Number(j.job_number ?? 0),
+        job_title: j.job_title || "",
+        total_amount_cents: Number(j.total_amount_cents ?? 0),
+        jobber_url: j.jobber_url || "",
+        status: j.status || "",
+        created_at: j.created_at_jobber || j.created_at || null,
+      })),
+    // Visits with UNSCHEDULED status
+    ...visits
+      .filter((v: any) => v.visit_status === "UNSCHEDULED")
+      .map((v: any) => ({
+        job_number: v.job_number ?? 0,
+        job_title: v.title || "",
+        total_amount_cents: 0,
+        jobber_url: "",
+        status: "unscheduled_visit",
+        created_at: v.created_at_jobber || null,
+      })),
+  ].sort((a, b) => {
+    const aTime = a.created_at ? new Date(a.created_at).getTime() : Infinity;
+    const bTime = b.created_at ? new Date(b.created_at).getTime() : Infinity;
+    return aTime - bTime;
+  });
 
 
   /* ------------------------------------------------------------------ */
