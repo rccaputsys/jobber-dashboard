@@ -1,16 +1,22 @@
 ﻿// src/app/jobber/dashboard/page.tsx
-import { ExportCSV } from "./ExportCSV";
 import React from "react";
 import { supabaseAdmin, fetchAllRows } from "@/lib/supabaseAdmin";
 import { SyncButton } from "./SyncButton";
 import { ThemeToggle } from "./ThemeToggle";
-import { ActionListTabs } from "./ActionListTabs";
 import { getUser } from "@/lib/supabaseAuth";
 import { redirect } from "next/navigation";
 import { DisconnectJobberButton } from "./DisconnectButton";
 import { TrendsSection } from "./TrendsSection";
 import { AnalyticsProvider } from "./AnalyticsProvider";
 import { NavTabs } from "./NavTabs";
+import { AccuScore } from "./AccuScore";
+import { MoneyFlowFunnel } from "./MoneyFlowFunnel";
+import { DashboardTopbar } from "./DashboardTopbar";
+import {
+  safeDate as _safeDate,
+  globalStyles,
+  theme,
+} from "@/lib/dashboardHelpers";
 
 /* --------------------------------- helpers --------------------------------- */
 type Granularity = "day" | "week" | "month" | "quarter";
@@ -211,903 +217,6 @@ const DEMO_DATA = {
     { icon: "💰", text: "8 quotes pending ($12,340 total). Follow up on top 5 - potential $3,085 recovery.", priority: "medium" as const },
   ],
 };
-
-/* ----------------------------------- Global Styles ----------------------------------- */
-const globalStyles = `
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(16px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
-  
-  @keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-  }
-  
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-
-  .animate-in {
-    animation: fadeInUp 0.5s ease-out forwards;
-    opacity: 0;
-  }
-  
-  .delay-1 { animation-delay: 0.1s; }
-  .delay-2 { animation-delay: 0.2s; }
-  .delay-3 { animation-delay: 0.3s; }
-  .delay-4 { animation-delay: 0.4s; }
-  .delay-5 { animation-delay: 0.5s; }
-  
-  .hover-lift {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-  }
-  .hover-lift:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-  }
-  
-  .hover-glow {
-    transition: box-shadow 0.2s ease;
-  }
-  .hover-glow:hover {
-    box-shadow: 0 0 30px rgba(90,166,255,0.2);
-  }
-  
-  .pulse-dot {
-    animation: pulse 2s ease-in-out infinite;
-  }
-  
-  /* Mobile-first responsive */
-  .dashboard-container {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 16px;
-  }
-  
-  @media (min-width: 640px) {
-    .dashboard-container {
-      padding: 20px;
-    }
-  }
-  
-  @media (min-width: 1024px) {
-    .dashboard-container {
-      padding: 24px 32px 80px;
-    }
-  }
-  
-  /* Header responsive */
-  .dashboard-header {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  
-  @media (min-width: 768px) {
-    .dashboard-header {
-      flex-direction: row;
-      justify-content: space-between;
-      align-items: flex-end;
-    }
-  }
-  
-  .header-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-  }
-  
-  @media (min-width: 640px) {
-    .header-actions {
-      gap: 10px;
-    }
-  }
-  
-  /* Status pills responsive */
-  .status-pill {
-    padding: 6px 10px;
-    font-size: 11px;
-  }
-  
-  @media (min-width: 640px) {
-    .status-pill {
-      padding: 8px 14px;
-      font-size: 13px;
-    }
-  }
-  
-  /* KPI Grid responsive */
-  .kpi-grid-primary {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  
-  @media (min-width: 640px) {
-    .kpi-grid-primary {
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-    }
-  }
-  
-  @media (min-width: 1024px) {
-    .kpi-grid-primary {
-      grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
-    }
-  }
-  
-  .kpi-grid-secondary {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-  
-  @media (min-width: 640px) {
-    .kpi-grid-secondary {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-    }
-  }
-  
-  @media (min-width: 1024px) {
-    .kpi-grid-secondary {
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-    }
-  }
-  
-  /* Chart grid responsive */
-  .chart-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  
-  @media (min-width: 768px) {
-    .chart-grid {
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-    }
-  }
-  
-  /* Primary KPI card */
-  .kpi-primary {
-    position: relative;
-    overflow: hidden;
-    border-radius: 20px;
-    padding: 20px;
-    background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
-    border: 1px solid rgba(255,255,255,0.1);
-    box-shadow: 0 16px 48px rgba(0,0,0,0.25);
-  }
-  
-  @media (min-width: 640px) {
-    .kpi-primary {
-      padding: 24px;
-    }
-  }
-  
-  .kpi-primary::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    filter: blur(60px);
-    opacity: 0.3;
-    pointer-events: none;
-  }
-  
-  .kpi-primary.gradient-purple::before {
-    background: linear-gradient(135deg, #7c5cff, #5aa6ff);
-  }
-  
-  .kpi-primary.gradient-red::before {
-    background: #ef4444;
-  }
-  
-  .kpi-primary.gradient-amber::before {
-    background: #f59e0b;
-  }
-  
-  .kpi-primary.gradient-green::before {
-    background: #10b981;
-  }
-  
-  .kpi-value-large {
-    font-size: 44px;
-    font-weight: 800;
-    letter-spacing: -2px;
-    line-height: 1;
-  }
-  
-  @media (min-width: 640px) {
-    .kpi-value-large {
-      font-size: 52px;
-    }
-  }
-  
-  /* Secondary KPI card */
-  .kpi-secondary {
-    padding: 14px;
-    border-radius: 14px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    transition: all 0.2s ease;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    min-height: 120px;
-  }
-  
-  @media (min-width: 640px) {
-    .kpi-secondary {
-      padding: 16px;
-      border-radius: 16px;
-    }
-  }
-  
-  .kpi-secondary:hover {
-    background: rgba(255,255,255,0.06);
-    border-color: rgba(255,255,255,0.12);
-  }
-  
-  .kpi-value-medium {
-    font-size: 32px;
-    font-weight: 800;
-    letter-spacing: -1px;
-  }
-  
-  @media (min-width: 640px) {
-    .kpi-value-medium {
-      font-size: 36px;
-    }
-  }
-  
-  /* Panel */
-  .panel {
-    border-radius: 16px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
-    box-shadow: 0 16px 48px rgba(0,0,0,0.3);
-    overflow: hidden;
-  }
-  
-  @media (min-width: 640px) {
-    .panel {
-      border-radius: 20px;
-    }
-  }
-  
-  /* Table responsive */
-  .table-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    margin: 0 -16px;
-    padding: 0 16px;
-  }
-  
-  @media (min-width: 640px) {
-    .table-container {
-      margin: 0;
-      padding: 0;
-    }
-  }
-  
-  .data-table {
-    width: 100%;
-    min-width: 500px;
-    border-collapse: collapse;
-    font-size: 12px;
-  }
-  
-  @media (min-width: 640px) {
-    .data-table {
-      font-size: 13px;
-    }
-  }
-  
-  .data-table th {
-    text-align: left;
-    padding: 10px 12px;
-    font-weight: 600;
-    font-size: 10px;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    white-space: nowrap;
-  }
-  
-  @media (min-width: 640px) {
-    .data-table th {
-      padding: 12px 14px;
-      font-size: 11px;
-    }
-  }
-  
-  .data-table td {
-    padding: 12px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    vertical-align: middle;
-  }
-  
-  @media (min-width: 640px) {
-    .data-table td {
-      padding: 14px;
-    }
-  }
-  
-  .data-table tbody tr {
-    transition: background 0.15s ease;
-  }
-  
-  .data-table tbody tr:hover {
-    background: rgba(255,255,255,0.03);
-  }
-  
-  /* Buttons */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 8px 12px;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 12px;
-    text-decoration: none;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.06);
-    cursor: pointer;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-  }
-  
-  .btn:hover {
-    background: rgba(90,166,255,0.15);
-    border-color: rgba(90,166,255,0.4);
-    color: #5aa6ff;
-    transform: translateY(-1px);
-  }
-  
-  @media (min-width: 640px) {
-    .btn {
-      padding: 9px 14px;
-      font-size: 13px;
-    }
-  }
-  
-  .btn-primary {
-    background: linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95));
-    border: 1px solid rgba(255,255,255,0.2);
-    box-shadow: 0 8px 24px rgba(90,166,255,0.25);
-    transition: all 0.2s ease;
-  }
-  
-   .btn-primary:hover {
-    background: rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.15);
-    box-shadow: none;
-    transform: translateY(-1px);
-  }
-  
-  /* Recommendations */
-  .recommendation-banner {
-    border-radius: 14px;
-    border: 1px solid rgba(245,158,11,0.2);
-    background: linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(245,158,11,0.02) 100%);
-    padding: 14px;
-  }
-  
-  @media (min-width: 640px) {
-    .recommendation-banner {
-      padding: 18px;
-      border-radius: 16px;
-    }
-  }
-  
-  .recommendation-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: rgba(0,0,0,0.2);
-    margin-bottom: 8px;
-    font-size: 13px;
-    line-height: 1.5;
-    border: 1px solid rgba(255,255,255,0.03);
-  }
-  
-  @media (min-width: 640px) {
-    .recommendation-item {
-      padding: 12px 14px;
-      font-size: 14px;
-    }
-  }
-  
-  /* Age badge */
-  .age-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 700;
-  }
-  
-  .age-badge.critical {
-    background: rgba(239,68,68,0.2);
-    color: #fca5a5;
-  }
-  
-  .age-badge.warning {
-    background: rgba(245,158,11,0.2);
-    color: #fcd34d;
-  }
-  
-  .age-badge.good {
-    background: rgba(16,185,129,0.2);
-    color: #6ee7b7;
-  }
-  
-  /* ================================ */
-  /* LIGHT MODE - COMPREHENSIVE FIXES */
-  /* ================================ */
-  
-  html[data-theme="light"] body,
-  html[data-theme="light"] main,
-  html[data-theme="light"] .dashboard-main {
-    background: #f1f5f9 !important;
-    color: #1e293b !important;
-  }
-  
-  /* Panels and Cards */
-  html[data-theme="light"] .panel {
-    background: #ffffff !important;
-    border-color: #e2e8f0 !important;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.06) !important;
-  }
-  
-  html[data-theme="light"] .kpi-primary {
-    background: #ffffff !important;
-    border-color: #e2e8f0 !important;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.06) !important;
-  }
-  
-  html[data-theme="light"] .kpi-secondary {
-    background: #ffffff !important;
-    border-color: #e2e8f0 !important;
-  }
-  
-  html[data-theme="light"] .kpi-secondary:hover {
-    background: #f8fafc !important;
-    border-color: #cbd5e1 !important;
-  }
-  
-  /* ALL TEXT - Default dark for light mode */
-  html[data-theme="light"] h1,
-  html[data-theme="light"] h2,
-  html[data-theme="light"] h3,
-  html[data-theme="light"] .dashboard-header h1 {
-    color: #1e293b !important;
-  }
-  
-  /* Theme-aware text classes */
-  .text-primary { color: #EAF1FF; }
-  .text-secondary { color: rgba(234,241,255,0.7); }
-  .text-muted { color: rgba(234,241,255,0.5); }
-  
-  html[data-theme="light"] .text-primary { color: #1e293b !important; }
-  html[data-theme="light"] .text-secondary { color: #475569 !important; }
-  html[data-theme="light"] .text-muted { color: #64748b !important; }
-  
-  /* Semantic status colors */
-  .text-critical { color: #ef4444 !important; }
-  .text-warning { color: #f59e0b !important; }
-  .text-success { color: #10b981 !important; }
-  
-  html[data-theme="light"] .text-critical { color: #dc2626 !important; }
-  html[data-theme="light"] .text-warning { color: #d97706 !important; }
-  html[data-theme="light"] .text-success { color: #059669 !important; }
-  
-  /* KPI Values */
-  html[data-theme="light"] .kpi-value-large,
-  html[data-theme="light"] .kpi-value-medium {
-    color: #1e293b !important;
-  }
-  
-  /* Override for semantic colors in KPIs */
-  html[data-theme="light"] .kpi-value-large.text-critical,
-  html[data-theme="light"] .kpi-value-medium.text-critical {
-    color: #dc2626 !important;
-  }
-  
-  html[data-theme="light"] .kpi-value-large.text-warning,
-  html[data-theme="light"] .kpi-value-medium.text-warning {
-    color: #d97706 !important;
-  }
-  
-  html[data-theme="light"] .kpi-value-large.text-success,
-  html[data-theme="light"] .kpi-value-medium.text-success {
-    color: #059669 !important;
-  }
-  
-  /* Recommendations */
-  html[data-theme="light"] .recommendation-banner {
-    background: linear-gradient(135deg, rgba(245,158,11,0.1) 0%, rgba(245,158,11,0.03) 100%) !important;
-    border-color: rgba(217,119,6,0.3) !important;
-  }
-  
-  html[data-theme="light"] .recommendation-item {
-    background: rgba(0,0,0,0.03) !important;
-    border-color: rgba(0,0,0,0.05) !important;
-    color: #334155 !important;
-  }
-  
-  html[data-theme="light"] .recommendation-item * {
-    color: #334155 !important;
-  }
-  
-  html[data-theme="light"] .recommendation-item span {
-    color: #334155 !important;
-  }
-  
-  html[data-theme="light"] .focus-title {
-    color: #d97706 !important;
-  }
-  
-  /* Catch-all for light mode text */
-  html[data-theme="light"] .kpi-label,
-  html[data-theme="light"] .kpi-sublabel,
-  html[data-theme="light"] .header-subtitle {
-    color: #64748b !important;
-  }
-  
-  html[data-theme="light"] .header-subtitle span {
-    color: #475569 !important;
-  }
-  
-  /* Dark mode defaults (ensure text is light) */
-  html[data-theme="dark"] .kpi-label,
-  html[data-theme="dark"] .kpi-sublabel,
-  html[data-theme="dark"] .header-subtitle,
-  html[data-theme="dark"] .header-subtitle span,
-  html[data-theme="dark"] .recommendation-item,
-  html[data-theme="dark"] .recommendation-item *,
-  html[data-theme="dark"] .status-pill,
-  html[data-theme="dark"] .btn,
-  html[data-theme="dark"] .btn-muted,
-  html[data-theme="dark"] .panel h2,
-  html[data-theme="dark"] .panel p {
-    color: rgba(234,241,255,0.7) !important;
-  }
-  
-  html[data-theme="dark"] .text-primary,
-  html[data-theme="dark"] .panel h2 {
-    color: #EAF1FF !important;
-  }
-  
-  html[data-theme="dark"] .focus-title {
-    color: #f59e0b !important;
-  }
-  
-  html[data-theme="dark"] svg text,
-  html[data-theme="dark"] .chart-axis-label {
-    fill: rgba(234,241,255,0.5) !important;
-  }
-  
-  html[data-theme="dark"] .chart-title {
-    color: #EAF1FF !important;
-  }
-  
-  html[data-theme="dark"] .chart-subtitle,
-  html[data-theme="dark"] .chart-label {
-    color: rgba(234,241,255,0.5) !important;
-  }
-  
-  /* Tables */
-  html[data-theme="light"] .data-table th {
-    color: #64748b !important;
-    background: #f8fafc !important;
-    border-color: #e2e8f0 !important;
-  }
-  
-  html[data-theme="light"] .data-table td {
-    color: #334155 !important;
-    border-color: #f1f5f9 !important;
-  }
-  
-  html[data-theme="light"] .data-table tbody tr:hover {
-    background: #f8fafc !important;
-  }
-  
-  html[data-theme="light"] .cell-primary {
-    color: #1e293b !important;
-  }
-  
-  html[data-theme="light"] .cell-secondary {
-    color: #64748b !important;
-  }
-  
-  html[data-theme="light"] .cell-muted {
-    color: #475569 !important;
-  }
-  
-  /* Buttons */
-  html[data-theme="light"] .btn {
-    background: #ffffff !important;
-    border-color: #e2e8f0 !important;
-    color: #334155 !important;
-  }
-  
-  html[data-theme="light"] .btn:hover {
-    background: rgba(90,166,255,0.1) !important;
-    border-color: rgba(90,166,255,0.4) !important;
-    color: #2563eb !important;
-    transform: translateY(-1px);
-  }
-  
- html[data-theme="light"] .btn-primary:hover {
-    background: #f1f5f9 !important;
-    border-color: #e2e8f0 !important;
-    color: #334155 !important;
-  }
-  
-  html[data-theme="light"] .btn-muted {
-    color: #64748b !important;
-  }
-  
-  /* Status Pills */
-  html[data-theme="light"] .status-pill {
-    color: #334155 !important;
-  }
-  
-  /* Age Badges - Darker colors for light mode */
-  html[data-theme="light"] .age-badge.critical {
-    background: rgba(220,38,38,0.12) !important;
-    color: #dc2626 !important;
-  }
-  
-  html[data-theme="light"] .age-badge.warning {
-    background: rgba(217,119,6,0.12) !important;
-    color: #d97706 !important;
-  }
-  
-  html[data-theme="light"] .age-badge.good {
-    background: rgba(5,150,105,0.12) !important;
-    color: #059669 !important;
-  }
-  
-  /* SVG Charts - Default (dark mode) */
-  svg text {
-    fill: rgba(234,241,255,0.5);
-  }
-  
-  svg line {
-    stroke: rgba(255,255,255,0.06);
-  }
-  
-  /* SVG Charts - Light mode */
-  html[data-theme="light"] svg text {
-    fill: #64748b !important;
-  }
-  
-  html[data-theme="light"] svg line {
-    stroke: #e2e8f0 !important;
-  }
-  
-  /* Controls component - Light mode */
-  html[data-theme="light"] .controls-wrapper select,
-  html[data-theme="light"] .controls-wrapper button {
-    background: #ffffff !important;
-    border-color: #e2e8f0 !important;
-    color: #334155 !important;
-  }
-  
-  html[data-theme="light"] .controls-wrapper select:hover,
-  html[data-theme="light"] .controls-wrapper button:hover {
-    background: #f8fafc !important;
-    border-color: #cbd5e1 !important;
-  }
-  
-  html[data-theme="light"] .controls-wrapper label,
-  html[data-theme="light"] .controls-wrapper span {
-    color: #475569 !important;
-  }
-  
-  /* Action List Tabs */
-  .action-tabs {
-    display: flex;
-    gap: 4px;
-    padding: 4px;
-    background: rgba(255,255,255,0.04);
-    border-radius: 12px;
-    margin-bottom: 16px;
-  }
-  
-  .action-tab {
-    flex: 1;
-    min-width: 0;
-    padding: 10px 8px;
-    border: none;
-    background: transparent;
-    color: rgba(234,241,255,0.6);
-    font-size: 12px;
-    font-weight: 600;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    white-space: nowrap;
-  }
-  
-  .action-tab:hover {
-    background: rgba(255,255,255,0.06);
-    color: rgba(234,241,255,0.8);
-  }
-  
-  .action-tab.active {
-    background: rgba(255,255,255,0.1);
-    color: #EAF1FF;
-  }
-  
-  .action-tab .tab-label {
-    display: none;
-  }
-  
-  .action-tab .badge {
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 700;
-    background: rgba(255,255,255,0.1);
-  }
-  
-  .action-tab.active .badge {
-    background: rgba(90,166,255,0.3);
-    color: #5aa6ff;
-  }
-  
-  @media (min-width: 480px) {
-    .action-tab {
-      padding: 10px 12px;
-      font-size: 13px;
-      gap: 6px;
-    }
-    
-    .action-tab .tab-label {
-      display: inline;
-    }
-  }
-  
-  @media (min-width: 640px) {
-    .action-tab {
-      padding: 10px 16px;
-      gap: 8px;
-    }
-  }
-  
-  html[data-theme="light"] .action-tabs {
-    background: #f1f5f9 !important;
-  }
-  
-  html[data-theme="light"] .action-tab {
-    color: #64748b !important;
-  }
-  
-  html[data-theme="light"] .action-tab:hover {
-    background: #e2e8f0 !important;
-    color: #334155 !important;
-  }
-  
-  html[data-theme="light"] .action-tab.active {
-    background: #ffffff !important;
-    color: #1e293b !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  }
-  
-  html[data-theme="light"] .action-tab .badge {
-    background: #e2e8f0 !important;
-    color: #475569 !important;
-  }
-  
-  html[data-theme="light"] .action-tab.active .badge {
-    background: rgba(90,166,255,0.2) !important;
-    color: #2563eb !important;
-  }
-
-  /* Hover micro-animations */
-  .hover-lift {
-    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
-                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .hover-lift:hover {
-    transform: translateY(-2px);
-  }
-  .kpi-primary {
-    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
-                box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-                border-color 0.25s ease;
-  }
-  .kpi-primary:hover {
-    transform: translateY(-3px) scale(1.005);
-  }
-  .kpi-secondary {
-    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
-                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-                background 0.2s ease,
-                border-color 0.2s ease;
-  }
-  .kpi-secondary:hover {
-    transform: translateY(-2px);
-  }
-  .btn {
-    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .btn:hover {
-    transform: translateY(-1px);
-  }
-  .btn:active {
-    transform: translateY(0px) scale(0.98);
-  }
-  .age-badge.critical {
-    animation: badge-pulse 2s ease-in-out infinite;
-  }
-  @keyframes badge-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-  }
-  @keyframes skeleton-shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-  }
-  html[data-theme="light"] .skeleton-pulse {
-    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%) !important;
-    background-size: 200% 100%;
-  }
-
-  /* Demo banner */
-.demo-banner {
-  background: linear-gradient(135deg, #7c5cff, #5aa6ff);
-  color: white;
-  padding: 12px 20px;
-  text-align: center;
-  font-weight: 600;
-  font-size: 14px;
-  letter-spacing: 0.5px;
-}
-`;
-
-/* ----------------------------------- UI ----------------------------------- */
-const theme = {
-  text: "#EAF1FF",
-  sub: "rgba(234,241,255,0.7)",
-  mut: "rgba(234,241,255,0.5)",
-  faint: "rgba(234,241,255,0.3)",
-};
-
-
 /* -------------------------------- Page -------------------------------- */
 export default async function DashboardPage({
   searchParams,
@@ -1131,7 +240,7 @@ export default async function DashboardPage({
 
   if (isDemo) {
     const money = moneyFactory(DEMO_DATA.currencyCode);
-    
+
     // Convert demo data to event arrays for TrendsSection
     const demoLeakEvents = DEMO_DATA.leakCandidates.map((q) => ({
       enterAt: new Date(q.sent_at).getTime(),
@@ -1149,46 +258,21 @@ export default async function DashboardPage({
       amount: j.total_amount_cents,
     }));
 
-    const agedARExportData = DEMO_DATA.agedARInvoices.map((inv) => ({
-      "Age (days)": inv.days_overdue,
-      "Invoice #": inv.invoice_number,
-      "Client": inv.client_name,
-      "Due Date": new Date(inv.due_date).toLocaleDateString(),
-      "Amount": (inv.amount_cents / 100).toFixed(2),
-      "Jobber URL": inv.jobber_url,
-    }));
-
-    const unscheduledExportData = DEMO_DATA.unscheduledRows.map((r) => ({
-      "Age (days)": Math.round((Date.now() - new Date(r.created_at_jobber).getTime()) / 86400000),
-      "Job #": `#${r.job_number}`,
-      "Job Title": r.job_title,
-      "Created": new Date(r.created_at_jobber).toLocaleDateString(),
-      "Amount": (r.total_amount_cents / 100).toFixed(2),
-      "Jobber URL": r.jobber_url,
-    }));
-
-    const leakingQuotesExportData = DEMO_DATA.leakCandidates.map((q) => ({
-      "Age (days)": Math.round((Date.now() - new Date(q.sent_at).getTime()) / 86400000),
-      "Quote #": q.quote_number,
-      "Quote Title": q.quote_title,
-      "Sent": new Date(q.sent_at).toLocaleDateString(),
-      "Total": (q.quote_total_cents / 100).toFixed(2),
-      "Jobber URL": q.quote_url,
-    }));
-
-    const sevColor = (sev: "critical" | "warning" | "good") => {
-      if (sev === "critical") return "#ef4444";
-      if (sev === "warning") return "#f59e0b";
-      return "#10b981";
-    };
-
-    const sevBg = (sev: "critical" | "warning" | "good") => {
-      if (sev === "critical") return "rgba(239,68,68,0.15)";
-      if (sev === "warning") return "rgba(245,158,11,0.15)";
-      return "rgba(16,185,129,0.15)";
-    };
-
-    const arSev = severityFromScore(clamp((DEMO_DATA.b15p / DEMO_DATA.totalAR) * 120, 0, 100));
+    const demoAccuScore = 68;
+    const demoBreakdown = [
+      { label: "Collections", score: 60, detail: "5 invoices overdue 15+ days", href: "/jobber/invoices" },
+      { label: "Sales", score: 72, detail: "34% win rate \u2022 8 open quotes", href: "/jobber/sales" },
+      { label: "Operations", score: 65, detail: "7 unscheduled jobs", href: "/jobber/capacity" },
+      { label: "Responsiveness", score: 85, detail: "3 open requests awaiting response", href: "/jobber/sales" },
+    ];
+    const demoFunnel = [
+      { label: "Leads", count: 3, value: null, icon: "\uD83D\uDCE5", href: "/jobber/sales", color: "#8b5cf6", unitLabel: "requests" },
+      { label: "Quoting", count: 8, value: money(1234000), icon: "\uD83D\uDCDD", href: "/jobber/sales", color: "#5aa6ff", unitLabel: "quotes" },
+      { label: "Won", count: 3, value: money(475000), icon: "\uD83C\uDFC6", href: "/jobber/sales", color: "#10b981", unitLabel: "quotes" },
+      { label: "Scheduled", count: 14, value: money(890000), icon: "\uD83D\uDCC5", href: "/jobber/capacity", color: "#06b6d4", unitLabel: "jobs" },
+      { label: "Needs Invoice", count: 4, value: money(245000), icon: "\uD83D\uDCC4", href: "/jobber/invoices", color: "#f59e0b", unitLabel: "jobs" },
+      { label: "Outstanding", count: 9, value: money(484700), icon: "\uD83D\uDCB0", href: "/jobber/invoices", color: "#ef4444", unitLabel: "invoices" },
+    ];
 
     return (
       <main className="dashboard-main" style={{
@@ -1202,160 +286,134 @@ export default async function DashboardPage({
       }}>
         <style>{globalStyles}</style>
 
-  
-
         <div className="dashboard-container" data-testid="DEMO-MODE-ACTIVE">
-          <header className="dashboard-header animate-in">
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <svg width="40" height="40" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#7c5cff" />
-                    <stop offset="100%" stopColor="#5aa6ff" />
-                  </linearGradient>
-                </defs>
-                <circle cx="25" cy="25" r="22" fill="none" stroke="url(#logoGrad)" strokeWidth="3"/>
-                <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#logoGrad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <div>
-                <h1 className="text-primary" style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5, margin: 0 }}>
-                  {DEMO_DATA.companyName}
-                </h1>
-                <p className="text-secondary" style={{ fontSize: 13, marginTop: 4 }}>
-                  Last sync: {DEMO_DATA.lastSyncPretty} • {DEMO_DATA.currencyCode}
-                </p>
+          <div className="dashboard-topbar animate-in">
+            <header className="dashboard-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <svg width="32" height="32" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+                    <defs><linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#7c5cff" /><stop offset="100%" stopColor="#5aa6ff" /></linearGradient></defs>
+                    <circle cx="25" cy="25" r="22" fill="none" stroke="url(#logoGrad)" strokeWidth="3"/>
+                    <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#logoGrad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", background: "linear-gradient(135deg, #7c5cff, #5aa6ff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>AccuInsight</div>
+                    <div className="text-primary" style={{ fontSize: 16, fontWeight: 800, letterSpacing: -0.3, lineHeight: 1.1 }}>{DEMO_DATA.companyName}</div>
+                  </div>
+                </div>
               </div>
-            </div>
-
-            <div className="header-actions">
-              <button className="btn" disabled style={{ opacity: 0.5 }}>Sync</button>
-              <ThemeToggle />
-              <div className="status-pill" style={{
-                borderRadius: 10,
-                fontWeight: 600,
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                background: "rgba(16,185,129,0.15)",
-                border: "1px solid rgba(16,185,129,0.4)",
-              }}>
-                <span style={{ fontSize: 10 }}>⭐</span>
-                Pro
+              <div className="header-actions">
+                <span className="header-subtitle" style={{ fontSize: 10 }}>{DEMO_DATA.lastSyncPretty}</span>
+                <button className="btn" disabled style={{ opacity: 0.5, fontSize: 11, padding: "5px 10px" }}>Sync</button>
+                <ThemeToggle />
+                <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
+                <div className="status-pill" style={{ borderRadius: 8, fontWeight: 600, fontSize: 11, padding: "4px 10px", background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.4)" }}>Pro</div>
               </div>
-            </div>
-          </header>
-
-          <NavTabs />
-
-          <div className="recommendation-banner animate-in delay-1" style={{ marginTop: 20 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <span style={{ fontSize: 16 }}>💡</span>
-              <span className="focus-title" style={{ fontSize: 13, fontWeight: 700 }}>This Week&apos;s Focus</span>
-            </div>
-            {DEMO_DATA.recommendations.map((rec, i) => (
-              <div key={i} className="recommendation-item">
-                <span style={{ fontSize: 14 }}>{rec.icon}</span>
-                <span className="text-secondary">{rec.text}</span>
-              </div>
-            ))}
+            </header>
+            <NavTabs />
           </div>
 
-          <div className="kpi-grid-primary animate-in delay-2" style={{ marginTop: 20 }}>
+          {/* AccuScore */}
+          <div className="panel animate-in delay-1" style={{ marginTop: 20, padding: "20px 24px" }}>
+            <AccuScore score={demoAccuScore} breakdown={demoBreakdown} />
+          </div>
+
+          {/* Primary KPIs */}
+          <div className="kpi-grid-primary animate-in delay-1" style={{ marginTop: 16 }}>
             <div className="kpi-primary gradient-purple hover-lift">
               <div style={{ position: "relative", zIndex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontSize: 20 }}>💰</span>
-                  <span className="text-secondary" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                    Total Invoices Past Due
-                  </span>
+                  <span className="kpi-label" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>Revenue March</span>
                 </div>
-                <div className="kpi-value-large text-primary">{money(DEMO_DATA.totalAR)}</div>
-                <div className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>
-                  9 invoices outstanding
+                <div className="kpi-value-large text-primary">{money(1245000)}</div>
+                <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
+                  <span style={{ color: "#10b981", fontWeight: 600 }}>{"\u25B2"} 18% vs last month</span>
                 </div>
               </div>
             </div>
-
-            <div className="kpi-primary hover-lift" style={{
-              background: `linear-gradient(145deg, ${sevBg(arSev)} 0%, rgba(255,255,255,0.02) 100%)`,
-              borderColor: `${sevColor(arSev)}40`,
-            }}>
+            <div className="kpi-primary hover-lift" style={{ background: "linear-gradient(145deg, rgba(90,166,255,0.1) 0%, rgba(255,255,255,0.02) 100%)", borderColor: "rgba(90,166,255,0.3)" }}>
               <div style={{ position: "relative", zIndex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontSize: 20 }}>⚠️</span>
-                  <span className="text-secondary" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                    Invoices 15+ Days
-                  </span>
+                  <span className="kpi-label" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>Pipeline Value</span>
                 </div>
-                <div className={`kpi-value-large ${arSev === "critical" ? "text-critical" : arSev === "warning" ? "text-warning" : "text-success"}`}>
-                  {money(DEMO_DATA.b15p)}
-                </div>
-                <div className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>
-                  {pct(DEMO_DATA.b15p / DEMO_DATA.totalAR)} of total • {DEMO_DATA.agedARInvoices.length} invoices
-                </div>
+                <div className="kpi-value-large" style={{ color: "#5aa6ff" }}>{money(1234000)}</div>
+                <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>8 open quotes</div>
               </div>
             </div>
-
-            <div className="kpi-primary hover-lift" style={{
-              background: "linear-gradient(145deg, rgba(239,68,68,0.08) 0%, rgba(255,255,255,0.02) 100%)",
-              borderColor: "rgba(239,68,68,0.3)",
-            }}>
+            <div className="kpi-primary hover-lift" style={{ background: "linear-gradient(145deg, rgba(245,158,11,0.15) 0%, rgba(255,255,255,0.02) 100%)", borderColor: "rgba(245,158,11,0.4)" }}>
               <div style={{ position: "relative", zIndex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontSize: 20 }}>📋</span>
-                  <span className="text-secondary" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                    Quote Leak
-                  </span>
+                  <span className="kpi-label" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>Overdue Invoices</span>
                 </div>
-                <div className="kpi-value-large text-critical">
-                  {money(DEMO_DATA.leakDollars)}
-                </div>
-                <div className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>
-                  {DEMO_DATA.leakCount} quotes outstanding
-                </div>
+                <div className="kpi-value-large text-warning">{money(484700)}</div>
+                <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>9 invoices past due</div>
               </div>
             </div>
           </div>
 
-          <div className="kpi-grid-secondary animate-in delay-3" style={{ marginTop: 20 }}>
+          {/* Secondary KPIs */}
+          <div className="kpi-grid-secondary animate-in delay-2" style={{ marginTop: 16 }}>
             <div className="kpi-secondary">
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
-                <span style={{ fontSize: 14 }}>✏️</span>
-                <span className="text-secondary" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Changes Requested</span>
+                <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Win Rate (30d)</span>
               </div>
-              <div className="kpi-value-medium text-warning">{money(350000)}</div>
-              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>{DEMO_DATA.changesRequestedCount} quotes to revise</div>
+              <div className="kpi-value-medium text-warning">{pct(0.34)}</div>
+              <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>11 won of 32 quotes</div>
             </div>
-
             <div className="kpi-secondary">
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
-                <span style={{ fontSize: 14 }}>✅</span>
-                <span className="text-secondary" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Approved No Job</span>
-              </div>
-              <div className="kpi-value-medium text-warning">{money(475000)}</div>
-              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>{DEMO_DATA.approvedNoJobCount} quotes to schedule</div>
-            </div>
-
-            <div className="kpi-secondary">
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
-                <span style={{ fontSize: 14 }}>📦</span>
-                <span className="text-secondary" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Unscheduled</span>
+                <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Unscheduled</span>
               </div>
               <div className="kpi-value-medium text-warning">{money(315000)}</div>
-              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>{DEMO_DATA.unscheduledCount} jobs in backlog</div>
+              <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>7 jobs in backlog</div>
             </div>
-
             <div className="kpi-secondary">
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
-                <span style={{ fontSize: 14 }}>📥</span>
-                <span className="text-secondary" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Open Requests</span>
+                <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Needs Invoicing</span>
               </div>
-              <div className="kpi-value-medium text-success">{DEMO_DATA.openRequestsCount}</div>
-              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>{DEMO_DATA.openRequestsCount} pending requests</div>
+              <div className="kpi-value-medium text-warning">{money(245000)}</div>
+              <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>4 jobs completed, not billed</div>
+            </div>
+            <div className="kpi-secondary">
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
+                <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Open Requests</span>
+              </div>
+              <div className="kpi-value-medium text-success">3</div>
+              <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>3 pending requests</div>
             </div>
           </div>
 
-          <div className="animate-in delay-4" style={{ marginTop: 32 }}>
+          {/* Recommendations */}
+          <div className="panel animate-in delay-2" style={{ marginTop: 20 }}>
+            <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>This Week&apos;s Focus</h2>
+            </div>
+            <div style={{ padding: "10px 16px" }}>
+              {[
+                { text: `Collect ${money(215500)} \u2014 5 invoices overdue 15+ days. Call your oldest accounts today.`, priority: "high" as const, href: "/jobber/invoices" },
+                { text: "2 quotes need your revisions. These clients are ready to buy.", priority: "high" as const, href: "/jobber/sales" },
+                { text: `Win back ${money(308500)} \u2014 8 quotes worth ${money(1234000)} are going cold. Follow up on the largest ones today.`, priority: "medium" as const, href: "/jobber/sales" },
+              ].map((rec, i) => (
+                <a key={i} href={rec.href} className="rec-card" style={{ borderLeft: `3px solid ${rec.priority === "high" ? "#ef4444" : "#f59e0b"}` }}>
+                  <span className="text-secondary" style={{ flex: 1 }}>{rec.text}</span>
+                  <span className="text-muted" style={{ fontSize: 12, flexShrink: 0, fontWeight: 600 }}>&rarr;</span>
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Money Flow */}
+          <div className="panel animate-in delay-3" style={{ marginTop: 20, overflow: "visible" }}>
+            <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Money Flow</h2>
+              <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>Track jobs from lead to collected payment</p>
+            </div>
+            <div style={{ padding: "16px 20px" }}>
+              <MoneyFlowFunnel stages={demoFunnel} />
+            </div>
+          </div>
+
+          <div className="animate-in delay-4" style={{ marginTop: 20 }}>
             <TrendsSection
               leakEvents={demoLeakEvents}
               arEvents={demoArEvents}
@@ -1364,48 +422,15 @@ export default async function DashboardPage({
             />
           </div>
 
-          <div className="panel animate-in delay-5" style={{ marginTop: 32 }}>
-            <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Action Lists</h2>
-              <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
-                Collect AR, schedule backlog, close sales leaks
-              </p>
-            </div>
-
-            <div style={{ padding: 16 }}>
-              <ActionListTabs
-                agedARInvoices={DEMO_DATA.agedARInvoices}
-                agedARExportData={agedARExportData}
-                unscheduledRows={DEMO_DATA.unscheduledRows}
-                unscheduledExportData={unscheduledExportData}
-                leakCandidates={DEMO_DATA.leakCandidates}
-                leakingQuotesExportData={leakingQuotesExportData}
-                openRequests={DEMO_DATA.openRequests}
-                openRequestsExportData={DEMO_DATA.openRequests.map((r: any) => ({
-                  "Age (days)": r.created_at_jobber ? Math.max(0, Math.round((Date.now() - new Date(r.created_at_jobber).getTime()) / 86400000)) : 0,
-                  "Title": r.title || "Untitled",
-                  "Client": r.client_name || "",
-                  "Source": r.source || "",
-                  "Created": r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "",
-                  "Jobber URL": r.jobber_url || "",
-                }))}
-                currencyCode={DEMO_DATA.currencyCode}
-              />
-            </div>
-          </div>
-
           <footer style={{
-            marginTop: 40,
-            paddingTop: 24,
+            marginTop: 40, paddingTop: 24,
             borderTop: "1px solid rgba(255,255,255,0.06)",
-            textAlign: "center",
-            fontSize: 12,
-            color: "rgba(234,241,255,0.4)",
+            textAlign: "center", fontSize: 12, color: "rgba(234,241,255,0.4)",
           }}>
-            <p style={{ margin: 0 }}>© 2026 OwnerView. All rights reserved.</p>
+            <p style={{ margin: 0 }}>&copy; 2026 OwnerView. All rights reserved.</p>
             <p style={{ margin: "8px 0 0" }}>
               <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms</a>
-              {" · "}
+              {" \u00B7 "}
               <a href="/privacy" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Privacy</a>
             </p>
           </footer>
@@ -1591,16 +616,6 @@ export default async function DashboardPage({
       connectionId,
     ),
   ]);
-  console.log("REQUESTS FROM DB:", requests);
-  console.log("FILTERED REQUESTS:", requests.filter((r: any) => {
-    const status = (r.request_status || "").toUpperCase();
-    return status === "NEW" || status === "PENDING" || status === "UNSCHEDULED" || status === "ASSESSMENT_COMPLETED" || status === "ACTION_REQUIRED";
-  }));
-  console.log("openRequestsCount:", requests.filter((r: any) => {
-    const status = (r.request_status || "").toUpperCase();
-    return status === "NEW" || status === "PENDING" || status === "UNSCHEDULED" || status === "ASSESSMENT_COMPLETED" || status === "ACTION_REQUIRED";
-  }).length);
-  
   // Open requests count (PENDING = not yet converted/archived/closed)
   const openRequestsCount = requests.filter((r: any) => {
   const status = (r.request_status || "").toUpperCase();
@@ -1640,8 +655,20 @@ export default async function DashboardPage({
   const arScore = clamp(riskPct * 120, 0, 100);
   const arSev = severityFromScore(arScore);
 
-  // Unscheduled count & value
-  const unscheduledJobs = jobs.filter((j) => !j.scheduled_start_at);
+  // ---- Outlier cutoffs ----
+  // Many Jobber accounts have old quotes/jobs that were never closed out.
+  // We exclude these so stale data doesn't penalize owners with messy workflows.
+  const sixMonthsAgo = addDaysUTC(todayUTC, -180);
+  const ninetyDaysAgo = addDaysUTC(todayUTC, -90);
+  const sixMonthsAgoMs = sixMonthsAgo.getTime();
+  const ninetyDaysAgoMs = ninetyDaysAgo.getTime();
+
+  // Unscheduled count & value (only jobs created in last 6 months)
+  const unscheduledJobs = jobs.filter((j) => {
+    if (j.scheduled_start_at) return false;
+    const created = safeDate(j.created_at_jobber);
+    return created && created.getTime() >= sixMonthsAgoMs;
+  });
   const unscheduledCount = unscheduledJobs.length;
   const unscheduledCents = unscheduledJobs.reduce((sum, j) => sum + Number(j.total_amount_cents ?? 0), 0);
 
@@ -1665,10 +692,11 @@ export default async function DashboardPage({
 
   const marginPerJob = completedCount ? Math.round(profitSum / completedCount) : 0;
 
-  // Quote leak - quotes that are sent but not won
+  // Quote leak - quotes sent but not won (last 6 months only — older ones are likely dead)
   const leakCandidates = quotes
-    .filter((q) => q.sent_at)
     .filter((q) => {
+      const sent = safeDate(q.sent_at);
+      if (!sent || sent.getTime() < sixMonthsAgoMs) return false;
       const st = String(q.quote_status ?? "").toLowerCase().trim();
       if (!st) return true;
       if (st === "archived" || st === "draft") return false;
@@ -1685,18 +713,22 @@ export default async function DashboardPage({
   const leakCount = leakCandidates.length;
   const leakDollars = leakCandidates.reduce((sum, q) => sum + Number(q.quote_total_cents ?? 0), 0);
 
-  // Quotes with changes requested
+  // Quotes with changes requested (last 6 months)
   const changesRequestedQuotes = quotes.filter((q) => {
     const st = String(q.quote_status ?? "").toLowerCase().trim();
-    return st === "changes_requested";
+    if (st !== "changes_requested") return false;
+    const updated = safeDate(q.updated_at_jobber) || safeDate(q.created_at_jobber);
+    return updated && updated.getTime() >= sixMonthsAgoMs;
   });
   const changesRequestedCount = changesRequestedQuotes.length;
   const changesRequestedCents = changesRequestedQuotes.reduce((sum, q) => sum + Number(q.quote_total_cents ?? 0), 0);
 
-  // Quotes approved but no job created yet (not converted)
+  // Quotes approved but no job created yet (last 6 months)
   const approvedNoJobQuotes = quotes.filter((q) => {
     const st = String(q.quote_status ?? "").toLowerCase().trim();
-    return st === "approved";
+    if (st !== "approved") return false;
+    const updated = safeDate(q.updated_at_jobber) || safeDate(q.created_at_jobber);
+    return updated && updated.getTime() >= sixMonthsAgoMs;
   });
   const approvedNoJobCount = approvedNoJobQuotes.length;
   const approvedNoJobCents = approvedNoJobQuotes.reduce((sum, q) => sum + Number(q.quote_total_cents ?? 0), 0);
@@ -1761,6 +793,8 @@ const quoteWonPct = quotesInLast30Days.length > 0
 
   const unscheduledOlderThan7Days = jobs.filter((j) => {
     if (j.scheduled_start_at) return false;
+    const created = safeDate(j.created_at_jobber);
+    if (!created || created.getTime() < sixMonthsAgoMs) return false;
     return ageDays(j.created_at_jobber) >= 7;
   });
 
@@ -1810,71 +844,82 @@ const quoteWonPct = quotesInLast30Days.length > 0
       return { enterAt: createdAt.getTime(), exitAt: scheduledAt ? scheduledAt.getTime() : null, amount: Number(j.total_amount_cents ?? 0) };
     });
 
+  // Needs invoicing (computed early for use in recommendations)
+  const needsInvoiceJobs = jobs.filter((j: any) => (j.status || "").toLowerCase() === "requires_invoicing");
+  const needsInvoiceCount = needsInvoiceJobs.length;
+  const needsInvoiceCents = needsInvoiceJobs.reduce((s: number, j: any) => s + Number(j.total_amount_cents ?? 0), 0);
+
   // Generate recommendations
-  type Recommendation = { icon: string; text: string; priority: "high" | "medium" };
+  const adminQs = adminConnectionId ? `?admin_connection_id=${adminConnectionId}` : "";
+  type Recommendation = { text: string; priority: "high" | "medium"; href: string };
   const recommendations: Recommendation[] = [];
-  
+
+  // Overdue invoices
   if (b15p > 0 && totalAR > 0) {
-    const pct15 = b15p / totalAR;
     const agedCount = agedARInvoices.length;
-    if (pct15 > 0.15) {
-      recommendations.push({
-        icon: "🔴",
-        text: `${money(b15p)} overdue 15+ days (${agedCount} invoices). Priority: Call top 3 oldest accounts today.`,
-        priority: "high"
-      });
-    } else if (pct15 > 0.08) {
-      recommendations.push({
-        icon: "⚠️",
-        text: `${money(b15p)} aging past 15 days (${agedCount} invoices). Send payment reminders this week.`,
-        priority: "medium"
-      });
-    }
-  }
-
-  // Invoices hitting 7 days overdue this week
-  if (invoicesHitting7DaysThisWeek.length > 0) {
     recommendations.push({
-      icon: "📧",
-      text: `${invoicesHitting7DaysThisWeek.length} invoice${invoicesHitting7DaysThisWeek.length > 1 ? 's' : ''} hitting 7 days overdue this week - send reminders now.`,
-      priority: "medium"
+      text: `Collect ${money(b15p)} \u2014 ${agedCount} invoice${agedCount !== 1 ? "s" : ""} overdue 15+ days. Call your oldest accounts today.`,
+      priority: "high",
+      href: `/jobber/invoices${adminQs}`,
     });
   }
 
-  // Unscheduled jobs older than 7 days
-  if (unscheduledOlderThan7Days.length > 0) {
+  // Needs invoicing
+  if (needsInvoiceCount > 0) {
     recommendations.push({
-      icon: "📦",
-      text: `${unscheduledOlderThan7Days.length} unscheduled job${unscheduledOlderThan7Days.length > 1 ? 's' : ''} older than 7 days - risk of customer churn.`,
-      priority: unscheduledOlderThan7Days.length > 5 ? "high" : "medium"
+      text: `Bill ${money(needsInvoiceCents)} now \u2014 ${needsInvoiceCount} completed job${needsInvoiceCount > 1 ? "s aren't" : " isn't"} invoiced yet. Send invoices today to start the clock.`,
+      priority: "high",
+      href: `/jobber/invoices${adminQs}`,
     });
   }
 
-  if (leakCount > 5) {
-    const winRate = 0.25;
-    const potentialWin = Math.round(leakDollars * winRate);
-    recommendations.push({
-      icon: "💰",
-      text: `${leakCount} quotes pending (${money(leakDollars)} total). Follow up on top 5 - potential ${money(potentialWin)} recovery.`,
-      priority: "medium"
-    });
-  }
-
+  // Changes requested
   if (changesRequestedCount > 0) {
     recommendations.push({
-      icon: "✏️",
-      text: `${changesRequestedCount} quote${changesRequestedCount > 1 ? 's' : ''} waiting for revisions. Hot leads - respond within 24hrs.`,
-      priority: "high"
+      text: `Close ${money(changesRequestedCents)} faster \u2014 ${changesRequestedCount} quote${changesRequestedCount > 1 ? "s need" : " needs"} your revisions. These clients are ready to buy.`,
+      priority: "high",
+      href: `/jobber/sales${adminQs}`,
     });
   }
 
+  // Unscheduled jobs
+  if (unscheduledOlderThan7Days.length > 0) {
+    const unschedOldCents = unscheduledOlderThan7Days.reduce((s: number, j: any) => s + Number(j.total_amount_cents ?? 0), 0);
+    recommendations.push({
+      text: `Schedule ${unschedOldCents > 0 ? money(unschedOldCents) + " in" : ""} work \u2014 ${unscheduledOlderThan7Days.length} job${unscheduledOlderThan7Days.length > 1 ? "s" : ""} unscheduled 7+ days. Customers are waiting.`,
+      priority: unscheduledOlderThan7Days.length > 5 ? "high" : "medium",
+      href: `/jobber/capacity${adminQs}`,
+    });
+  }
+
+  // Invoices about to age
+  if (invoicesHitting7DaysThisWeek.length > 0) {
+    const hittingCents = invoicesHitting7DaysThisWeek.reduce((s: number, inv: any) => s + Number(inv.balance_cents ?? inv.total_amount_cents ?? 0), 0);
+    recommendations.push({
+      text: `Protect ${money(hittingCents)} \u2014 ${invoicesHitting7DaysThisWeek.length} invoice${invoicesHitting7DaysThisWeek.length > 1 ? "s" : ""} hitting 7 days overdue this week. Send reminders before they go stale.`,
+      priority: "medium",
+      href: `/jobber/invoices${adminQs}`,
+    });
+  }
+
+  // Quote follow-up
+  if (leakCount > 3) {
+    const potentialWin = Math.round(leakDollars * 0.25);
+    recommendations.push({
+      text: `Win back ${money(potentialWin)} \u2014 ${leakCount} quotes worth ${money(leakDollars)} are going cold. Follow up on the largest ones today.`,
+      priority: "medium",
+      href: `/jobber/sales${adminQs}`,
+    });
+  }
+
+  // Low margins
   if (completedCount >= 5 && marginPerJob > 0) {
     const marginPct = profitSum / revSum;
     if (marginPct < 0.20) {
       recommendations.push({
-        icon: "📊",
-        text: `Margins at ${pct(marginPct)} (target: 25%+). Review pricing or reduce material/labor costs.`,
-        priority: "medium"
+        text: `Margins at ${pct(marginPct)} \u2014 you're leaving money on the table. Review your pricing or cut material costs to hit 25%+.`,
+        priority: "medium",
+        href: `/jobber/capacity${adminQs}`,
       });
     }
   }
@@ -1926,6 +971,171 @@ const quoteWonPct = quotesInLast30Days.length > 0
     return "rgba(16,185,129,0.15)";
   };
 
+  /* ===== Revenue & collection metrics ===== */
+  const thisMonthStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth(), 1));
+  const lastMonthStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() - 1, 1));
+  const nextMonthStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() + 1, 1));
+
+  const completedThisMonth = jobs.filter((j) => {
+    const raw = completedDateKeys.map(k => j[k]).find(v => v);
+    const dt = safeDate(raw);
+    return dt && dt >= thisMonthStart && dt < nextMonthStart;
+  });
+  const revenueThisMonth = completedThisMonth.reduce((s: number, j: any) => s + Number(j.job_revenue_cents ?? j.total_amount_cents ?? 0), 0);
+
+  const completedLastMonth = jobs.filter((j) => {
+    const raw = completedDateKeys.map(k => j[k]).find(v => v);
+    const dt = safeDate(raw);
+    return dt && dt >= lastMonthStart && dt < thisMonthStart;
+  });
+  const revenueLastMonth = completedLastMonth.reduce((s: number, j: any) => s + Number(j.job_revenue_cents ?? j.total_amount_cents ?? 0), 0);
+
+  // Pipeline value (open quotes, not won/lost/draft, last 6 months only)
+  const pipelineQuotes = quotes.filter((q: any) => {
+    const st = String(q.quote_status ?? "").toUpperCase();
+    if (statusLooksWon(st) || statusLooksLost(st) || st === "DRAFT") return false;
+    const sent = safeDate(q.sent_at) || safeDate(q.created_at_jobber);
+    return sent && sent.getTime() >= sixMonthsAgoMs;
+  });
+  const pipelineValue = pipelineQuotes.reduce((s: number, q: any) => s + Number(q.quote_total_cents ?? 0), 0);
+
+  // Revenue delta
+  const revDelta = revenueLastMonth > 0 ? ((revenueThisMonth - revenueLastMonth) / revenueLastMonth) : null;
+  const thisMonthName = new Date().toLocaleString(undefined, { month: "long" });
+
+  /* ===== AccuScore ===== */
+  // Collections (0-100): based on % of AR that's 15+ days
+  let collectionsScore = 85;
+  if (unpaidInvoices.length > 0) {
+    const aged15Pct = totalAR > 0 ? b15p / totalAR : 0;
+    if (totalAR === 0) collectionsScore = 100;
+    else if (aged15Pct === 0) collectionsScore = 95;
+    else if (aged15Pct <= 0.1) collectionsScore = 80;
+    else if (aged15Pct <= 0.25) collectionsScore = 60;
+    else if (aged15Pct <= 0.5) collectionsScore = 40;
+    else collectionsScore = 25;
+  }
+
+  // Sales (0-100): win rate + cold quote ratio (6-month window for cold check)
+  let salesScore = 85;
+  if (quotes.length > 0) {
+    const winPts = quoteWonPct >= 0.4 ? 50 : quoteWonPct >= 0.25 ? 40 : quoteWonPct >= 0.1 ? 25 : 10;
+    const openQuotesForScore = quotes.filter((q: any) => {
+      const st = String(q.quote_status ?? "").toUpperCase();
+      if (statusLooksWon(st) || statusLooksLost(st) || !q.sent_at) return false;
+      const sent = safeDate(q.sent_at);
+      return sent && sent.getTime() >= sixMonthsAgoMs;
+    });
+    const coldQuotes = openQuotesForScore.filter((q: any) => {
+      const updated = safeDate(q.updated_at_jobber);
+      if (!updated) return true;
+      return (nowMs - updated.getTime()) / 86400000 >= 30;
+    });
+    const coldPct = openQuotesForScore.length > 0 ? coldQuotes.length / openQuotesForScore.length : 0;
+    const coldPts = coldPct === 0 ? 50 : coldPct <= 0.2 ? 40 : coldPct <= 0.5 ? 25 : 10;
+    salesScore = winPts + coldPts;
+  }
+
+  // Operations (0-100): unscheduled ratio (6-month window)
+  let opsScore = 85;
+  const activeJobs = jobs.filter((j: any) => {
+    const st = (j.status || "").toLowerCase();
+    if (st === "completed" || st === "archived" || st === "cancelled") return false;
+    const created = safeDate(j.created_at_jobber);
+    return created && created.getTime() >= sixMonthsAgoMs;
+  });
+  if (activeJobs.length > 0) {
+    const unschedPct = unscheduledCount / activeJobs.length;
+    if (unschedPct === 0) opsScore = 100;
+    else if (unschedPct < 0.1) opsScore = 85;
+    else if (unschedPct < 0.25) opsScore = 65;
+    else if (unschedPct < 0.5) opsScore = 45;
+    else opsScore = 25;
+  }
+
+  // Responsiveness (0-100): avg age of open requests (last 90 days only)
+  let responsivenessScore = 90;
+  const openReqs = requests.filter((r: any) => {
+    const status = (r.request_status || "").toUpperCase();
+    if (status !== "NEW" && status !== "PENDING" && status !== "UNSCHEDULED" && status !== "ASSESSMENT_COMPLETED" && status !== "ACTION_REQUIRED") return false;
+    const created = safeDate(r.created_at_jobber);
+    return created && created.getTime() >= ninetyDaysAgoMs;
+  });
+  if (openReqs.length > 0) {
+    const avgAge = openReqs.reduce((s: number, r: any) => {
+      const created = safeDate(r.created_at_jobber);
+      return s + (created ? (nowMs - created.getTime()) / 86400000 : 0);
+    }, 0) / openReqs.length;
+    if (avgAge < 2) responsivenessScore = 100;
+    else if (avgAge < 3) responsivenessScore = 85;
+    else if (avgAge < 5) responsivenessScore = 70;
+    else if (avgAge < 7) responsivenessScore = 50;
+    else responsivenessScore = 30;
+  }
+
+  const rawAccuScore = Math.round((collectionsScore + salesScore + opsScore + responsivenessScore) / 4);
+  const accuScore = Math.max(50, rawAccuScore);
+
+  // Compute readable metrics for breakdown details
+  const aged15PctDisplay = totalAR > 0 ? Math.round((b15p / totalAR) * 100) : 0;
+  const unschedPctDisplay = activeJobs.length > 0 ? Math.round((unscheduledCount / activeJobs.length) * 100) : 0;
+  const avgReqAge = openReqs.length > 0
+    ? Math.round(openReqs.reduce((s: number, r: any) => {
+        const created = safeDate(r.created_at_jobber);
+        return s + (created ? (nowMs - created.getTime()) / 86400000 : 0);
+      }, 0) / openReqs.length)
+    : 0;
+
+  const accuBreakdown = [
+    {
+      label: "Collections",
+      score: collectionsScore,
+      detail: totalAR === 0
+        ? "No overdue invoices \u2022 target: under 10% aged"
+        : `${aged15PctDisplay}% aged 15+ days \u2022 target: under 10%`,
+      href: `/jobber/invoices${adminQs}`,
+    },
+    {
+      label: "Sales",
+      score: salesScore,
+      detail: `${pct(quoteWonPct)} win rate \u2022 target: 40%+`,
+      href: `/jobber/sales${adminQs}`,
+    },
+    {
+      label: "Operations",
+      score: opsScore,
+      detail: activeJobs.length === 0
+        ? "No active jobs yet"
+        : `${unschedPctDisplay}% unscheduled \u2022 target: under 10%`,
+      href: `/jobber/capacity${adminQs}`,
+    },
+    {
+      label: "Responsiveness",
+      score: responsivenessScore,
+      detail: openReqs.length === 0
+        ? "No pending requests \u2022 target: under 2 days"
+        : `avg ${avgReqAge}d response \u2022 target: under 2 days`,
+      href: `/jobber/sales${adminQs}`,
+    },
+  ];
+
+  /* ===== Money flow funnel ===== */
+  const scheduledActiveJobs = jobs.filter((j: any) => {
+    if (!j.scheduled_start_at) return false;
+    const st = (j.status || "").toLowerCase();
+    return st !== "completed" && st !== "archived" && st !== "cancelled" && st !== "requires_invoicing";
+  });
+  const scheduledActiveCents = scheduledActiveJobs.reduce((s: number, j: any) => s + Number(j.total_amount_cents ?? 0), 0);
+
+  const funnelStages = [
+    { label: "Leads", count: openRequestsCount, value: null, icon: "\uD83D\uDCE5", href: `/jobber/sales${adminQs}`, color: "#8b5cf6", unitLabel: "requests" },
+    { label: "Quoting", count: pipelineQuotes.length, value: pipelineValue > 0 ? money(pipelineValue) : null, icon: "\uD83D\uDCDD", href: `/jobber/sales${adminQs}`, color: "#5aa6ff", unitLabel: "quotes" },
+    { label: "Won", count: approvedNoJobCount, value: approvedNoJobCents > 0 ? money(approvedNoJobCents) : null, icon: "\uD83C\uDFC6", href: `/jobber/sales${adminQs}`, color: "#10b981", unitLabel: "quotes" },
+    { label: "Scheduled", count: scheduledActiveJobs.length, value: scheduledActiveCents > 0 ? money(scheduledActiveCents) : null, icon: "\uD83D\uDCC5", href: `/jobber/capacity${adminQs}`, color: "#06b6d4", unitLabel: "jobs" },
+    { label: "Needs Invoice", count: needsInvoiceCount, value: needsInvoiceCents > 0 ? money(needsInvoiceCents) : null, icon: "\uD83D\uDCC4", href: `/jobber/invoices${adminQs}`, color: "#f59e0b", unitLabel: "jobs" },
+    { label: "Outstanding", count: totalPastDueCount, value: totalAR > 0 ? money(totalAR) : null, icon: "\uD83D\uDCB0", href: `/jobber/invoices${adminQs}`, color: "#ef4444", unitLabel: "invoices" },
+  ];
+
   return (
     <main className="dashboard-main" style={{
       minHeight: "100vh",
@@ -1939,58 +1149,16 @@ const quoteWonPct = quotesInLast30Days.length > 0
       <style>{globalStyles}</style>
       {!adminConnectionId && <AnalyticsProvider connectionId={connectionId} />}
 
-      {adminConnectionId && (
-        <div style={{
-          background: "linear-gradient(90deg, #7c5cff, #5aa6ff)",
-          color: "#fff",
-          textAlign: "center",
-          padding: "8px 16px",
-          fontSize: 13,
-          fontWeight: 600,
-          letterSpacing: 0.2,
-        }}>
-          Viewing as: {companyName}
-          <a href="/admin" style={{ color: "#fff", marginLeft: 12, textDecoration: "underline", opacity: 0.9 }}>← Back to Admin</a>
-        </div>
-      )}
-
       <div className="dashboard-container">
-        {/* Header */}
-        <header className="dashboard-header animate-in">
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <svg width="40" height="40" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#7c5cff" />
-                  <stop offset="100%" stopColor="#5aa6ff" />
-                </linearGradient>
-              </defs>
-              <circle cx="25" cy="25" r="22" fill="none" stroke="url(#logoGrad)" strokeWidth="3"/>
-              <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#logoGrad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <div>
-              <h1 className="text-primary" style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5, margin: 0 }}>
-                {companyName}
-              </h1>
-              <p className="header-subtitle" style={{ fontSize: 13, marginTop: 4 }}>
-                Last sync: <span>{lastSyncPretty}</span> • {currencyCode}
-              </p>
-            </div>
-          </div>
-
-          <div className="header-actions">
-            <SyncButton connectionId={connectionId} />
-            <ThemeToggle />
-            
-            {/* Status Pills */}
-
-            <SubscriptionStatus billingStatus={billingStatus} trialEndsAt={trialEndsAt} />
-            {subscriptionActive ? <ManageSubscriptionButton /> : <SubscribeButton />}
-            <LogoutButton />
-          </div>
-        </header>
-
-        <NavTabs adminConnectionId={adminConnectionId} />
+        <DashboardTopbar
+          companyName={companyName}
+          lastSyncPretty={lastSyncPretty}
+          connectionId={connectionId}
+          billingStatus={billingStatus}
+          trialEndsAt={trialEndsAt}
+          subscriptionActive={subscriptionActive}
+          adminConnectionId={adminConnectionId}
+        />
 
         {/* Empty State - Show when no data */}
         {invoices.length === 0 && jobs.length === 0 && quotes.length === 0 && (
@@ -2089,185 +1257,168 @@ const quoteWonPct = quotesInLast30Days.length > 0
           </div>
         )}
 
-        {/* Recommendations */}
-        {recommendations.length > 0 && (
-          <div className="recommendation-banner animate-in delay-1" style={{ marginTop: 20 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <span style={{ fontSize: 16 }}>💡</span>
-              <span className="focus-title" style={{ fontSize: 13, fontWeight: 700 }}>This Week&apos;s Focus</span>
-            </div>
-            {recommendations.slice(0, 3).map((rec, i) => (
-              <div key={i} className="recommendation-item">
-                <span style={{ fontSize: 14 }}>{rec.icon}</span>
-                <span>{rec.text}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* ===== AccuScore ===== */}
+        <div className="panel animate-in delay-1" style={{ marginTop: 20, padding: "20px 24px" }}>
+          <AccuScore score={accuScore} breakdown={accuBreakdown} />
+        </div>
 
-        {/* Primary KPIs */}
-        <div className="kpi-grid-primary animate-in delay-2" style={{ marginTop: 20 }}>
+        {/* ===== Primary KPIs ===== */}
+        <div className="kpi-grid-primary animate-in delay-1" style={{ marginTop: 16 }}>
           <div className="kpi-primary gradient-purple hover-lift">
             <div style={{ position: "relative", zIndex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 20 }}>💰</span>
                 <span className="kpi-label" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  Total Invoices Past Due
+                  Revenue {thisMonthName}
                 </span>
               </div>
-              <div className="kpi-value-large text-primary">{money(totalAR)}</div>
+              <div className="kpi-value-large text-primary">{money(revenueThisMonth)}</div>
+              <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
+                {revDelta !== null ? (
+                  <span style={{ color: revDelta >= 0 ? "#10b981" : "#ef4444", fontWeight: 600 }}>
+                    {revDelta >= 0 ? "\u25B2" : "\u25BC"} {Math.abs(Math.round(revDelta * 100))}% vs last month
+                  </span>
+                ) : (
+                  <>{completedThisMonth.length} job{completedThisMonth.length !== 1 ? "s" : ""} completed</>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="kpi-primary hover-lift" style={{
+            background: "linear-gradient(145deg, rgba(90,166,255,0.1) 0%, rgba(255,255,255,0.02) 100%)",
+            borderColor: "rgba(90,166,255,0.3)",
+          }}>
+            <div style={{ position: "relative", zIndex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span className="kpi-label" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  Pipeline Value
+                </span>
+              </div>
+              <div className="kpi-value-large" style={{ color: "#5aa6ff" }}>{money(pipelineValue)}</div>
+              <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
+                {pipelineQuotes.length} open quote{pipelineQuotes.length !== 1 ? "s" : ""}
+              </div>
+            </div>
+          </div>
+
+          <div className="kpi-primary hover-lift" style={{
+            background: `linear-gradient(145deg, ${sevBg(arSev)} 0%, rgba(255,255,255,0.02) 100%)`,
+            borderColor: `${sevColor(arSev)}40`,
+          }}>
+            <div style={{ position: "relative", zIndex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span className="kpi-label" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  Overdue Invoices
+                </span>
+              </div>
+              <div className={`kpi-value-large ${totalAR === 0 ? "text-success" : arSev === "critical" ? "text-critical" : arSev === "warning" ? "text-warning" : "text-primary"}`}>
+                {money(totalAR)}
+              </div>
               <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
                 {totalPastDueCount} invoice{totalPastDueCount !== 1 ? "s" : ""} past due
               </div>
             </div>
           </div>
-
-          <div className="kpi-primary hover-lift" style={{
-            background: `linear-gradient(145deg, ${sevBg(arSev === "critical" ? "critical" : arSev === "warning" ? "warning" : "good")} 0%, rgba(255,255,255,0.02) 100%)`,
-            borderColor: `${sevColor(arSev)}40`,
-          }}>
-            <div style={{ position: "relative", zIndex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 20 }}>⚠️</span>
-                <span className="kpi-label" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  Invoices 15+ Days
-                </span>
-              </div>
-              <div className={`kpi-value-large ${arSev === "critical" ? "text-critical" : arSev === "warning" ? "text-warning" : "text-success"}`}>
-                {money(b15p)}
-              </div>
-              <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
-                {totalAR > 0 ? pct(b15p / totalAR) : "0%"} of total • {b15pCount} invoice{b15pCount !== 1 ? "s" : ""}
-              </div>
-            </div>
-          </div>
-
-          <div className="kpi-primary hover-lift" style={{
-            background: `linear-gradient(145deg, rgba(239,68,68,0.08) 0%, rgba(255,255,255,0.02) 100%)`,
-            borderColor: leakDollars > 0 ? "rgba(239,68,68,0.3)" : "rgba(255,255,255,0.1)",
-          }}>
-            <div style={{ position: "relative", zIndex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 20 }}>📋</span>
-                <span className="kpi-label" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  Quote Leak
-                </span>
-              </div>
-              <div className={`kpi-value-large ${leakDollars > 0 ? "text-critical" : "text-success"}`}>
-                {money(leakDollars)}
-              </div>
-              <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
-                {leakCandidates.length} quote{leakCandidates.length !== 1 ? "s" : ""} outstanding
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* Secondary KPIs */}
-        <div className="kpi-grid-secondary animate-in delay-3" style={{ marginTop: 20 }}>
+        {/* ===== Secondary KPIs ===== */}
+        <div className="kpi-grid-secondary animate-in delay-2" style={{ marginTop: 16 }}>
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
-              <span style={{ fontSize: 14 }}>✏️</span>
-              <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Changes Requested</span>
+              <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Win Rate (30d)</span>
             </div>
-            <div className={`kpi-value-medium ${
-              changesRequestedCount > 5 ? "text-critical" :
-              changesRequestedCount > 2 ? "text-warning" : "text-success"
-            }`}>
-              {changesRequestedCents > 0 ? money(changesRequestedCents) : changesRequestedCount}
+            <div className={`kpi-value-medium ${quoteWonPct >= 0.4 ? "text-success" : quoteWonPct >= 0.2 ? "text-warning" : "text-critical"}`}>
+              {pct(quoteWonPct)}
             </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>{changesRequestedCount} quote{changesRequestedCount !== 1 ? "s" : ""} to revise</div>
+            <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>
+              {quotesWonLast30Days.length} won of {quotesInLast30Days.length} quotes
+            </div>
           </div>
 
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
-              <span style={{ fontSize: 14 }}>✅</span>
-              <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Approved No Job</span>
-            </div>
-            <div className={`kpi-value-medium ${
-              approvedNoJobCount > 5 ? "text-critical" :
-              approvedNoJobCount > 2 ? "text-warning" : "text-success"
-            }`}>
-              {approvedNoJobCents > 0 ? money(approvedNoJobCents) : approvedNoJobCount}
-            </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>{approvedNoJobCount} quote{approvedNoJobCount !== 1 ? "s" : ""} to schedule</div>
-          </div>
-
-          <div className="kpi-secondary">
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
-              <span style={{ fontSize: 14 }}>📦</span>
               <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Unscheduled</span>
             </div>
-            <div className={`kpi-value-medium ${
-              unscheduledCount > 10 ? "text-critical" :
-              unscheduledCount > 5 ? "text-warning" : "text-success"
-            }`}>
+            <div className={`kpi-value-medium ${unscheduledCount > 10 ? "text-critical" : unscheduledCount > 5 ? "text-warning" : "text-success"}`}>
               {unscheduledCents > 0 ? money(unscheduledCents) : unscheduledCount}
             </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>{unscheduledCount} job{unscheduledCount !== 1 ? "s" : ""} in backlog</div>
+            <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>
+              {unscheduledCount} job{unscheduledCount !== 1 ? "s" : ""} in backlog
+            </div>
           </div>
 
           <div className="kpi-secondary">
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
-              <span style={{ fontSize: 14 }}>📥</span>
-              <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Open Requests</span>
+              <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Needs Invoicing</span>
             </div>
-            <div className={`kpi-value-medium ${
-              openRequestsCount > 10 ? "text-critical" :
-              openRequestsCount > 5 ? "text-warning" : "text-success"
-            }`}>
-              {openRequestsCount}
+            <div className={`kpi-value-medium ${needsInvoiceCount > 3 ? "text-critical" : needsInvoiceCount > 0 ? "text-warning" : "text-success"}`}>
+              {needsInvoiceCents > 0 ? money(needsInvoiceCents) : needsInvoiceCount}
             </div>
-            <div className="kpi-label" style={{ fontSize: 11, marginTop: 4 }}>{openRequestsCount} pending request{openRequestsCount !== 1 ? "s" : ""}</div>
+            <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>
+              {needsInvoiceCount} job{needsInvoiceCount !== 1 ? "s" : ""} completed, not billed
+            </div>
           </div>
 
+          <div className="kpi-secondary">
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
+              <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Open Requests</span>
+            </div>
+            <div className={`kpi-value-medium ${openRequestsCount > 10 ? "text-critical" : openRequestsCount > 5 ? "text-warning" : "text-success"}`}>
+              {openRequestsCount}
+            </div>
+            <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>
+              {openRequestsCount} pending request{openRequestsCount !== 1 ? "s" : ""}
+            </div>
+          </div>
         </div>
 
-       {/* Trends */}
-        <div className="animate-in delay-4" style={{ marginTop: 32 }}>
+        {/* ===== Recommendations ===== */}
+        {recommendations.length > 0 && (
+          <div className="panel animate-in delay-2" style={{ marginTop: 20 }}>
+            <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>This Week&apos;s Focus</h2>
+                <span className="info-tooltip">?<span className="tooltip-text">Actionable recommendations based on your current data. Click any item to go fix it.</span></span>
+              </div>
+            </div>
+            <div style={{ padding: "10px 16px" }}>
+              {recommendations.slice(0, 4).map((rec, i) => {
+                const prioColor = rec.priority === "high" ? "#ef4444" : "#f59e0b";
+                return (
+                  <a key={i} href={rec.href} className="rec-card" style={{ borderLeft: `3px solid ${prioColor}` }}>
+                    <span className="text-secondary" style={{ flex: 1 }}>{rec.text}</span>
+                    <span className="text-muted" style={{ fontSize: 12, flexShrink: 0, fontWeight: 600 }}>&rarr;</span>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ===== Money Flow ===== */}
+        <div className="panel animate-in delay-3" style={{ marginTop: 20, overflow: "visible" }}>
+          <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Money Flow</h2>
+              <span className="info-tooltip">?<span className="tooltip-text">Where work and money sit in your pipeline right now. Click any stage to drill in.</span></span>
+            </div>
+            <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
+              Track jobs from lead to collected payment
+            </p>
+          </div>
+          <div style={{ padding: "16px 20px" }}>
+            <MoneyFlowFunnel stages={funnelStages} />
+          </div>
+        </div>
+
+        {/* ===== Trends ===== */}
+        <div className="animate-in delay-3" style={{ marginTop: 20 }}>
           <TrendsSection
             leakEvents={leakEvents}
             arEvents={arEvents}
             unschedEvents={unschedEvents}
             currencyCode={currencyCode}
           />
-        </div>
-
-        {/* Action Lists */}
-        <div className="panel animate-in delay-5" style={{ marginTop: 32 }}>
-          <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Action Lists</h2>
-            <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
-              Collect AR, schedule backlog, close sales leaks
-            </p>
-          </div>
-
-          <div style={{ padding: 16 }}>
-            <ActionListTabs
-              agedARInvoices={agedARInvoices}
-              agedARExportData={agedARExportData}
-              unscheduledRows={unscheduledRows}
-              unscheduledExportData={unscheduledExportData}
-              leakCandidates={leakCandidates.slice().sort((a: any, b: any) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime())}
-              leakingQuotesExportData={leakingQuotesExportData}
-              openRequests={requests.filter((r: any) => {
-  const status = (r.request_status || "").toUpperCase();
-  return status === "NEW" || status === "PENDING" || status === "UNSCHEDULED" || status === "ASSESSMENT_COMPLETED" || status === "ACTION_REQUIRED";
-})}
-              openRequestsExportData={requests.filter((r: any) => {
-  const status = (r.request_status || "").toUpperCase();
-  return status === "NEW" || status === "PENDING" || status === "UNSCHEDULED" || status === "ASSESSMENT_COMPLETED" || status === "ACTION_REQUIRED";
-}).map((r: any) => ({
-                "Age (days)": r.created_at_jobber ? Math.max(0, Math.round((Date.now() - new Date(r.created_at_jobber).getTime()) / 86400000)) : 0,
-                "Title": r.title || "Untitled",
-                "Client": r.client_name || "",
-                "Source": r.source || "",
-                "Created": r.created_at_jobber ? new Date(r.created_at_jobber).toLocaleDateString() : "",
-                "Jobber URL": r.jobber_url || "",
-              }))}
-              currencyCode={currencyCode}
-            />
-          </div>
         </div>
 
         {/* Footer */}
@@ -2299,73 +1450,3 @@ const quoteWonPct = quotesInLast30Days.length > 0
   );
 }
 
-/* -------------------------------- Subscription Status -------------------------------- */
-function SubscriptionStatus({ billingStatus, trialEndsAt }: { billingStatus: string; trialEndsAt: number }) {
-  if (billingStatus === "active") {
-    return (
-      <div className="status-pill" style={{
-        borderRadius: 10,
-        fontWeight: 600,
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        background: "rgba(16,185,129,0.15)",
-        border: "1px solid rgba(16,185,129,0.4)",
-      }}>
-        <span style={{ fontSize: 10 }}>⭐</span>
-        Pro
-      </div>
-    );
-  }
-
-  const now = Date.now();
-  const daysLeft = Math.max(0, Math.ceil((trialEndsAt - now) / (1000 * 60 * 60 * 24)));
-
-  return (
-    <div className="status-pill" style={{
-      borderRadius: 10,
-      fontWeight: 600,
-      display: "flex",
-      alignItems: "center",
-      gap: 6,
-      background: daysLeft <= 3 ? "rgba(239,68,68,0.15)" : "rgba(90,166,255,0.15)",
-      border: `1px solid ${daysLeft <= 3 ? "rgba(239,68,68,0.4)" : "rgba(90,166,255,0.4)"}`,
-    }}>
-      <span style={{ fontSize: 10 }}>⏱️</span>
-      {daysLeft} day{daysLeft !== 1 ? "s" : ""} left
-    </div>
-  );
-}
-
-/* -------------------------------- Buttons -------------------------------- */
-
-
-function SubscribeButton() {
-  return (
-    <form action="/api/billing/checkout" method="POST">
-      <button type="submit" className="btn btn-primary" style={{ fontWeight: 700 }}>
-        Subscribe →
-      </button>
-    </form>
-  );
-}
-
-function ManageSubscriptionButton() {
-  return (
-    <form action="/api/billing/portal" method="POST">
-      <button type="submit" className="btn">
-        Manage
-      </button>
-    </form>
-  );
-}
-
-function LogoutButton() {
-  return (
-    <form action="/api/auth/logout" method="POST">
-      <button type="submit" className="btn btn-muted">
-        Log out
-      </button>
-    </form>
-  );
-}

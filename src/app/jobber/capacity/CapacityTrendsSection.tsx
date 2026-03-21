@@ -13,6 +13,7 @@ export type JobEvent = { scheduledAt: number; amount: number };
 type Props = {
   jobEvents: JobEvent[];
   targetCents: number | null;
+  monthlyTargetCents?: number | null;
   currencyCode: string;
 };
 
@@ -66,13 +67,21 @@ function moneyFmt(cents: number, code: string): string {
 
 function defaultRange(preset: string) {
   const today = startOfDayUTC(new Date());
+  if (preset === "thisMonth") return { start: startOfMonthUTC(today), end: today };
+  if (preset === "lastMonth") {
+    const lastMonthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
+    const thisMonthStart = startOfMonthUTC(today);
+    return { start: lastMonthStart, end: addDaysUTC(thisMonthStart, -1) };
+  }
   if (preset === "30d") return { start: addDaysUTC(today, -30), end: today };
   if (preset === "90d") return { start: addDaysUTC(today, -90), end: today };
   if (preset === "ytd") return { start: new Date(Date.UTC(today.getUTCFullYear(), 0, 1)), end: today };
-  return { start: addDaysUTC(today, -56), end: today }; // 8w default
+  if (preset === "t12m") return { start: addDaysUTC(today, -365), end: today };
+  if (preset === "all") return { start: addDaysUTC(today, -730), end: today };
+  return { start: addDaysUTC(today, -56), end: today };
 }
 
-/* ---- responsive hook ---- */
+/* ---- hooks ---- */
 function useIsMobile() {
   const [m, setM] = useState(false);
   useEffect(() => {
@@ -82,6 +91,18 @@ function useIsMobile() {
     return () => window.removeEventListener("resize", check);
   }, []);
   return m;
+}
+
+function useIsLight() {
+  const [isLight, setIsLight] = useState(false);
+  useEffect(() => {
+    const check = () => setIsLight(document.documentElement.getAttribute("data-theme") === "light");
+    check();
+    const obs = new MutationObserver(check);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => obs.disconnect();
+  }, []);
+  return isLight;
 }
 
 /* ---- Inline Controls ---- */
@@ -94,17 +115,9 @@ function InlineControls({
   g: Granularity; setG: (v: Granularity) => void;
   chart: ChartType; setChart: (v: ChartType) => void;
 }) {
-  const [isLight, setIsLight] = useState(false);
+  const isLight = useIsLight();
   const [hovered, setHovered] = useState<string | null>(null);
   const isMobile = useIsMobile();
-
-  useEffect(() => {
-    const check = () => setIsLight(document.documentElement.getAttribute("data-theme") === "light");
-    check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => obs.disconnect();
-  }, []);
 
   const weekOptions = [
     { key: -1, label: "Last Wk" },
@@ -112,47 +125,46 @@ function InlineControls({
     { key: 1, label: "Next Wk" },
   ];
   const rangeOptions = [
+    { key: "thisMonth", label: isMobile ? "Mo" : "This Mo" },
+    { key: "lastMonth", label: isMobile ? "Last" : "Last Mo" },
     { key: "30d", label: "30D" },
     { key: "8w", label: "8W" },
     { key: "90d", label: "90D" },
     { key: "ytd", label: "YTD" },
+    { key: "t12m", label: "12M" },
+    { key: "all", label: "All" },
   ];
   const bucketOptions: { key: Granularity; mobileLabel: string; desktopLabel: string }[] = [
     { key: "day", mobileLabel: "D", desktopLabel: "Day" },
-    { key: "week", mobileLabel: "W", desktopLabel: "Week" },
-    { key: "month", mobileLabel: "M", desktopLabel: "Month" },
+    { key: "week", mobileLabel: "W", desktopLabel: "Wk" },
+    { key: "month", mobileLabel: "M", desktopLabel: "Mo" },
   ];
   const chartOptions: { key: ChartType; mobileLabel: string; desktopLabel: string }[] = [
-    { key: "line", mobileLabel: "\u{1F4C8}", desktopLabel: "Line" },
-    { key: "bar", mobileLabel: "\u{1F4CA}", desktopLabel: "Bar" },
+    { key: "line", mobileLabel: "L", desktopLabel: "Line" },
+    { key: "bar", mobileLabel: "B", desktopLabel: "Bar" },
   ];
 
   const btnStyle = (active: boolean, h: boolean): React.CSSProperties => ({
-    padding: "8px 12px", borderRadius: 8, border: "none",
+    padding: "5px 8px", borderRadius: 6, border: "none",
     background: active ? "linear-gradient(135deg, #7c5cff, #5aa6ff)" : h ? (isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)") : "transparent",
     color: active ? "#fff" : isLight ? "#334155" : "rgba(255,255,255,0.85)",
-    fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.15s ease",
-    boxShadow: active ? "0 4px 12px rgba(124,92,255,0.3)" : "none", whiteSpace: "nowrap",
+    fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all 0.15s ease",
+    boxShadow: active ? "0 2px 8px rgba(124,92,255,0.3)" : "none", whiteSpace: "nowrap",
   });
-  const labelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: isLight ? "#94a3b8" : "rgba(255,255,255,0.4)", marginRight: 8, whiteSpace: "nowrap" };
-  const pillGroup: React.CSSProperties = { display: "flex", gap: 2, background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.05)", borderRadius: 10, padding: 3 };
+  const labelStyle: React.CSSProperties = { fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: isLight ? "#94a3b8" : "rgba(255,255,255,0.4)", marginRight: 6, whiteSpace: "nowrap" };
+  const pillGroup: React.CSSProperties = { display: "flex", gap: 1, background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.05)", borderRadius: 8, padding: 2 };
 
   return (
     <div>
-      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: isMobile ? 8 : 12, flexWrap: "wrap" }}>
-        {/* Week nav */}
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: isMobile ? 6 : 8, flexWrap: "nowrap", overflowX: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 0, justifyContent: isMobile ? "space-between" : "flex-start" }}>
           <div style={pillGroup}>
             {weekOptions.map((o) => (
-              <button key={o.key} onClick={() => {
-                if (weekOffset === o.key) { setWeekOffset(null); }
-                else { setWeekOffset(o.key); }
-              }} onMouseEnter={() => setHovered(`w-${o.key}`)} onMouseLeave={() => setHovered(null)} style={btnStyle(weekOffset === o.key, hovered === `w-${o.key}`)}>{o.label}</button>
+              <button key={o.key} onClick={() => { if (weekOffset === o.key) setWeekOffset(null); else setWeekOffset(o.key); }} onMouseEnter={() => setHovered(`w-${o.key}`)} onMouseLeave={() => setHovered(null)} style={btnStyle(weekOffset === o.key, hovered === `w-${o.key}`)}>{o.label}</button>
             ))}
           </div>
         </div>
-        {!isMobile && <div style={{ width: 1, height: 28, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)", flexShrink: 0 }} />}
-        {/* Range */}
+        {!isMobile && <div style={{ width: 1, height: 22, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)", flexShrink: 0 }} />}
         <div style={{ display: "flex", alignItems: "center", gap: 0, justifyContent: isMobile ? "space-between" : "flex-start" }}>
           <span style={labelStyle}>Range</span>
           <div style={pillGroup}>
@@ -161,9 +173,8 @@ function InlineControls({
             ))}
           </div>
         </div>
-        {!isMobile && <div style={{ width: 1, height: 28, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)", flexShrink: 0 }} />}
+        {!isMobile && <div style={{ width: 1, height: 22, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)", flexShrink: 0 }} />}
         <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 12 : 12, justifyContent: isMobile ? "space-between" : "flex-start" }}>
-          {/* Group */}
           <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
             <span style={labelStyle}>Group</span>
             <div style={pillGroup}>
@@ -172,8 +183,7 @@ function InlineControls({
               ))}
             </div>
           </div>
-          {!isMobile && <div style={{ width: 1, height: 28, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)", flexShrink: 0 }} />}
-          {/* Chart */}
+          {!isMobile && <div style={{ width: 1, height: 22, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)", flexShrink: 0 }} />}
           <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
             <span style={labelStyle}>Chart</span>
             <div style={pillGroup}>
@@ -189,7 +199,7 @@ function InlineControls({
 }
 
 /* ---- Main Component ---- */
-export function CapacityTrendsSection({ jobEvents, targetCents, currencyCode }: Props) {
+export function CapacityTrendsSection({ jobEvents, targetCents, monthlyTargetCents, currencyCode }: Props) {
   const [weekOffset, setWeekOffsetRaw] = useState<number | null>(null);
   const [range, setRangeRaw] = useState("8w");
   const [g, setGRaw] = useState<Granularity>("week");
@@ -202,14 +212,16 @@ export function CapacityTrendsSection({ jobEvents, targetCents, currencyCode }: 
 
   const money = useMemo(() => (cents: number) => moneyFmt(cents, currencyCode), [currencyCode]);
 
-  // Compute the effective target per-bucket based on granularity and weekly target
+  const effectiveGranularity: Granularity = weekOffset !== null ? "day" : g;
+
+  // Compute the effective target per-bucket
   const effectiveTarget = useMemo(() => {
-    if (!targetCents) return null;
-    if (g === "day" || weekOffset !== null) return Math.round(targetCents / 7); // daily target
-    if (g === "week") return targetCents;
-    // monthly: ~4.33 weeks per month
-    return Math.round(targetCents * 4.33);
-  }, [targetCents, g, weekOffset]);
+    if (!targetCents && !monthlyTargetCents) return null;
+    if (effectiveGranularity === "day") return targetCents ? Math.round(targetCents / 5) : null; // 5 working days
+    if (effectiveGranularity === "week") return targetCents;
+    // Monthly: use explicit monthly target if set, otherwise scale weekly
+    return monthlyTargetCents ?? (targetCents ? Math.round(targetCents * 4.33) : null);
+  }, [targetCents, monthlyTargetCents, effectiveGranularity]);
 
   const { revenuePoints, countPoints } = useMemo(() => {
     let start: Date, end: Date, granularity: Granularity;
@@ -225,10 +237,16 @@ export function CapacityTrendsSection({ jobEvents, targetCents, currencyCode }: 
       start = r.start;
       end = r.end;
       granularity = g;
+
+      if (range === "all") {
+        const allTimestamps = jobEvents.map(e => e.scheduledAt);
+        if (allTimestamps.length > 0) {
+          start = bucketStartUTC(new Date(Math.min(...allTimestamps)), granularity);
+        }
+      }
     }
 
     const endExclusive = addDaysUTC(end, 1);
-
     const starts: Date[] = [];
     let cur = bucketStartUTC(start, granularity);
     while (cur.getTime() < endExclusive.getTime()) {
@@ -239,8 +257,7 @@ export function CapacityTrendsSection({ jobEvents, targetCents, currencyCode }: 
       if (starts.length > 200) break;
     }
 
-    // Scheduled Revenue: sum amount by scheduled_at bucket
-    const revPts = starts.map((bs, i) => {
+    const revPts = starts.map((bs) => {
       const bsTs = bs.getTime();
       const beTs = nextBucketUTC(bs, granularity).getTime();
       let sum = 0;
@@ -252,43 +269,9 @@ export function CapacityTrendsSection({ jobEvents, targetCents, currencyCode }: 
         }
       }
       const xLabel = labelForBucket(bs, granularity);
-
-      // Color logic: vs target if available, else rolling avg
-      let pointColor: string | undefined;
-      if (effectiveTarget && effectiveTarget > 0) {
-        const ratio = sum / effectiveTarget;
-        if (ratio >= 0.9) pointColor = "#10b981";
-        else if (ratio >= 0.5) pointColor = "#f59e0b";
-        else pointColor = "#ef4444";
-      } else if (i > 0) {
-        // Rolling 4-period avg fallback
-        const lookbackRevs = starts.slice(Math.max(0, i - 4), i).map((lbs) => {
-          const lbsTs = lbs.getTime();
-          const lbeTs = nextBucketUTC(lbs, granularity).getTime();
-          let lSum = 0;
-          for (const ev of jobEvents) {
-            if (ev.scheduledAt >= lbsTs && ev.scheduledAt < lbeTs) lSum += ev.amount;
-          }
-          return lSum;
-        });
-        const avgVal = lookbackRevs.length > 0 ? lookbackRevs.reduce((s, v) => s + v, 0) / lookbackRevs.length : 0;
-        if (avgVal > 0) {
-          const ratio = sum / avgVal;
-          if (ratio >= 1.1) pointColor = "#10b981";
-          else if (ratio >= 0.8) pointColor = "#f59e0b";
-          else pointColor = "#ef4444";
-        }
-      }
-
-      return {
-        xLabel, value: sum,
-        tooltip: `${xLabel}: ${money(sum)}`,
-        hoverLabel: `${cnt} ${cnt !== 1 ? "jobs" : "job"}`,
-        pointColor,
-      };
+      return { xLabel, value: sum, tooltip: `${xLabel}: ${money(sum)}`, hoverLabel: `${cnt} ${cnt !== 1 ? "jobs" : "job"}` };
     });
 
-    // Job Count: count jobs per bucket (neutral blue, no color coding)
     const cntPts = starts.map((bs) => {
       const bsTs = bs.getTime();
       const beTs = nextBucketUTC(bs, granularity).getTime();
@@ -297,28 +280,22 @@ export function CapacityTrendsSection({ jobEvents, targetCents, currencyCode }: 
         if (ev.scheduledAt >= bsTs && ev.scheduledAt < beTs) cnt += 1;
       }
       const xLabel = labelForBucket(bs, granularity);
-      return {
-        xLabel, value: cnt,
-        tooltip: `${xLabel}: ${cnt} jobs`,
-        hoverLabel: undefined as string | undefined,
-      };
+      return { xLabel, value: cnt, tooltip: `${xLabel}: ${cnt} jobs`, hoverLabel: undefined as string | undefined };
     });
 
     return { revenuePoints: revPts, countPoints: cntPts };
-  }, [weekOffset, range, g, jobEvents, money, effectiveTarget]);
+  }, [weekOffset, range, g, jobEvents, money]);
 
   const hasData = jobEvents.length > 0;
 
-  const targetLabel = effectiveTarget ? `Target: ${money(effectiveTarget)}` : undefined;
-
   return (
-    <div className="panel animate-in delay-2" style={{ padding: 0, marginTop: 20 }}>
+    <div className="panel animate-in delay-2" style={{ padding: 0, marginTop: 16, overflow: "visible", position: "relative", zIndex: 10 }}>
       <div style={{ padding: "12px 16px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
           <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
-            Capacity Trend
+            Capacity Trends
           </h2>
-          <span className="info-tooltip">?<span className="tooltip-text">Scheduled revenue and job count over time. Bars are color-coded vs your weekly target (green = 90%+, amber = 50-89%, red = under 50%). The dashed line shows your target.</span></span>
+          <span className="info-tooltip">?<span className="tooltip-text">Scheduled revenue and job count over time. Bars are color-coded vs your weekly capacity target when set.</span></span>
         </div>
         <InlineControls
           weekOffset={weekOffset} setWeekOffset={setWeekOffset}
@@ -344,7 +321,7 @@ export function CapacityTrendsSection({ jobEvents, targetCents, currencyCode }: 
             color="#10b981"
             invertChangeColor={false}
             targetValue={effectiveTarget ?? undefined}
-            targetLabel={targetLabel}
+            penalizeOverTarget
           />
           <SparkLine
             title="Jobs Scheduled"

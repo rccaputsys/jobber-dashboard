@@ -14,15 +14,19 @@ type PeriodMetrics = {
 };
 
 export function SalesKpiCards({
+  thisWeek,
+  lastWeek,
   thisMonth,
   lastMonth,
   allTime,
 }: {
+  thisWeek: PeriodMetrics;
+  lastWeek: PeriodMetrics;
   thisMonth: PeriodMetrics;
   lastMonth: PeriodMetrics;
   allTime: PeriodMetrics;
 }) {
-  const [period, setPeriod] = useState<"thisMonth" | "lastMonth" | "allTime">("thisMonth");
+  const [period, setPeriod] = useState<"thisWeek" | "lastWeek" | "thisMonth" | "lastMonth" | "allTime">("thisWeek");
   const [isLight, setIsLight] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -34,9 +38,12 @@ export function SalesKpiCards({
     return () => obs.disconnect();
   }, []);
 
-  const metrics = period === "thisMonth" ? thisMonth : period === "lastMonth" ? lastMonth : allTime;
+  const metricsMap = { thisWeek, lastWeek, thisMonth, lastMonth, allTime };
+  const metrics = metricsMap[period];
 
   const options = [
+    { key: "thisWeek" as const, label: "This Week" },
+    { key: "lastWeek" as const, label: "Last Week" },
     { key: "thisMonth" as const, label: "This Month" },
     { key: "lastMonth" as const, label: "Last Month" },
     { key: "allTime" as const, label: "All Time" },
@@ -57,7 +64,7 @@ export function SalesKpiCards({
   const daysColor = metrics.avgDaysToClose > 0 && metrics.avgDaysToClose <= 7 ? "#10b981" : metrics.avgDaysToClose <= 14 ? "#5aa6ff" : "#f59e0b";
   const daysAccent = metrics.avgDaysToClose > 0 && metrics.avgDaysToClose <= 7 ? "green" : metrics.avgDaysToClose <= 14 ? "blue" : "amber";
 
-  const periodSuffix = period === "thisMonth" ? "This Month" : period === "lastMonth" ? "Last Month" : "All Time";
+  const periodSuffix = metrics.monthLabel;
 
   return (
     <div>

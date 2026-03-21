@@ -1,0 +1,303 @@
+// src/app/jobber/invoices/page.tsx
+import { supabaseAdmin, fetchAllRows } from "@/lib/supabaseAdmin";
+import { getUser } from "@/lib/supabaseAuth";
+import { redirect } from "next/navigation";
+import { DashboardTopbar } from "../dashboard/DashboardTopbar";
+import { InvoiceKpiCards } from "./InvoiceKpiCards";
+import { InvoiceTrendsSection } from "./InvoiceTrendsSection";
+import { OutstandingInvoices } from "./OutstandingInvoices";
+import {
+  safeDate,
+  startOfDayUTC,
+  startOfWeekUTC,
+  addDaysUTC,
+  moneyFactory,
+  formatSyncTime,
+  globalStyles,
+  theme,
+} from "@/lib/dashboardHelpers";
+
+export default async function InvoicesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ admin_connection_id?: string }>;
+}) {
+  const sp = await searchParams;
+  const user = await getUser();
+  if (!user) redirect("/login?redirect=/jobber/invoices");
+
+  const ADMIN_EMAILS = ["rcaputo91@gmail.com"];
+  const isAdmin = ADMIN_EMAILS.includes(user.email || "");
+  const adminConnectionId = isAdmin ? sp.admin_connection_id : undefined;
+
+  // Get connection
+  let connectionId: string;
+  if (adminConnectionId) {
+    const { data: adminConn } = await supabaseAdmin
+      .from("jobber_connections")
+      .select("id")
+      .eq("id", adminConnectionId)
+      .maybeSingle();
+    if (!adminConn) {
+      return (
+        <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100vh", background: "#060811" }}>
+          <h2>Connection not found</h2>
+          <p style={{ marginTop: 8, color: theme.sub }}>The specified connection ID does not exist.</p>
+          <a href="/admin" style={{ color: "#5aa6ff", marginTop: 16, display: "inline-block" }}>&larr; Back to Admin</a>
+        </div>
+      );
+    }
+    connectionId = adminConn.id;
+  } else {
+    const { data: connection } = await supabaseAdmin
+      .from("jobber_connections")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!connection) {
+      return (
+        <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100vh", background: "#060811" }}>
+          <h2>No Jobber account connected</h2>
+          <p style={{ marginTop: 8, color: theme.sub }}>See Your Numbers Now.</p>
+          <a href="/jobber" style={{ color: "#5aa6ff", marginTop: 16, display: "inline-block" }}>Connect Jobber &rarr;</a>
+        </div>
+      );
+    }
+    connectionId = connection.id;
+  }
+
+  // Fetch data
+  const [connDetails, invoices, needsInvoicingRaw] = await Promise.all([
+    supabaseAdmin
+      .from("jobber_connections")
+      .select("last_sync_at,trial_started_at,trial_ends_at,billing_status,currency_code,company_name,jobber_account_name")
+      .eq("id", connectionId)
+      .maybeSingle()
+      .then((r) => r.data),
+    fetchAllRows("fact_invoices", "*", connectionId),
+    supabaseAdmin
+      .from("fact_jobs")
+      .select("job_number,job_title,total_amount_cents,jobber_url,scheduled_start_at")
+      .eq("connection_id", connectionId)
+      .eq("status", "requires_invoicing")
+      .order("total_amount_cents", { ascending: false })
+      .limit(100)
+      .then((r) => r.data ?? []),
+  ]);
+
+  const companyName = connDetails?.jobber_account_name || connDetails?.company_name || "Your Company";
+  const currencyCode = (connDetails?.currency_code || "USD").toUpperCase();
+  const money = moneyFactory(currencyCode);
+  const lastSyncPretty = connDetails?.last_sync_at ? formatSyncTime(new Date(connDetails.last_sync_at)) : "Not synced yet";
+
+  // Billing gate
+  const billingStatus = connDetails?.billing_status ?? "trialing";
+  const trialEndsAt = connDetails?.trial_ends_at ? new Date(connDetails.trial_ends_at).getTime() : 0;
+  const trialActive = billingStatus === "trialing" && trialEndsAt > Date.now();
+  const subscriptionActive = billingStatus === "active";
+  const hasAccess = trialActive || subscriptionActive || !!adminConnectionId;
+
+  if (!hasAccess) {
+    return (
+      <main style={{
+        minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+        background: "linear-gradient(180deg, #060811 0%, #0A1222 100%)", padding: 24,
+      }}>
+        <style>{globalStyles}</style>
+        <div className="animate-in" style={{
+          maxWidth: 420, width: "100%", borderRadius: 24,
+          border: "1px solid rgba(255,255,255,0.1)",
+          background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)",
+          padding: "48px 32px", textAlign: "center",
+          boxShadow: "0 32px 64px rgba(0,0,0,0.5)",
+        }}>
+          <div style={{ width: 72, height: 72, borderRadius: 20, background: "linear-gradient(135deg, #7c5cff, #5aa6ff)", margin: "0 auto 28px", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 20px 40px rgba(90,166,255,0.3)" }}>
+            <span style={{ fontSize: 32 }}>&#128274;</span>
+          </div>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: "#EAF1FF", marginBottom: 12 }}>
+            {billingStatus === "trialing" ? "Trial Expired" : "Subscribe to Access"}
+          </h1>
+          <p style={{ fontSize: 15, color: "rgba(234,241,255,0.6)", lineHeight: 1.6, marginBottom: 32 }}>
+            Your 14-day free trial has ended. Subscribe to continue accessing your AccuInsight dashboard.
+          </p>
+          <form action="/api/billing/checkout" method="POST">
+            <button type="submit" className="btn-primary" style={{ width: "100%", padding: "16px 24px", borderRadius: 14, fontWeight: 700, fontSize: 16, border: "none", cursor: "pointer" }}>
+              Subscribe — $29/month
+            </button>
+          </form>
+        </div>
+      </main>
+    );
+  }
+
+  /* --------------------------------- Metrics --------------------------------- */
+  const now = new Date();
+  const todayUTC = startOfDayUTC(now);
+  const nowMs = Date.now();
+
+  const thisWeekStart = startOfWeekUTC(todayUTC);
+  const lastWeekStart = addDaysUTC(thisWeekStart, -7);
+  const thisMonthStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth(), 1));
+  const lastMonthStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() - 1, 1));
+
+  function computeKpi(periodStart: Date | null, periodEnd: Date | null, periodLabel: string) {
+    const inPeriod = (d: Date | null) => {
+      if (!d || !periodStart || !periodEnd) return true;
+      return d >= periodStart && d < periodEnd;
+    };
+
+    const paidInPeriod = invoices.filter((i: any) => i.status === "paid" && inPeriod(safeDate(i.paid_at)));
+    const collectedCents = paidInPeriod.reduce((s: number, i: any) => s + Number(i.total_amount_cents ?? 0), 0);
+
+    const sentInPeriod = invoices.filter((i: any) => inPeriod(safeDate(i.created_at_jobber)));
+    const sentValue = sentInPeriod.reduce((s: number, i: any) => s + Number(i.total_amount_cents ?? 0), 0);
+
+    // Avg days to pay for paid invoices in period
+    const paidWithDates = paidInPeriod.filter((i: any) => safeDate(i.created_at_jobber) && safeDate(i.paid_at));
+    const avgDaysToPay = paidWithDates.length > 0
+      ? Math.round(paidWithDates.reduce((s: number, i: any) => {
+          const created = safeDate(i.created_at_jobber)!.getTime();
+          const paid = safeDate(i.paid_at)!.getTime();
+          return s + Math.max(0, (paid - created) / 86400000);
+        }, 0) / paidWithDates.length)
+      : 0;
+
+    return {
+      collectedRevenue: money(collectedCents),
+      collectedCount: paidInPeriod.length,
+      invoicesSent: sentInPeriod.length,
+      invoicesSentValue: money(sentValue),
+      avgDaysToPay,
+      periodLabel,
+    };
+  }
+
+  const thisWeekKpi = computeKpi(thisWeekStart, addDaysUTC(todayUTC, 1), "This Week");
+  const lastWeekKpi = computeKpi(lastWeekStart, thisWeekStart, "Last Week");
+  const thisMonthKpi = computeKpi(thisMonthStart, addDaysUTC(todayUTC, 1), "This Month");
+  const lastMonthKpi = computeKpi(lastMonthStart, thisMonthStart, "Last Month");
+  const allTimeKpi = computeKpi(null, null, "All Time");
+
+  // Outstanding invoices
+  const outstanding = invoices
+    .filter((i: any) => i.status === "awaiting_payment" || i.status === "past_due")
+    .map((i: any) => {
+      const dueDate = safeDate(i.due_at);
+      const daysOverdue = dueDate ? Math.max(0, Math.floor((nowMs - dueDate.getTime()) / 86400000)) : 0;
+      return {
+        invoice_number: i.invoice_number || "",
+        client_name: i.client_name || "",
+        subject: i.subject || "",
+        status: i.status || "",
+        total_amount_cents: Number(i.total_amount_cents ?? 0),
+        balance_cents: Number(i.balance_cents ?? i.total_amount_cents ?? 0),
+        due_at: i.due_at || null,
+        jobber_url: i.jobber_url || "",
+        days_overdue: daysOverdue,
+      };
+    })
+    .sort((a, b) => b.days_overdue - a.days_overdue);
+
+  const outstandingBalance = outstanding.reduce((s, i) => s + i.balance_cents, 0);
+  const pastDueCount = outstanding.filter(i => i.days_overdue > 0).length;
+  const pastDueBalance = outstanding.filter(i => i.days_overdue > 0).reduce((s, i) => s + i.balance_cents, 0);
+
+  // Aging buckets for donut chart (matches OutstandingInvoices categories)
+  const agingBuckets = [
+    { label: "30+ Days", color: "#ef4444", balanceCents: 0, count: 0 },
+    { label: "7\u201330 Days", color: "#f59e0b", balanceCents: 0, count: 0 },
+    { label: "1\u20137 Days", color: "#5aa6ff", balanceCents: 0, count: 0 },
+    { label: "Current", color: "#10b981", balanceCents: 0, count: 0 },
+  ];
+  for (const inv of outstanding) {
+    const b = inv.days_overdue >= 30 ? agingBuckets[0] : inv.days_overdue >= 7 ? agingBuckets[1] : inv.days_overdue > 0 ? agingBuckets[2] : agingBuckets[3];
+    b.balanceCents += inv.balance_cents;
+    b.count++;
+  }
+
+  // Trend events
+  const invoiceEvents = invoices
+    .map((i: any) => {
+      const events: { ts: number; amount: number; type: "sent" | "paid" }[] = [];
+      const created = safeDate(i.created_at_jobber);
+      if (created) events.push({ ts: created.getTime(), amount: Number(i.total_amount_cents ?? 0), type: "sent" });
+      if (i.status === "paid") {
+        const paid = safeDate(i.paid_at);
+        if (paid) events.push({ ts: paid.getTime(), amount: Number(i.total_amount_cents ?? 0), type: "paid" });
+      }
+      return events;
+    })
+    .flat();
+
+  // Jobs needing invoicing
+  const needsInvoicing = needsInvoicingRaw.map((j: any) => ({
+    job_number: Number(j.job_number ?? 0),
+    job_title: j.job_title || "",
+    total_amount_cents: Number(j.total_amount_cents ?? 0),
+    jobber_url: j.jobber_url || "",
+    scheduled_at: j.scheduled_start_at || null,
+  }));
+
+  /* ------------------------------------------------------------------ */
+  /*  Render                                                             */
+  /* ------------------------------------------------------------------ */
+  return (
+    <main className="dashboard-main" style={{
+      minHeight: "100vh",
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      background: `
+        radial-gradient(ellipse 80% 60% at 50% -20%, rgba(124,92,255,0.15), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 0%, rgba(90,166,255,0.1), transparent),
+        linear-gradient(180deg, #060811 0%, #0a1020 100%)
+      `,
+    }}>
+      <style>{globalStyles}</style>
+
+      <div className="dashboard-container">
+        <DashboardTopbar
+          companyName={companyName}
+          lastSyncPretty={lastSyncPretty}
+          connectionId={connectionId}
+          billingStatus={billingStatus}
+          trialEndsAt={trialEndsAt}
+          subscriptionActive={subscriptionActive}
+          adminConnectionId={adminConnectionId}
+        />
+
+        {/* KPI Cards */}
+        <div className="animate-in delay-1" style={{ marginTop: 20 }}>
+          <InvoiceKpiCards
+            thisWeek={thisWeekKpi}
+            lastWeek={lastWeekKpi}
+            thisMonth={thisMonthKpi}
+            lastMonth={lastMonthKpi}
+            allTime={allTimeKpi}
+            outstandingBalance={money(outstandingBalance)}
+            outstandingBalanceCents={outstandingBalance}
+            pastDueBalance={money(pastDueBalance)}
+            pastDueBalanceCents={pastDueBalance}
+            outstandingCount={outstanding.length}
+            pastDueCount={pastDueCount}
+          />
+        </div>
+
+        {/* Trends */}
+        <InvoiceTrendsSection
+          events={invoiceEvents}
+          agingBuckets={agingBuckets}
+          totalOutstandingCents={outstandingBalance}
+          currencyCode={currencyCode}
+        />
+
+        {/* Outstanding Invoices */}
+        <OutstandingInvoices
+          invoices={outstanding}
+          needsInvoicing={needsInvoicing}
+          currencyCode={currencyCode}
+        />
+
+        <div style={{ height: 40 }} />
+      </div>
+    </main>
+  );
+}

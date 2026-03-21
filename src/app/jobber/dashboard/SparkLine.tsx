@@ -16,6 +16,10 @@ export function SparkLine(props: {
   targetValue?: number;
   targetLabel?: string;
   invertChangeColor?: boolean;
+  penalizeOverTarget?: boolean;
+  secondaryPoints?: { xLabel: string; value: number; tooltip: string; hoverLabel?: string }[];
+  secondaryColor?: string;
+  secondaryLabel?: string;
 }) {
   const formatY = (v: number): string => {
     if (props.formatType === "percent") {
@@ -58,7 +62,8 @@ export function SparkLine(props: {
   const accentColor = props.color || "#5aa6ff";
 
   const vals = props.points.map((p) => p.value);
-  const dataMax = vals.length ? Math.max(...vals, 1) : 1;
+  const secondaryVals = props.secondaryPoints?.map((p) => p.value) ?? [];
+  const dataMax = Math.max(...vals, ...secondaryVals, 1);
 
   // If there's a target, make sure the chart can show it
   const effectiveMax = props.targetValue != null ? Math.max(dataMax, props.targetValue * 1.1) : dataMax;
@@ -102,15 +107,28 @@ export function SparkLine(props: {
   const clipId = `clip-${safeTitle}`;
   const gradientId = `gradient-${safeTitle}`;
 
-  const barW = Math.max(4, (vbW - padL - padR) / Math.max(1, props.points.length) - 4);
+  const hasSecondary = props.secondaryPoints && props.secondaryPoints.length > 0;
+  const slotW = (vbW - padL - padR) / Math.max(1, props.points.length);
+  const barW = hasSecondary
+    ? Math.max(3, slotW / 2 - 3)
+    : Math.max(4, slotW - 4);
 
   // When a target is set, color points relative to it
   function targetColor(value: number): string | undefined {
     if (props.targetValue == null || props.targetValue <= 0 || value === 0) return undefined;
     const ratio = value / props.targetValue;
-    if (ratio >= 1.0) return "#10b981";   // at or above target = green
-    if (ratio >= 0.75) return "#f59e0b";  // within 25% below = amber
-    return "#ef4444";                      // more than 25% below = red
+    if (props.penalizeOverTarget) {
+      // Capacity mode: over target is bad
+      if (ratio > 1.3) return "#ef4444";
+      if (ratio > 1.15) return "#f59e0b";
+      if (ratio >= 0.85) return "#10b981";
+      if (ratio >= 0.5) return "#f59e0b";
+      return "#ef4444";
+    }
+    // Sales mode: above target is always good
+    if (ratio >= 1.0) return "#10b981";
+    if (ratio >= 0.75) return "#f59e0b";
+    return "#ef4444";
   }
 
   // Smart label skipping - aim for ~6-8 labels max
@@ -120,14 +138,13 @@ export function SparkLine(props: {
     pointCount > 30 ? Math.ceil(pointCount / 7) :
     pointCount > 16 ? 4 :
     pointCount > 10 ? 3 :
-    pointCount > 6 ? 2 : 1;
+    pointCount > 8 ? 2 : 1;
 
   // Data point labels: show when few enough points to fit
   const showDataLabels = pointCount > 0 && pointCount <= 12;
 
-  // Period average (excludes zero-value periods for a meaningful average)
-  const nonZeroVals = vals.filter(v => v > 0);
-  const periodAvg = nonZeroVals.length > 0 ? nonZeroVals.reduce((a, b) => a + b, 0) / nonZeroVals.length : 0;
+  // Period average (includes all periods — zeros are real data)
+  const periodAvg = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
 
   function formatYAxisLabel(value: number): string {
     if (props.formatType === "percent") {
@@ -236,7 +253,17 @@ export function SparkLine(props: {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 12 }}>
         <div>
           <div className="chart-title" style={{ fontWeight: 700, fontSize: 14 }}>{props.title}</div>
-          <div className="chart-subtitle" style={{ fontSize: 11, marginTop: 2 }}>{props.subtitle}</div>
+          <div className="chart-subtitle" style={{ fontSize: 11, marginTop: 2 }}>
+            {props.subtitle}
+            {hasSecondary && props.secondaryLabel && (
+              <span style={{ marginLeft: 8 }}>
+                <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: accentColor, marginRight: 3, verticalAlign: "middle" }} />
+                <span style={{ marginRight: 8 }}>{props.title.split(" ")[0]}</span>
+                <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: props.secondaryColor || "#10b981", marginRight: 3, verticalAlign: "middle" }} />
+                {props.secondaryLabel}
+              </span>
+            )}
+          </div>
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 20, fontWeight: 800, color: hasTarget ? (targetColor(periodAvg) || accentColor) : accentColor, letterSpacing: -0.5 }}>
@@ -278,37 +305,74 @@ export function SparkLine(props: {
               <path d={areaD} fill={`url(#${gradientId})`} />
               <path d={d} fill="none" stroke={glowColor} strokeWidth="8" strokeLinecap="round" />
               <path d={d} fill="none" stroke={chartColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              {/* Secondary line */}
+              {hasSecondary && (() => {
+                const secColor = props.secondaryColor || "#10b981";
+                const sd = props.secondaryPoints!
+                  .map((p, i) => `${i === 0 ? "M" : "L"} ${xOf(i).toFixed(1)} ${yOf(p.value).toFixed(1)}`)
+                  .join(" ");
+                return (
+                  <>
+                    <path d={sd} fill="none" stroke={`${secColor}30`} strokeWidth="8" strokeLinecap="round" />
+                    <path d={sd} fill="none" stroke={secColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </>
+                );
+              })()}
             </>
           ) : (
-            props.points.map((p, i) => {
-              const x = padL + i * ((vbW - padL - padR) / Math.max(1, props.points.length)) + 2;
-              const y = yOf(p.value);
-              const h = vbH - padB - y;
-              return (
-                <g key={i}>
+            <>
+              {props.points.map((p, i) => {
+                const slotX = padL + i * slotW + 2;
+                const x = hasSecondary ? slotX : slotX;
+                const y = yOf(p.value);
+                const h = vbH - padB - y;
+                return (
+                  <g key={i}>
+                    <rect
+                      x={slotX - 4}
+                      y={padT}
+                      width={slotW}
+                      height={vbH - padT - padB}
+                      fill="transparent"
+                      style={{ cursor: "pointer" }}
+                      onMouseEnter={(e) => handleMouseEnter(i, e)}
+                      onMouseMove={handleMouseMove}
+                    />
+                    <rect
+                      x={x}
+                      y={y}
+                      width={barW}
+                      height={Math.max(2, h)}
+                      rx={3}
+                      fill={targetColor(p.value) || p.pointColor || chartColor}
+                      opacity={hoveredIndex === i ? 1 : 0.85}
+                      style={{ pointerEvents: "none" }}
+                    />
+                  </g>
+                );
+              })}
+              {/* Secondary bars */}
+              {hasSecondary && props.secondaryPoints!.map((p, i) => {
+                const slotX = padL + i * slotW + 2;
+                const x = slotX + barW + 2;
+                const y = yOf(p.value);
+                const h = vbH - padB - y;
+                const secColor = props.secondaryColor || "#10b981";
+                return (
                   <rect
-                    x={x - 4}
-                    y={padT}
-                    width={barW + 8}
-                    height={vbH - padT - padB}
-                    fill="transparent"
-                    style={{ cursor: "pointer" }}
-                    onMouseEnter={(e) => handleMouseEnter(i, e)}
-                    onMouseMove={handleMouseMove}
-                  />
-                  <rect
+                    key={`sec-${i}`}
                     x={x}
                     y={y}
                     width={barW}
                     height={Math.max(2, h)}
-                    rx={4}
-                    fill={targetColor(p.value) || p.pointColor || chartColor}
-                    opacity={hoveredIndex === i ? 1 : 0.85}
+                    rx={3}
+                    fill={secColor}
+                    opacity={hoveredIndex === i ? 1 : 0.75}
                     style={{ pointerEvents: "none" }}
                   />
-                </g>
-              );
-            })
+                );
+              })}
+            </>
           )}
         </g>
 
@@ -378,7 +442,7 @@ export function SparkLine(props: {
                   width={bgW}
                   height={9}
                   rx={2.5}
-                  fill="rgba(6,8,17,0.7)"
+                  className="chart-label-pill"
                 />
                 <text
                   x={pos.x}

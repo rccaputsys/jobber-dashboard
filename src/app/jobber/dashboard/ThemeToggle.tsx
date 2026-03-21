@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 export function ThemeToggle() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [mounted, setMounted] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -22,47 +21,28 @@ export function ThemeToggle() {
     document.documentElement.setAttribute("data-theme", newTheme);
   };
 
-  const getStyles = (isDark: boolean, hovered: boolean): React.CSSProperties => ({
-    padding: "10px 16px",
-    background: hovered
-      ? isDark ? "#2a2a2a" : "#f1f5f9"
-      : isDark ? "#1a1a1a" : "#ffffff",
-    color: isDark ? "#EAF1FF" : "#1a202c",
-    border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "#e2e8f0"}`,
-    borderRadius: 10,
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    transition: "all 0.2s ease",
-    transform: hovered ? "translateY(-1px)" : "translateY(0)",
-    boxShadow: hovered
-      ? isDark ? "0 4px 12px rgba(0,0,0,0.3)" : "0 4px 12px rgba(0,0,0,0.1)"
-      : "none",
-  });
-
-  if (!mounted) {
-    return (
-      <button style={getStyles(true, false)}>
-        <span>☀️</span>
-        Light
-      </button>
-    );
-  }
-
-  const isDark = theme === "dark";
+  const isDark = !mounted || theme === "dark";
 
   return (
     <button
-      onClick={toggleTheme}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      style={getStyles(isDark, isHovered)}
+      onClick={mounted ? toggleTheme : undefined}
+      className="btn"
+      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      style={{
+        padding: "5px 8px",
+        fontSize: 11,
+        fontWeight: 600,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minWidth: 28,
+      }}
     >
-      <span>{isDark ? "☀️" : "🌙"}</span>
-      {isDark ? "Light" : "Dark"}
+      {isDark ? (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.5" /><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.8 3.8l1 1M11.2 11.2l1 1M3.8 12.2l1-1M11.2 4.8l1-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+      ) : (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M13.5 9.5a5.5 5.5 0 1 1-7-7 4.5 4.5 0 0 0 7 7z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      )}
     </button>
   );
 }

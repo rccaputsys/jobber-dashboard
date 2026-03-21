@@ -449,7 +449,7 @@ export const globalStyles = `
     border: 1px solid rgba(255,255,255,0.08);
     background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
     box-shadow: 0 16px 48px rgba(0,0,0,0.3);
-    overflow: hidden;
+    overflow: visible;
   }
 
   @media (min-width: 640px) {
@@ -826,55 +826,89 @@ export const globalStyles = `
   }
 
   /* Nav tabs */
+  /* Dashboard top bar — frames header + tabs as one unit */
+  .dashboard-topbar {
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    overflow: visible;
+    margin-bottom: 4px;
+  }
+  .dashboard-topbar .dashboard-header {
+    padding: 16px 20px 12px;
+    flex-direction: row;
+    align-items: center;
+  }
+  @media (min-width: 640px) {
+    .dashboard-topbar {
+      border-radius: 20px;
+    }
+  }
+  html[data-theme="light"] .dashboard-topbar {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06) !important;
+  }
+
+  /* Nav tabs — underline style inside topbar */
   .nav-tabs {
     display: flex;
-    gap: 4px;
-    padding: 4px;
-    background: rgba(255,255,255,0.04);
-    border-radius: 12px;
-    width: fit-content;
+    gap: 0;
+    padding: 0 20px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    background: transparent;
+    border-radius: 0;
+    width: 100%;
   }
 
   .nav-tab {
-    padding: 8px 16px;
-    border-radius: 8px;
+    padding: 12px 18px;
+    border-radius: 0;
     font-size: 13px;
     font-weight: 600;
     text-decoration: none;
     transition: all 0.15s ease;
-    color: rgba(234,241,255,0.6);
+    color: rgba(234,241,255,0.5);
     border: none;
+    border-bottom: 2px solid transparent;
     background: transparent;
     cursor: pointer;
+    white-space: nowrap;
+    margin-bottom: -1px;
   }
 
   .nav-tab:hover {
-    background: rgba(255,255,255,0.06);
-    color: rgba(234,241,255,0.8);
+    color: rgba(234,241,255,0.85);
+    background: rgba(255,255,255,0.03);
+    border-bottom-color: rgba(124,92,255,0.3);
   }
 
   .nav-tab.active {
-    background: rgba(255,255,255,0.1);
     color: #EAF1FF;
+    background: transparent;
+    border-bottom-color: #7c5cff;
   }
 
   html[data-theme="light"] .nav-tabs {
-    background: #e2e8f0 !important;
+    border-top-color: #e2e8f0 !important;
   }
 
   html[data-theme="light"] .nav-tab {
-    color: #64748b !important;
+    color: #94a3b8 !important;
   }
 
   html[data-theme="light"] .nav-tab:hover {
-    background: rgba(0,0,0,0.05) !important;
     color: #334155 !important;
+    background: rgba(0,0,0,0.02) !important;
+    border-bottom-color: rgba(124,92,255,0.3) !important;
   }
 
   html[data-theme="light"] .nav-tab.active {
-    background: #ffffff !important;
     color: #1e293b !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    background: transparent !important;
+    border-bottom-color: #7c5cff !important;
+    box-shadow: none;
   }
 
   /* Funnel visualization */
@@ -1061,5 +1095,44 @@ export const globalStyles = `
   html[data-theme="light"] .capacity-onboard input:focus {
     border-color: #2563eb !important;
     box-shadow: 0 0 0 3px rgba(37,99,235,0.1) !important;
+  }
+
+  /* SparkLine data-point label pills */
+  .chart-label-pill {
+    fill: rgba(6,8,17,0.7);
+  }
+  html[data-theme="light"] .chart-label-pill {
+    fill: rgba(255,255,255,0.85);
+  }
+
+  /* Recommendation cards (inside a .panel) */
+  .rec-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.05);
+    text-decoration: none;
+    transition: all 0.15s ease;
+    margin-bottom: 6px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .rec-card:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.10);
+  }
+  .rec-card:last-child {
+    margin-bottom: 0;
+  }
+  html[data-theme="light"] .rec-card {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+  }
+  html[data-theme="light"] .rec-card:hover {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
   }
 `;

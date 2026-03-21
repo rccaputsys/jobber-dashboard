@@ -6,13 +6,14 @@ const tabs = [
   { label: "Overview", href: "/jobber/dashboard" },
   { label: "Sales", href: "/jobber/sales" },
   { label: "Capacity", href: "/jobber/capacity" },
+  { label: "Invoices", href: "/jobber/invoices" },
 ];
 
 export function NavTabs({ adminConnectionId }: { adminConnectionId?: string }) {
   const pathname = usePathname();
 
   return (
-    <nav className="nav-tabs" style={{ marginTop: 16, marginBottom: 4 }}>
+    <nav className="nav-tabs">
       {tabs.map((tab) => {
         const isActive = pathname === tab.href;
         const href = adminConnectionId

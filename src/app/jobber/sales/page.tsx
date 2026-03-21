@@ -4,16 +4,16 @@ import { supabaseAdmin, fetchAllRows } from "@/lib/supabaseAdmin";
 import { getUser } from "@/lib/supabaseAuth";
 import { redirect } from "next/navigation";
 import { ExportCSV } from "../dashboard/ExportCSV";
-import { ThemeToggle } from "../dashboard/ThemeToggle";
-import { SyncButton } from "../dashboard/SyncButton";
-import { NavTabs } from "../dashboard/NavTabs";
+import { DashboardTopbar } from "../dashboard/DashboardTopbar";
 import { QuotePipeline } from "./QuotePipeline";
 import { SalesTrendsSection } from "./SalesTrendsSection";
 import { SalesKpiCards } from "./SalesKpiCards";
 import { QuoteFollowUpTable } from "./QuoteFollowUpTable";
+import { SalesActionTabs } from "./SalesActionTabs";
 import {
   safeDate,
   startOfDayUTC,
+  startOfWeekUTC,
   addDaysUTC,
   moneyFactory,
   formatSyncTime,
@@ -79,7 +79,7 @@ export default async function SalesPage({
   }
 
   // Fetch connection details + quotes
-  const [connDetails, quotes] = await Promise.all([
+  const [connDetails, quotes, openRequests] = await Promise.all([
     supabaseAdmin
       .from("jobber_connections")
       .select("last_sync_at,trial_started_at,trial_ends_at,billing_status,currency_code,company_name,jobber_account_name")
@@ -91,6 +91,15 @@ export default async function SalesPage({
       "jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,sent_at,updated_at_jobber,created_at_jobber",
       connectionId,
     ),
+    supabaseAdmin
+      .from("fact_requests")
+      .select("title,request_status,client_name,phone,email,source,jobber_url,created_at_jobber")
+      .eq("connection_id", connectionId)
+      .not("request_status", "eq", "converted")
+      .not("request_status", "eq", "archived")
+      .order("created_at_jobber", { ascending: false })
+      .limit(100)
+      .then((r) => r.data ?? []),
   ]);
 
   const companyName = connDetails?.jobber_account_name || connDetails?.company_name || "Your Company";
@@ -242,6 +251,11 @@ export default async function SalesPage({
     };
   }
 
+  const thisWeekStart = startOfWeekUTC(todayUTC);
+  const lastWeekStart = addDaysUTC(thisWeekStart, -7);
+
+  const thisWeekKpi = computeKpi(thisWeekStart, addDaysUTC(todayUTC, 1), "This Week", "Win Rate (This Week)");
+  const lastWeekKpi = computeKpi(lastWeekStart, thisWeekStart, "Last Week", "Win Rate (Last Week)");
   const thisMonthKpi = computeKpi(thisMonthStart, addDaysUTC(todayUTC, 1), thisMonthName, "Win Rate (This Month)");
   const lastMonthKpi = computeKpi(lastMonthStart, thisMonthStart, lastMonthName, "Win Rate (Last Month)");
   const allTimeKpi = computeKpi(null, null, "All Time", "Win Rate (All Time)");
@@ -300,6 +314,32 @@ export default async function SalesPage({
     "Jobber URL": q.quote_url,
   }));
 
+  // Requests needing attention (not converted, not archived)
+  const nowMs = Date.now();
+  const requestsList = openRequests.map((r: any) => ({
+    title: r.title || "Untitled Request",
+    client_name: r.client_name || "",
+    source: r.source || "",
+    jobber_url: r.jobber_url || "",
+    created_at: r.created_at_jobber || null,
+    days_old: r.created_at_jobber ? Math.max(0, Math.floor((nowMs - new Date(r.created_at_jobber).getTime()) / 86400000)) : 0,
+  }));
+
+  // Changes requested quotes for action list
+  const changesRequestedList = changesReqQuotes.map((q: any) => {
+    const updated = safeDate(q.updated_at_jobber);
+    const daysWaiting = updated ? Math.max(0, Math.round((nowMs - updated.getTime()) / 86400000)) : 0;
+    return {
+      quote_number: q.quote_number || "",
+      quote_title: q.quote_title || "Untitled",
+      amount: money(Number(q.quote_total_cents ?? 0)),
+      amount_cents: Number(q.quote_total_cents ?? 0),
+      updated_at: updated ? updated.toISOString() : null,
+      days_waiting: daysWaiting,
+      quote_url: q.quote_url || "",
+    };
+  }).sort((a: any, b: any) => b.days_waiting - a.days_waiting);
+
   /* ------------------------------------------------------------------ */
   /*  Render                                                             */
   /* ------------------------------------------------------------------ */
@@ -315,55 +355,22 @@ export default async function SalesPage({
     }}>
       <style>{globalStyles}</style>
 
-      {adminConnectionId && (
-        <div style={{
-          background: "linear-gradient(90deg, #7c5cff, #5aa6ff)",
-          color: "#fff",
-          textAlign: "center",
-          padding: "8px 16px",
-          fontSize: 13,
-          fontWeight: 600,
-          letterSpacing: 0.2,
-        }}>
-          Viewing as: {companyName}
-          <a href="/admin" style={{ color: "#fff", marginLeft: 12, textDecoration: "underline", opacity: 0.9 }}>&larr; Back to Admin</a>
-        </div>
-      )}
-
       <div className="dashboard-container">
-        {/* Header */}
-        <header className="dashboard-header animate-in">
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <svg width="40" height="40" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#7c5cff" />
-                  <stop offset="100%" stopColor="#5aa6ff" />
-                </linearGradient>
-              </defs>
-              <circle cx="25" cy="25" r="22" fill="none" stroke="url(#logoGrad)" strokeWidth="3"/>
-              <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#logoGrad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <div>
-              <h1 className="text-primary" style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5, margin: 0 }}>
-                {companyName}
-              </h1>
-              <p className="header-subtitle" style={{ fontSize: 13, marginTop: 4 }}>
-                Last sync: <span>{lastSyncPretty}</span> &bull; {currencyCode}
-              </p>
-            </div>
-          </div>
-          <div className="header-actions">
-            <SyncButton connectionId={connectionId} />
-            <ThemeToggle />
-          </div>
-        </header>
-
-        <NavTabs adminConnectionId={adminConnectionId} />
+        <DashboardTopbar
+          companyName={companyName}
+          lastSyncPretty={lastSyncPretty}
+          connectionId={connectionId}
+          billingStatus={billingStatus}
+          trialEndsAt={trialEndsAt}
+          subscriptionActive={subscriptionActive}
+          adminConnectionId={adminConnectionId}
+        />
 
         {/* Quote KPIs with period toggle */}
         <div className="animate-in delay-1" style={{ marginTop: 20 }}>
           <SalesKpiCards
+            thisWeek={thisWeekKpi}
+            lastWeek={lastWeekKpi}
             thisMonth={thisMonthKpi}
             lastMonth={lastMonthKpi}
             allTime={allTimeKpi}
@@ -392,24 +399,9 @@ export default async function SalesPage({
           currencyCode={currencyCode}
         />
 
-        {/* ===== Section D: Quote Follow-Up ===== */}
+        {/* ===== Section D: Quote Follow-Up + Requests ===== */}
         <div className="panel animate-in delay-2" style={{ marginTop: 20, padding: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
-                  Quote Follow-Up
-                </h2>
-                <span className="info-tooltip">?<span className="tooltip-text">Open quotes grouped by how long since last activity. Cold quotes need urgent attention — they represent revenue slipping away.</span></span>
-              </div>
-              <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
-                {followUpQuotes.length} open {followUpQuotes.length === 1 ? "quote" : "quotes"} grouped by age
-              </p>
-            </div>
-            {followUpExportData.length > 0 && (
-              <ExportCSV data={followUpExportData} filename="quote-followup" label="Export CSV" />
-            )}
-          </div>
+          <SalesActionTabs requestCount={requestsList.length} requests={requestsList} quoteExportData={followUpExportData} changesRequested={changesRequestedList}>
 
           {followUpQuotes.length === 0 ? (
             <div className="text-muted" style={{ textAlign: "center", padding: 24, fontSize: 14 }}>
@@ -502,6 +494,8 @@ export default async function SalesPage({
               currencyCode={currencyCode}
             />
           </>)}
+
+          </SalesActionTabs>
         </div>
 
         {/* Bottom spacer */}
