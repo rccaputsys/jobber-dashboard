@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { SparkLine } from "../dashboard/SparkLine";
+import { CollectionChart } from "./CollectionChart";
 
 type InvoiceEvent = { ts: number; amount: number; type: "sent" | "paid" };
 type AgingBucket = { label: string; color: string; balanceCents: number; count: number };
@@ -12,6 +12,8 @@ type Props = {
   agingBuckets: AgingBucket[];
   totalOutstandingCents: number;
   currencyCode: string;
+  draftCount?: number;
+  draftCents?: number;
 };
 
 function startOfDayUTC(d: Date) { return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); }
@@ -57,6 +59,7 @@ function AgingDonutPanel({ buckets, totalCents, currencyCode, isLight }: {
 }) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const size = 180;
+  const svgPad = 8; // extra padding for hover stroke expansion
   const stroke = 24;
   const cx = size / 2;
   const cy = size / 2;
@@ -66,7 +69,6 @@ function AgingDonutPanel({ buckets, totalCents, currencyCode, isLight }: {
 
   const nonEmpty = buckets.filter(b => b.balanceCents > 0);
 
-  // Build segment data
   let accumulated = 0;
   const segments = nonEmpty.map((bucket, idx) => {
     const pct = totalCents > 0 ? bucket.balanceCents / totalCents : 0;
@@ -80,26 +82,22 @@ function AgingDonutPanel({ buckets, totalCents, currencyCode, isLight }: {
   const hoveredPct = hoveredBucket && totalCents > 0 ? Math.round((hoveredBucket.balanceCents / totalCents) * 100) : 0;
 
   return (
-    <div className="panel hover-lift" style={{ padding: 16, height: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Header */}
+    <div className="panel hover-lift" style={{ padding: 16, height: "100%", display: "flex", flexDirection: "column", overflow: "visible" }}>
       <div style={{ marginBottom: 12 }}>
-        <div className="chart-title" style={{ fontWeight: 700, fontSize: 14 }}>Outstanding Aging</div>
-        <div className="chart-subtitle" style={{ fontSize: 11, marginTop: 2 }}>
+        <div className="text-primary" style={{ fontWeight: 700, fontSize: 14 }}>Outstanding Aging</div>
+        <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
           {nonEmpty.length > 0
             ? `${buckets.reduce((s, b) => s + b.count, 0)} invoices across ${nonEmpty.length} ${nonEmpty.length === 1 ? "category" : "categories"}`
             : "No outstanding invoices"}
         </div>
       </div>
 
-      {/* Donut + Legend */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
-        <div style={{ position: "relative", width: size, height: size }}>
-          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-            {/* Track */}
+        <div style={{ position: "relative", width: size + svgPad * 2, height: size + svgPad * 2, margin: `${-svgPad}px` }}>
+          <svg width={size + svgPad * 2} height={size + svgPad * 2} viewBox={`${-svgPad} ${-svgPad} ${size + svgPad * 2} ${size + svgPad * 2}`}>
             <circle cx={cx} cy={cy} r={radius} fill="none"
               stroke={isLight ? "#f1f5f9" : "rgba(255,255,255,0.06)"}
               strokeWidth={stroke} />
-            {/* Segments */}
             {segments.map((seg, i) => (
               <circle key={seg.label} cx={cx} cy={cy} r={radius} fill="none"
                 stroke={seg.color}
@@ -114,7 +112,6 @@ function AgingDonutPanel({ buckets, totalCents, currencyCode, isLight }: {
               />
             ))}
           </svg>
-          {/* Center text */}
           <div style={{
             position: "absolute", top: "50%", left: "50%",
             transform: "translate(-50%, -50%)", textAlign: "center",
@@ -193,9 +190,20 @@ function AgingDonutPanel({ buckets, totalCents, currencyCode, isLight }: {
 }
 
 /* ---- Main component ---- */
-export function InvoiceTrendsSection({ events, agingBuckets, totalOutstandingCents, currencyCode }: Props) {
-  const [range, setRange] = useState("8w");
-  const [g, setG] = useState<Granularity>("week");
+export function InvoiceTrendsSection({ events, agingBuckets, totalOutstandingCents, currencyCode, draftCount, draftCents }: Props) {
+  const [range, setRangeRaw] = useState("8w");
+  const [g, setGRaw] = useState<Granularity>("week");
+
+  // Auto-switch to monthly for long ranges (too many weekly bars)
+  const setRange = (v: string) => {
+    setRangeRaw(v);
+    if ((v === "t12m" || v === "ytd") && g === "week") setGRaw("month");
+  };
+  const setG = (v: Granularity) => {
+    // Prevent weekly on 12M/YTD
+    if (v === "week" && (range === "t12m" || range === "ytd")) return;
+    setGRaw(v);
+  };
   const [hovered, setHovered] = useState<string | null>(null);
   const isLight = useIsLight();
   const money = useMemo(() => (cents: number) => moneyFmt(cents, currencyCode), [currencyCode]);
@@ -222,8 +230,8 @@ export function InvoiceTrendsSection({ events, agingBuckets, totalOutstandingCen
   const pillGroup: React.CSSProperties = { display: "flex", gap: 1, background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.05)", borderRadius: 8, padding: 2 };
   const labelStyle: React.CSSProperties = { fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: isLight ? "#94a3b8" : "rgba(255,255,255,0.4)", marginRight: 6, whiteSpace: "nowrap" };
 
-  // Outstanding balance over time (point-in-time: sent adds, paid removes)
-  const outstandingPoints = useMemo(() => {
+  // Compute period data for CollectionChart
+  const periodData = useMemo(() => {
     const r = defaultRange(range);
     const today = startOfDayUTC(new Date());
     const todayTs = today.getTime();
@@ -232,7 +240,9 @@ export function InvoiceTrendsSection({ events, agingBuckets, totalOutstandingCen
     const endExcl = addDaysUTC(r.end, 1);
     while (cur.getTime() < endExcl.getTime()) {
       const bucketEnd = nextBucketUTC(cur, g);
-      if (g !== "week" && bucketEnd.getTime() > todayTs + 86400000) {
+      // Only exclude current incomplete period for weekly view
+      // Monthly view: include current month (has enough data to be meaningful)
+      if (g === "week" && bucketEnd.getTime() > todayTs + 86400000) {
         cur = bucketEnd; continue;
       }
       starts.push(cur);
@@ -242,31 +252,18 @@ export function InvoiceTrendsSection({ events, agingBuckets, totalOutstandingCen
     }
 
     return starts.map((bs) => {
-      const cutoff = nextBucketUTC(bs, g).getTime();
-      // Balance at this point = all sent before cutoff minus all paid before cutoff
-      let sent = 0; let paid = 0; let openCount = 0;
+      const bsTs = bs.getTime();
+      const beTs = nextBucketUTC(bs, g).getTime();
+      let invoiced = 0, collected = 0;
       for (const ev of events) {
-        if (ev.ts < cutoff) {
-          if (ev.type === "sent") sent += ev.amount;
-          else paid += ev.amount;
+        if (ev.ts >= bsTs && ev.ts < beTs) {
+          if (ev.type === "sent") invoiced += ev.amount;
+          else collected += ev.amount;
         }
       }
-      // Approximate open count: count sent events not yet paired with paid
-      for (const ev of events) {
-        if (ev.type === "sent" && ev.ts < cutoff) openCount++;
-        if (ev.type === "paid" && ev.ts < cutoff) openCount--;
-      }
-      openCount = Math.max(0, openCount);
-      const balance = Math.max(0, sent - paid);
-      const xLabel = labelForBucket(bs, g);
-      return {
-        xLabel,
-        value: balance,
-        tooltip: `${xLabel}: ${money(balance)} outstanding`,
-        hoverLabel: `${openCount} unpaid`,
-      };
+      return { label: labelForBucket(bs, g), invoiced, collected };
     });
-  }, [range, g, events, money]);
+  }, [range, g, events]);
 
   return (
     <div className="panel animate-in delay-2" style={{ padding: 0, marginTop: 16, overflow: "visible" }}>
@@ -276,7 +273,7 @@ export function InvoiceTrendsSection({ events, agingBuckets, totalOutstandingCen
             <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
               Collections & Aging
             </h2>
-            <span className="info-tooltip">?<span className="tooltip-text">Left: Your total unpaid balance over time — is it growing or shrinking? Right: Breakdown of current outstanding balance by how overdue it is.</span></span>
+            <span className="info-tooltip">?<span className="tooltip-text">Left: Cash collected vs invoiced per period — are you keeping up? Right: How old your current outstanding balance is.</span></span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={labelStyle}>Range</span>
@@ -297,17 +294,16 @@ export function InvoiceTrendsSection({ events, agingBuckets, totalOutstandingCen
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16, padding: "0 16px 20px" }} className="invoice-trends-grid">
-        <style>{`@media (min-width: 768px) { .invoice-trends-grid { grid-template-columns: 1fr auto !important; } }`}</style>
+        <style>{`@media (min-width: 768px) { .invoice-trends-grid { grid-template-columns: minmax(0, 1fr) 280px !important; } }`}</style>
 
-        {/* Left: Outstanding Balance Trend */}
+        {/* Left: Collection Chart */}
         {events.length > 0 ? (
-          <SparkLine
-            title="Outstanding Balance"
-            subtitle="Total unpaid over time"
-            points={outstandingPoints}
-            formatType="money"
-            chartType="line"
-            color="#f59e0b"
+          <CollectionChart
+            periods={periodData}
+            currencyCode={currencyCode}
+            outstandingCents={totalOutstandingCents}
+            draftCount={draftCount}
+            draftCents={draftCents}
           />
         ) : (
           <div className="panel" style={{ padding: 32, textAlign: "center" }}>

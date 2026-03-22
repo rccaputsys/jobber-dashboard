@@ -7,10 +7,11 @@ type Stage = {
 };
 
 const stageColors: Record<string, { color: string; bg: string; border: string }> = {
+  Requests:    { color: "#8b5cf6", bg: "rgba(139,92,246,0.08)", border: "rgba(139,92,246,0.2)" },
   Draft:       { color: "#94a3b8", bg: "rgba(148,163,184,0.08)", border: "rgba(148,163,184,0.2)" },
   Sent:        { color: "#5aa6ff", bg: "rgba(90,166,255,0.08)",  border: "rgba(90,166,255,0.2)" },
   "Changes Req": { color: "#f59e0b", bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.2)" },
-  Approved:    { color: "#8b5cf6", bg: "rgba(139,92,246,0.08)", border: "rgba(139,92,246,0.2)" },
+  Approved:    { color: "#06b6d4", bg: "rgba(6,182,212,0.08)", border: "rgba(6,182,212,0.2)" },
   Won:         { color: "#10b981", bg: "rgba(16,185,129,0.08)",  border: "rgba(16,185,129,0.2)" },
 };
 

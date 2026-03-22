@@ -21,7 +21,10 @@ type NeedsInvoicingJob = {
   total_amount_cents: number;
   jobber_url: string;
   scheduled_at: string | null;
+  completedVisits?: number;
 };
+
+type BucketItem = { key: string; cells: React.ReactNode[]; sortDays: number; sortAmount: number; sortDate: number };
 
 type Bucket = {
   key: string;
@@ -29,7 +32,7 @@ type Bucket = {
   range: string;
   color: string;
   bg: string;
-  items: { key: string; cells: React.ReactNode[] }[];
+  items: BucketItem[];
   totalCents: number;
 };
 
@@ -40,7 +43,7 @@ function moneyFmt(cents: number, code: string): string {
 
 function fmtDate(d: string | null) {
   if (!d) return "";
-  return new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" });
+  return new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 function ageColor(days: number): string {
@@ -51,18 +54,62 @@ function ageColor(days: number): string {
 }
 
 /* ---- Collapsible grouped table ---- */
-function GroupedTable({ buckets, headers }: { buckets: Bucket[]; headers: React.ReactNode[] }) {
+type SortKey = "days" | "amount" | "date";
+type SortDir = "asc" | "desc";
+
+function GroupedTable({ buckets, headers, sortableColumns, headerStyles }: {
+  buckets: Bucket[];
+  headers: React.ReactNode[];
+  sortableColumns?: { index: number; key: SortKey }[];
+  headerStyles?: { textAlign?: string; width?: number | string }[];
+}) {
   const nonEmpty = buckets.filter(b => b.items.length > 0);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [sortKey, setSortKey] = useState<SortKey>("days");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const colCount = headers.length;
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) setSortDir(d => d === "desc" ? "asc" : "desc");
+    else { setSortKey(key); setSortDir("desc"); }
+  }
+
+  function arrow(key: SortKey) {
+    if (sortKey !== key) return <span style={{ opacity: 0.3, marginLeft: 3, fontSize: 10 }}>{"\u2195"}</span>;
+    return <span style={{ marginLeft: 3, fontSize: 10 }}>{sortDir === "desc" ? "\u25BC" : "\u25B2"}</span>;
+  }
+
+  function sortItems(items: BucketItem[]) {
+    return [...items].sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "days") cmp = a.sortDays - b.sortDays;
+      else if (sortKey === "amount") cmp = a.sortAmount - b.sortAmount;
+      else cmp = a.sortDate - b.sortDate;
+      return sortDir === "desc" ? -cmp : cmp;
+    });
+  }
 
   return (
     <div className="table-container">
       <table className="data-table">
         <thead>
-          <tr>{headers.map((h, i) => <th key={i}>{h}</th>)}</tr>
+          <tr>{headers.map((h, i) => {
+            const sc = sortableColumns?.find(s => s.index === i);
+            const hs = headerStyles?.[i];
+            const style: React.CSSProperties = {
+              textAlign: (hs?.textAlign as any) || "left",
+              width: hs?.width,
+              verticalAlign: "middle",
+            };
+            if (sc) return <th key={i} className="sortable" onClick={() => toggleSort(sc.key)} style={style}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>{h}{arrow(sc.key)}</span>
+            </th>;
+            return <th key={i} style={style}>{h}</th>;
+          })}</tr>
         </thead>
-        {nonEmpty.map((bucket) => (
+        {nonEmpty.map((bucket) => {
+          const sorted = sortItems(bucket.items);
+          return (
           <tbody key={bucket.key}>
             <tr onClick={() => setCollapsed(prev => ({ ...prev, [bucket.key]: !prev[bucket.key] }))} style={{ cursor: "pointer" }}>
               <td colSpan={colCount} style={{
@@ -94,27 +141,41 @@ function GroupedTable({ buckets, headers }: { buckets: Bucket[]; headers: React.
                 </div>
               </td>
             </tr>
-            {!collapsed[bucket.key] && bucket.items.map((item) => (
-              <tr key={item.key}>{item.cells.map((c, i) => <td key={i}>{c}</td>)}</tr>
+            {!collapsed[bucket.key] && sorted.map((item) => (
+              <tr key={item.key}>{item.cells.map((c, i) => {
+                const hs = headerStyles?.[i];
+                return <td key={i} style={{ textAlign: (hs?.textAlign as any) || "left", verticalAlign: "middle" }}>{c}</td>;
+              })}</tr>
             ))}
           </tbody>
-        ))}
+          );
+        })}
       </table>
     </div>
   );
 }
 
 /* ---- Main component ---- */
+type DraftInvoice = {
+  invoice_number: string;
+  client_name: string;
+  total_amount_cents: number;
+  jobber_url: string;
+  created_at: string | null;
+};
+
 export function OutstandingInvoices({
   invoices,
   needsInvoicing,
+  drafts = [],
   currencyCode,
 }: {
   invoices: OutstandingInvoice[];
   needsInvoicing: NeedsInvoicingJob[];
+  drafts?: DraftInvoice[];
   currencyCode: string;
 }) {
-  const [tab, setTab] = useState<"outstanding" | "needs_invoicing">("outstanding");
+  const [tab, setTab] = useState<"outstanding" | "needs_invoicing" | "drafts">("outstanding");
   const [isLight, setIsLight] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const money = useMemo(() => (cents: number) => moneyFmt(cents, currencyCode), [currencyCode]);
@@ -127,14 +188,22 @@ export function OutstandingInvoices({
     return () => obs.disconnect();
   }, []);
 
-  if (invoices.length === 0 && needsInvoicing.length === 0) return null;
+  if (invoices.length === 0 && needsInvoicing.length === 0 && drafts.length === 0) return null;
 
   const hasOutstanding = invoices.length > 0;
   const hasNeedsInvoicing = needsInvoicing.length > 0;
-  const activeTab = tab === "outstanding" && !hasOutstanding ? "needs_invoicing" : tab === "needs_invoicing" && !hasNeedsInvoicing ? "outstanding" : tab;
+  const hasDrafts = drafts.length > 0;
+  const activeTab = tab === "outstanding" && !hasOutstanding
+    ? (hasNeedsInvoicing ? "needs_invoicing" : hasDrafts ? "drafts" : "outstanding")
+    : tab === "needs_invoicing" && !hasNeedsInvoicing
+    ? (hasOutstanding ? "outstanding" : hasDrafts ? "drafts" : "outstanding")
+    : tab === "drafts" && !hasDrafts
+    ? "outstanding"
+    : tab;
 
   const totalOutstanding = invoices.reduce((s, i) => s + i.balance_cents, 0);
   const totalNeedsInvoicing = needsInvoicing.reduce((s, j) => s + j.total_amount_cents, 0);
+  const totalDrafts = drafts.reduce((s, d) => s + d.total_amount_cents, 0);
 
   // Outstanding buckets by aging
   const outstandingBuckets: Bucket[] = [
@@ -148,6 +217,9 @@ export function OutstandingInvoices({
     b.totalCents += inv.balance_cents;
     b.items.push({
       key: inv.invoice_number,
+      sortDays: inv.days_overdue,
+      sortAmount: inv.balance_cents,
+      sortDate: inv.due_at ? new Date(inv.due_at).getTime() : 0,
       cells: [
         inv.days_overdue > 0
           ? <span key="age" style={{ textAlign: "center", display: "block" }}><span style={{ padding: "2px 7px", borderRadius: 5, fontSize: 11, fontWeight: 700, color: ageColor(inv.days_overdue), background: `${ageColor(inv.days_overdue)}18` }}>{inv.days_overdue}d</span></span>
@@ -168,48 +240,92 @@ export function OutstandingInvoices({
     { key: "under7", label: "Under 7 Days", range: "Recent", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
   ];
   for (const j of needsInvoicing) {
+    // Use latest visit completion or scheduled date for "waiting" calculation
     const completedDate = j.scheduled_at ? new Date(j.scheduled_at).getTime() : 0;
-    const daysWaiting = completedDate > 0 ? Math.max(0, Math.floor((nowMs - completedDate) / 86400000)) : 999;
+    const daysWaiting = completedDate > 0 ? Math.max(0, Math.floor((nowMs - completedDate) / 86400000)) : 0;
     const b = daysWaiting >= 30 ? needsBuckets[0] : daysWaiting >= 7 ? needsBuckets[1] : needsBuckets[2];
     b.totalCents += j.total_amount_cents;
     const waitColor = daysWaiting >= 30 ? "#ef4444" : daysWaiting >= 7 ? "#f59e0b" : "#10b981";
     b.items.push({
       key: String(j.job_number),
+      sortDays: daysWaiting,
+      sortAmount: j.total_amount_cents,
+      sortDate: completedDate,
       cells: [
         <span key="age" style={{ textAlign: "center", display: "block" }}><span style={{ padding: "2px 7px", borderRadius: 5, fontSize: 11, fontWeight: 700, color: waitColor, background: `${waitColor}18` }}>{daysWaiting}d</span></span>,
-        <div key="name"><div className="cell-primary" style={{ fontWeight: 600 }}>#{j.job_number}</div><div className="cell-secondary" style={{ fontSize: 11, marginTop: 2 }}>{j.job_title}</div></div>,
+        <div key="name"><div className="cell-primary" style={{ fontWeight: 600 }}>#{j.job_number}{j.completedVisits ? <span className="text-muted" style={{ fontWeight: 500, fontSize: 11 }}> &bull; {j.completedVisits} visit{j.completedVisits !== 1 ? "s" : ""}</span> : null}</div><div className="cell-secondary" style={{ fontSize: 11, marginTop: 2 }}>{j.job_title}</div></div>,
         <span key="amt" className="cell-primary" style={{ fontWeight: 600, whiteSpace: "nowrap", textAlign: "right", display: "block" }}>{money(j.total_amount_cents)}</span>,
         j.jobber_url ? <a key="link" href={j.jobber_url} target="_blank" rel="noreferrer" className="btn" style={{ padding: "4px 10px", fontSize: 11 }}>View &rarr;</a> : <span key="link" />,
       ],
     });
   }
 
-  const activeBuckets = activeTab === "outstanding" ? outstandingBuckets : needsBuckets;
-  const activeTotal = activeTab === "outstanding" ? totalOutstanding : totalNeedsInvoicing;
-  const activeCount = activeTab === "outstanding" ? invoices.length : needsInvoicing.length;
-  const activeHeaders = activeTab === "outstanding"
+  // Draft invoices bucket (by age since created)
+  const draftBuckets: Bucket[] = [
+    { key: "30plus", label: "30+ Days in Draft", range: "Send now", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
+    { key: "7to30", label: "7\u201330 Days in Draft", range: "Review & send", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
+    { key: "under7", label: "Under 7 Days", range: "Recently created", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
+  ];
+  for (const d of drafts) {
+    const createdDate = d.created_at ? new Date(d.created_at).getTime() : 0;
+    const daysInDraft = createdDate > 0 ? Math.max(0, Math.floor((nowMs - createdDate) / 86400000)) : 0;
+    const b = daysInDraft >= 30 ? draftBuckets[0] : daysInDraft >= 7 ? draftBuckets[1] : draftBuckets[2];
+    b.totalCents += d.total_amount_cents;
+    const draftColor = daysInDraft >= 30 ? "#ef4444" : daysInDraft >= 7 ? "#f59e0b" : "#10b981";
+    b.items.push({
+      key: d.invoice_number,
+      sortDays: daysInDraft,
+      sortAmount: d.total_amount_cents,
+      sortDate: createdDate,
+      cells: [
+        <span key="age" style={{ textAlign: "center", display: "block" }}><span style={{ padding: "2px 7px", borderRadius: 5, fontSize: 11, fontWeight: 700, color: draftColor, background: `${draftColor}18` }}>{daysInDraft}d</span></span>,
+        <div key="name"><div className="cell-primary" style={{ fontWeight: 600 }}>#{d.invoice_number}</div><div className="cell-secondary" style={{ fontSize: 11, marginTop: 2 }}>{d.client_name}</div></div>,
+        <span key="amt" className="cell-primary" style={{ fontWeight: 600, whiteSpace: "nowrap", textAlign: "right", display: "block" }}>{money(d.total_amount_cents)}</span>,
+        <span key="date" className="cell-muted" style={{ whiteSpace: "nowrap", textAlign: "center", display: "block" }}>{fmtDate(d.created_at)}</span>,
+        d.jobber_url ? <a key="link" href={d.jobber_url} target="_blank" rel="noreferrer" className="btn" style={{ padding: "4px 10px", fontSize: 11 }}>View &rarr;</a> : <span key="link" />,
+      ],
+    });
+  }
+
+  const activeBuckets = activeTab === "outstanding" ? outstandingBuckets : activeTab === "needs_invoicing" ? needsBuckets : draftBuckets;
+  const activeTotal = activeTab === "outstanding" ? totalOutstanding : activeTab === "needs_invoicing" ? totalNeedsInvoicing : totalDrafts;
+  const activeCount = activeTab === "outstanding" ? invoices.length : activeTab === "needs_invoicing" ? needsInvoicing.length : drafts.length;
+  type HeaderDef = { label: string; align?: "center" | "right" | "left"; width?: number | string };
+  const activeHeaderDefs: HeaderDef[] = activeTab === "outstanding"
     ? [
-        <span key="age" style={{ textAlign: "center", display: "block", width: 80 }}>Overdue</span>,
-        <span key="inv">Invoice</span>,
-        <span key="bal" style={{ textAlign: "right", display: "block" }}>Balance</span>,
-        <span key="due" style={{ textAlign: "center", display: "block" }}>Due Date</span>,
-        <span key="act" style={{ textAlign: "center", display: "block", width: 70 }}>Action</span>,
+        { label: "Overdue", align: "center", width: 90 },
+        { label: "Invoice", width: "30%" },
+        { label: "Balance", align: "right", width: "20%" },
+        { label: "Due Date", align: "center", width: "20%" },
+        { label: "Action", align: "center", width: 80 },
+      ]
+    : activeTab === "needs_invoicing"
+    ? [
+        { label: "Waiting", align: "center", width: 90 },
+        { label: "Job", width: "40%" },
+        { label: "Amount", align: "right", width: "25%" },
+        { label: "Action", align: "center", width: 80 },
       ]
     : [
-        <span key="age" style={{ textAlign: "center", display: "block", width: 80 }}>Waiting</span>,
-        <span key="job">Job</span>,
-        <span key="amt" style={{ textAlign: "right", display: "block" }}>Amount</span>,
-        <span key="act" style={{ textAlign: "center", display: "block", width: 70 }}>Action</span>,
+        { label: "In Draft", align: "center", width: 90 },
+        { label: "Invoice", width: "25%" },
+        { label: "Amount", align: "right", width: "20%" },
+        { label: "Created", align: "center", width: "20%" },
+        { label: "Action", align: "center", width: 80 },
       ];
+  const activeHeaders = activeHeaderDefs.map((h, i) => <span key={i}>{h.label}</span>);
+  const activeHeaderStyles = activeHeaderDefs.map(h => ({ textAlign: h.align || "left" as const, width: h.width }));
 
-  const titles = { outstanding: "Outstanding Invoices", needs_invoicing: "Needs Invoicing" };
-  const tooltips = {
+  const titles: Record<string, string> = { outstanding: "Outstanding Invoices", needs_invoicing: "Needs Invoicing", drafts: "Draft Invoices" };
+  const tooltips: Record<string, string> = {
     outstanding: "Unpaid invoices grouped by how overdue they are. Follow up on overdue invoices to improve cash flow.",
     needs_invoicing: "Completed jobs that haven't been invoiced yet. Send these invoices to get paid for work already done.",
+    drafts: "Invoices created but never sent. Review and send these to start collecting.",
   };
-  const subtitles = {
+  const subtitles: Record<string, string> = {
     outstanding: `${activeCount} ${activeCount === 1 ? "invoice" : "invoices"} totaling ${money(activeTotal)} outstanding`,
     needs_invoicing: `${activeCount} ${activeCount === 1 ? "job" : "jobs"} totaling ${money(activeTotal)} not yet invoiced`,
+    drafts: `${activeCount} draft${activeCount !== 1 ? "s" : ""} totaling ${money(activeTotal)} not sent`,
   };
 
   // Export data
@@ -220,10 +336,16 @@ export function OutstandingInvoices({
         "Amount": (i.total_amount_cents / 100).toFixed(2), "Balance": (i.balance_cents / 100).toFixed(2),
         "Due Date": i.due_at ? new Date(i.due_at).toLocaleDateString() : "", "Jobber URL": i.jobber_url,
       }))
-    : needsInvoicing.map((j) => ({
+    : activeTab === "needs_invoicing"
+    ? needsInvoicing.map((j) => ({
         "Job #": j.job_number, "Title": j.job_title,
         "Amount": (j.total_amount_cents / 100).toFixed(2),
         "Completed": j.scheduled_at ? new Date(j.scheduled_at).toLocaleDateString() : "", "Jobber URL": j.jobber_url,
+      }))
+    : drafts.map((d) => ({
+        "Invoice #": d.invoice_number, "Client": d.client_name,
+        "Amount": (d.total_amount_cents / 100).toFixed(2),
+        "Created": d.created_at ? new Date(d.created_at).toLocaleDateString() : "", "Jobber URL": d.jobber_url,
       }));
 
   const pillGroup: React.CSSProperties = { display: "flex", gap: 2, background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.05)", borderRadius: 10, padding: 3 };
@@ -254,16 +376,17 @@ export function OutstandingInvoices({
           {exportData.length > 0 && (
             <ExportCSV data={exportData} filename={activeTab === "outstanding" ? "outstanding-invoices" : "needs-invoicing"} label="Export CSV" />
           )}
-          {hasOutstanding && hasNeedsInvoicing && (
-            <div style={pillGroup}>
-              <button onClick={() => setTab("outstanding")} onMouseEnter={() => setHovered("out")} onMouseLeave={() => setHovered(null)} style={btnStyle(activeTab === "outstanding", hovered === "out")}>
-                Outstanding ({invoices.length})
-              </button>
-              <button onClick={() => setTab("needs_invoicing")} onMouseEnter={() => setHovered("ni")} onMouseLeave={() => setHovered(null)} style={btnStyle(activeTab === "needs_invoicing", hovered === "ni")}>
-                Needs Invoicing ({needsInvoicing.length})
-              </button>
-            </div>
-          )}
+          <div style={pillGroup}>
+            <button onClick={() => setTab("outstanding")} onMouseEnter={() => setHovered("out")} onMouseLeave={() => setHovered(null)} style={btnStyle(activeTab === "outstanding", hovered === "out")}>
+              Outstanding ({invoices.length})
+            </button>
+            <button onClick={() => setTab("needs_invoicing")} onMouseEnter={() => setHovered("ni")} onMouseLeave={() => setHovered(null)} style={btnStyle(activeTab === "needs_invoicing", hovered === "ni")}>
+              Needs Invoicing ({needsInvoicing.length})
+            </button>
+            <button onClick={() => setTab("drafts")} onMouseEnter={() => setHovered("dr")} onMouseLeave={() => setHovered(null)} style={btnStyle(activeTab === "drafts", hovered === "dr")}>
+              Drafts ({drafts.length})
+            </button>
+          </div>
         </div>
       </div>
 
@@ -308,7 +431,18 @@ export function OutstandingInvoices({
       )}
 
       {/* Grouped table */}
-      <GroupedTable buckets={activeBuckets} headers={activeHeaders} />
+      <GroupedTable
+        buckets={activeBuckets}
+        headers={activeHeaders}
+        headerStyles={activeHeaderStyles}
+        sortableColumns={
+          activeTab === "outstanding"
+            ? [{ index: 0, key: "days" as SortKey }, { index: 2, key: "amount" as SortKey }, { index: 3, key: "date" as SortKey }]
+            : activeTab === "needs_invoicing"
+            ? [{ index: 0, key: "days" as SortKey }, { index: 2, key: "amount" as SortKey }]
+            : [{ index: 0, key: "days" as SortKey }, { index: 2, key: "amount" as SortKey }, { index: 3, key: "date" as SortKey }]
+        }
+      />
     </div>
   );
 }

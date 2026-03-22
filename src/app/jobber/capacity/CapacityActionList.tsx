@@ -32,82 +32,118 @@ function moneyFmt(cents: number, code: string): string {
 
 function fmtDate(d: string | null) {
   if (!d) return "";
-  return new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" });
+  return new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 /* ---- Collapsible grouped table (mirrors QuoteFollowUpTable) ---- */
+type SortKey = "age" | "amount" | "date";
+type SortDir = "asc" | "desc";
+
+function sortArrow(active: boolean, dir: SortDir) {
+  if (!active) return <span style={{ opacity: 0.3, marginLeft: 3, fontSize: 10 }}>{"\u2195"}</span>;
+  return <span style={{ marginLeft: 3, fontSize: 10 }}>{dir === "desc" ? "\u25BC" : "\u25B2"}</span>;
+}
+
+function sortJobs(jobs: UnscheduledJob[], key: SortKey, dir: SortDir): UnscheduledJob[] {
+  return [...jobs].sort((a, b) => {
+    let cmp = 0;
+    if (key === "age") {
+      const aT = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const bT = b.created_at ? new Date(b.created_at).getTime() : 0;
+      cmp = aT - bT; // oldest first = ascending time = descending age
+    } else if (key === "amount") {
+      cmp = a.total_amount_cents - b.total_amount_cents;
+    } else {
+      const aT = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const bT = b.created_at ? new Date(b.created_at).getTime() : 0;
+      cmp = aT - bT;
+    }
+    return dir === "desc" ? -cmp : cmp;
+  });
+}
+
 function GroupedTable({ buckets, money }: { buckets: Bucket[]; money: (c: number) => string }) {
   const nonEmpty = buckets.filter(b => b.jobs.length > 0);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [sortKey, setSortKey] = useState<SortKey>("age");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) setSortDir(d => d === "desc" ? "asc" : "desc");
+    else { setSortKey(key); setSortDir("desc"); }
+  }
 
   return (
     <div className="table-container">
       <table className="data-table">
         <thead>
           <tr>
-            <th>Job</th>
-            <th style={{ textAlign: "center" }}>Created</th>
-            <th style={{ textAlign: "right" }}>Amount</th>
+            <th className="sortable" onClick={() => toggleSort("age")}>Job {sortArrow(sortKey === "age", sortDir)}</th>
+            <th className="sortable" onClick={() => toggleSort("date")} style={{ textAlign: "center" }}>Created {sortArrow(sortKey === "date", sortDir)}</th>
+            <th className="sortable" onClick={() => toggleSort("amount")} style={{ textAlign: "right" }}>Amount {sortArrow(sortKey === "amount", sortDir)}</th>
             <th style={{ textAlign: "center", width: 70 }}>Action</th>
           </tr>
         </thead>
-        {nonEmpty.map((bucket) => (
-          <tbody key={bucket.key}>
-            <tr
-              onClick={() => setCollapsed(prev => ({ ...prev, [bucket.key]: !prev[bucket.key] }))}
-              style={{ cursor: "pointer" }}
-            >
-              <td colSpan={4} style={{
-                padding: "12px 16px",
-                background: bucket.bg,
-                borderLeft: `3px solid ${bucket.color}`,
-                borderBottom: "1px solid rgba(255,255,255,0.06)",
-                userSelect: "none",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{
-                      display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      width: 20, height: 20, borderRadius: 5,
-                      fontSize: 12, fontWeight: 700, color: bucket.color,
-                      background: `${bucket.color}20`,
-                      transition: "transform 0.2s ease",
-                      transform: collapsed[bucket.key] ? "rotate(-90deg)" : "rotate(0deg)",
-                    }}>&#9662;</span>
-                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: bucket.color }} />
-                    <span style={{ fontWeight: 800, fontSize: 15, color: bucket.color }}>{bucket.label}</span>
-                    <span className="text-muted" style={{ fontSize: 13 }}>{bucket.range}</span>
+        {nonEmpty.map((bucket) => {
+          const sorted = sortJobs(bucket.jobs, sortKey, sortDir);
+          return (
+            <tbody key={bucket.key}>
+              <tr
+                onClick={() => setCollapsed(prev => ({ ...prev, [bucket.key]: !prev[bucket.key] }))}
+                style={{ cursor: "pointer" }}
+              >
+                <td colSpan={4} style={{
+                  padding: "12px 16px",
+                  background: bucket.bg,
+                  borderLeft: `3px solid ${bucket.color}`,
+                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                  userSelect: "none",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{
+                        display: "inline-flex", alignItems: "center", justifyContent: "center",
+                        width: 20, height: 20, borderRadius: 5,
+                        fontSize: 12, fontWeight: 700, color: bucket.color,
+                        background: `${bucket.color}20`,
+                        transition: "transform 0.2s ease",
+                        transform: collapsed[bucket.key] ? "rotate(-90deg)" : "rotate(0deg)",
+                      }}>&#9662;</span>
+                      <span style={{ width: 10, height: 10, borderRadius: "50%", background: bucket.color }} />
+                      <span style={{ fontWeight: 800, fontSize: 15, color: bucket.color }}>{bucket.label}</span>
+                      <span className="text-muted" style={{ fontSize: 13 }}>{bucket.range}</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                      <span className="text-muted" style={{ fontSize: 13, fontWeight: 600 }}>
+                        {bucket.jobs.length} {bucket.jobs.length === 1 ? "job" : "jobs"}
+                      </span>
+                      <span style={{ fontSize: 16, fontWeight: 800, color: bucket.color }}>
+                        {money(bucket.totalCents)}
+                      </span>
+                    </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                    <span className="text-muted" style={{ fontSize: 13, fontWeight: 600 }}>
-                      {bucket.jobs.length} {bucket.jobs.length === 1 ? "job" : "jobs"}
-                    </span>
-                    <span style={{ fontSize: 16, fontWeight: 800, color: bucket.color }}>
-                      {money(bucket.totalCents)}
-                    </span>
-                  </div>
-                </div>
-              </td>
-            </tr>
-            {!collapsed[bucket.key] && bucket.jobs.map((j) => (
-              <tr key={j.job_number}>
-                <td>
-                  <div className="cell-primary" style={{ fontWeight: 600 }}>#{j.job_number}</div>
-                  <div className="cell-secondary" style={{ fontSize: 11, marginTop: 2 }}>{j.job_title}</div>
-                </td>
-                <td className="cell-muted" style={{ whiteSpace: "nowrap", textAlign: "center" }}>{fmtDate(j.created_at)}</td>
-                <td className="cell-primary" style={{ fontWeight: 600, whiteSpace: "nowrap", textAlign: "right" }}>{money(j.total_amount_cents)}</td>
-                <td style={{ textAlign: "center" }}>
-                  {j.jobber_url && (
-                    <a href={j.jobber_url} target="_blank" rel="noreferrer" className="btn" style={{ padding: "4px 10px", fontSize: 11 }}>
-                      View &rarr;
-                    </a>
-                  )}
                 </td>
               </tr>
-            ))}
-          </tbody>
-        ))}
+              {!collapsed[bucket.key] && sorted.map((j) => (
+                <tr key={j.job_number}>
+                  <td>
+                    <div className="cell-primary" style={{ fontWeight: 600 }}>#{j.job_number}</div>
+                    <div className="cell-secondary" style={{ fontSize: 11, marginTop: 2 }}>{j.job_title}</div>
+                  </td>
+                  <td className="cell-muted" style={{ whiteSpace: "nowrap", textAlign: "center" }}>{fmtDate(j.created_at)}</td>
+                  <td className="cell-primary" style={{ fontWeight: 600, whiteSpace: "nowrap", textAlign: "right" }}>{money(j.total_amount_cents)}</td>
+                  <td style={{ textAlign: "center" }}>
+                    {j.jobber_url && (
+                      <a href={j.jobber_url} target="_blank" rel="noreferrer" className="btn" style={{ padding: "4px 10px", fontSize: 11 }}>
+                        View &rarr;
+                      </a>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          );
+        })}
       </table>
     </div>
   );

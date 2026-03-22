@@ -14,7 +14,7 @@ type RequestItem = {
 
 function fmtDate(d: string | null) {
   if (!d) return "";
-  return new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" });
+  return new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 function ageColor(days: number): string {

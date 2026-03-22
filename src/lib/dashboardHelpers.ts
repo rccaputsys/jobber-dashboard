@@ -1158,6 +1158,19 @@ export const globalStyles = `
     .side-by-side { grid-template-columns: 1fr; }
   }
 
+  /* Sortable table headers */
+  .data-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s ease;
+  }
+  .data-table th.sortable:hover {
+    color: #5aa6ff !important;
+  }
+  html[data-theme="light"] .data-table th.sortable:hover {
+    color: #2563eb !important;
+  }
+
   /* Recommendation cards (inside a .panel) */
   .rec-card {
     display: flex;

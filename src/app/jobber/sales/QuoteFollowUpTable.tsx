@@ -32,7 +32,7 @@ function ageColor(days: number): string {
 
 function fmtDate(d: string | null) {
   if (!d) return "";
-  return new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" });
+  return new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 function moneyFmt(cents: number, code: string): string {
@@ -54,24 +54,57 @@ export function QuoteFollowUpTable({
   buckets: Bucket[];
   currencyCode: string;
 }) {
+  type SortKey = "days" | "amount" | "sent" | "activity";
+  type SortDir = "asc" | "desc";
+
   const money = useMemo(() => (cents: number) => moneyFmt(cents, currencyCode), [currencyCode]);
   const nonEmpty = buckets.filter(b => b.quotes.length > 0);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [sortKey, setSortKey] = useState<SortKey>("days");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const toggle = (key: string) => {
     setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
   };
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) setSortDir(d => d === "desc" ? "asc" : "desc");
+    else { setSortKey(key); setSortDir("desc"); }
+  }
+
+  function arrow(key: SortKey) {
+    if (sortKey !== key) return <span style={{ opacity: 0.3, marginLeft: 3, fontSize: 10 }}>{"\u2195"}</span>;
+    return <span style={{ marginLeft: 3, fontSize: 10 }}>{sortDir === "desc" ? "\u25BC" : "\u25B2"}</span>;
+  }
+
+  function sortQuotes(quotes: FollowUpQuote[]) {
+    return [...quotes].sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "days") cmp = a.days_quiet - b.days_quiet;
+      else if (sortKey === "amount") cmp = a.amount_cents - b.amount_cents;
+      else if (sortKey === "sent") {
+        const aT = a.sent_at ? new Date(a.sent_at).getTime() : 0;
+        const bT = b.sent_at ? new Date(b.sent_at).getTime() : 0;
+        cmp = aT - bT;
+      } else {
+        const aT = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+        const bT = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+        cmp = aT - bT;
+      }
+      return sortDir === "desc" ? -cmp : cmp;
+    });
+  }
 
   return (
     <div className="table-container">
       <table className="data-table">
         <thead>
           <tr>
-            <th style={{ textAlign: "center", width: 80 }}>Days Quiet</th>
+            <th className="sortable" onClick={() => toggleSort("days")} style={{ textAlign: "center", width: 80 }}>Days Quiet {arrow("days")}</th>
             <th>Quote</th>
-            <th style={{ textAlign: "center" }}>Sent</th>
-            <th style={{ textAlign: "right" }}>Amount</th>
-            <th style={{ textAlign: "center" }}>Last Activity</th>
+            <th className="sortable" onClick={() => toggleSort("sent")} style={{ textAlign: "center" }}>Sent {arrow("sent")}</th>
+            <th className="sortable" onClick={() => toggleSort("amount")} style={{ textAlign: "right" }}>Amount {arrow("amount")}</th>
+            <th className="sortable" onClick={() => toggleSort("activity")} style={{ textAlign: "center" }}>Last Activity {arrow("activity")}</th>
             <th style={{ textAlign: "center" }}>Status</th>
             <th style={{ textAlign: "center", width: 70 }}>Action</th>
           </tr>
@@ -79,6 +112,7 @@ export function QuoteFollowUpTable({
         {nonEmpty.map((bucket) => {
           const isCollapsed = collapsed[bucket.key] ?? false;
           const bucketTotal = bucket.quotes.reduce((s, q) => s + q.amount_cents, 0);
+          const sorted = sortQuotes(bucket.quotes);
           return (
             <tbody key={bucket.key}>
               <tr
@@ -132,7 +166,7 @@ export function QuoteFollowUpTable({
                   </div>
                 </td>
               </tr>
-              {!isCollapsed && bucket.quotes.map((q) => (
+              {!isCollapsed && sorted.map((q) => (
                 <tr key={q.quote_number}>
                   <td style={{ textAlign: "center" }}>
                     <span style={{

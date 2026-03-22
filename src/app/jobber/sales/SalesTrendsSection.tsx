@@ -389,7 +389,7 @@ export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, currencyC
     let cur = bucketStartUTC(start, granularity);
     while (cur.getTime() < endExclusive.getTime()) {
       const bucketEnd = nextBucketUTC(cur, granularity);
-      if (granularity !== "day" && bucketEnd.getTime() > todayTs + 86400000) {
+      if (granularity === "week" && bucketEnd.getTime() > todayTs + 86400000) {
         cur = bucketEnd; continue;
       }
       starts.push(cur);

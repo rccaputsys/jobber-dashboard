@@ -67,7 +67,7 @@ export default async function InvoicesPage({
   }
 
   // Fetch data
-  const [connDetails, invoices, needsInvoicingRaw] = await Promise.all([
+  const [connDetails, invoices, needsInvoicingRaw, visits] = await Promise.all([
     supabaseAdmin
       .from("jobber_connections")
       .select("last_sync_at,trial_started_at,trial_ends_at,billing_status,currency_code,company_name,jobber_account_name")
@@ -77,12 +77,13 @@ export default async function InvoicesPage({
     fetchAllRows("fact_invoices", "*", connectionId),
     supabaseAdmin
       .from("fact_jobs")
-      .select("job_number,job_title,total_amount_cents,jobber_url,scheduled_start_at")
+      .select("job_number,job_title,total_amount_cents,jobber_url,scheduled_start_at,jobber_job_id")
       .eq("connection_id", connectionId)
       .eq("status", "requires_invoicing")
       .order("total_amount_cents", { ascending: false })
       .limit(100)
       .then((r) => r.data ?? []),
+    fetchAllRows("fact_visits", "jobber_visit_id,jobber_job_id,title,visit_status,completed_at,job_number", connectionId),
   ]);
 
   const companyName = connDetails?.jobber_account_name || connDetails?.company_name || "Your Company";
@@ -215,12 +216,20 @@ export default async function InvoicesPage({
     b.count++;
   }
 
-  // Trend events
+  // Draft invoices (not sent yet)
+  const draftInvoices = invoices.filter((i: any) => (i.status || "").toLowerCase() === "draft");
+  const draftCount = draftInvoices.length;
+  const draftCents = draftInvoices.reduce((s: number, i: any) => s + Number(i.total_amount_cents ?? 0), 0);
+
+  // Trend events — use due_at for "sent" (when invoice became active), not created_at
+  // This prevents the mismatch where invoices created in month A show as "invoiced" in A
+  // but collected in month B, making B look >100% collected
   const invoiceEvents = invoices
+    .filter((i: any) => (i.status || "").toLowerCase() !== "draft") // exclude drafts
     .map((i: any) => {
       const events: { ts: number; amount: number; type: "sent" | "paid" }[] = [];
-      const created = safeDate(i.created_at_jobber);
-      if (created) events.push({ ts: created.getTime(), amount: Number(i.total_amount_cents ?? 0), type: "sent" });
+      const due = safeDate(i.due_at) || safeDate(i.created_at_jobber);
+      if (due) events.push({ ts: due.getTime(), amount: Number(i.total_amount_cents ?? 0), type: "sent" });
       if (i.status === "paid") {
         const paid = safeDate(i.paid_at);
         if (paid) events.push({ ts: paid.getTime(), amount: Number(i.total_amount_cents ?? 0), type: "paid" });
@@ -229,13 +238,31 @@ export default async function InvoicesPage({
     })
     .flat();
 
-  // Jobs needing invoicing
+  // Jobs needing invoicing — include completed visits for context
+  const needsInvoicingJobIds = new Set(needsInvoicingRaw.map((j: any) => j.jobber_job_id).filter(Boolean));
+
+  // Count completed visits per needs-invoicing job
+  const visitCountByJob = new Map<string, number>();
+  const latestVisitByJob = new Map<string, string>();
+  for (const v of visits) {
+    const jid = (v as any).jobber_job_id;
+    if (!jid || !needsInvoicingJobIds.has(jid)) continue;
+    if ((v as any).visit_status === "COMPLETED") {
+      visitCountByJob.set(jid, (visitCountByJob.get(jid) || 0) + 1);
+      const ca = (v as any).completed_at;
+      if (ca && (!latestVisitByJob.has(jid) || ca > latestVisitByJob.get(jid)!)) {
+        latestVisitByJob.set(jid, ca);
+      }
+    }
+  }
+
   const needsInvoicing = needsInvoicingRaw.map((j: any) => ({
     job_number: Number(j.job_number ?? 0),
     job_title: j.job_title || "",
     total_amount_cents: Number(j.total_amount_cents ?? 0),
     jobber_url: j.jobber_url || "",
-    scheduled_at: j.scheduled_start_at || null,
+    scheduled_at: latestVisitByJob.get(j.jobber_job_id) || j.scheduled_start_at || null,
+    completedVisits: visitCountByJob.get(j.jobber_job_id) || 0,
   }));
 
   /* ------------------------------------------------------------------ */
@@ -287,12 +314,21 @@ export default async function InvoicesPage({
           agingBuckets={agingBuckets}
           totalOutstandingCents={outstandingBalance}
           currencyCode={currencyCode}
+          draftCount={draftCount}
+          draftCents={draftCents}
         />
 
         {/* Outstanding Invoices */}
         <OutstandingInvoices
           invoices={outstanding}
           needsInvoicing={needsInvoicing}
+          drafts={draftInvoices.map((i: any) => ({
+            invoice_number: i.invoice_number || "",
+            client_name: i.client_name || "",
+            total_amount_cents: Number(i.total_amount_cents ?? 0),
+            jobber_url: i.jobber_url || (i.jobber_invoice_id ? `https://secure.getjobber.com/invoices/${i.jobber_invoice_id}` : ""),
+            created_at: i.created_at_jobber || null,
+          }))}
           currencyCode={currencyCode}
         />
 

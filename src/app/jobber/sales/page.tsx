@@ -181,6 +181,7 @@ export default async function SalesPage({
   }
 
   const pipelineStages = [
+    { label: "Requests", count: openRequests.length, value: `${openRequests.length} leads` },
     { label: "Draft", count: draftQuotes.length, value: money(sumCents(draftQuotes)) },
     { label: "Sent", count: sentQuotes.length, value: money(sumCents(sentQuotes)) },
     { label: "Changes Req", count: changesReqQuotes.length, value: money(sumCents(changesReqQuotes)) },

@@ -237,12 +237,10 @@ export function TrendsSection({ leakEvents, arEvents, unschedEvents, currencyCod
     const starts: Date[] = [];
     let cur = bucketStartUTC(start, g);
     while (cur.getTime() < endExclusive.getTime()) {
-      // Exclude the current incomplete period (its end hasn't arrived yet)
+      // Exclude current incomplete week (monthly/quarterly include current period — enough data)
       const bucketEnd = nextBucketUTC(cur, g);
-      if (bucketEnd.getTime() > todayTs + 86400000) {
-        // This bucket's end is after today — it's incomplete, skip it
-        // Exception: for "day" granularity, include today
-        if (g !== "day") { cur = bucketEnd; continue; }
+      if (g === "week" && bucketEnd.getTime() > todayTs + 86400000) {
+        cur = bucketEnd; continue;
       }
       starts.push(cur);
       if (bucketEnd.getTime() === cur.getTime()) break;
