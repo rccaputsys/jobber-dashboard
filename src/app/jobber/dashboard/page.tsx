@@ -11,6 +11,9 @@ import { AnalyticsProvider } from "./AnalyticsProvider";
 import { NavTabs } from "./NavTabs";
 import { AccuScore } from "./AccuScore";
 import { MoneyFlowFunnel } from "./MoneyFlowFunnel";
+import { MoneyFlowList } from "./MoneyFlowList";
+import { CommandStrip } from "./CommandStrip";
+import { WeekGlance } from "./WeekGlance";
 import { DashboardTopbar } from "./DashboardTopbar";
 import {
   safeDate as _safeDate,
@@ -258,12 +261,11 @@ export default async function DashboardPage({
       amount: j.total_amount_cents,
     }));
 
-    const demoAccuScore = 68;
+    const demoHealthScore = 66;
     const demoBreakdown = [
-      { label: "Collections", score: 60, detail: "5 invoices overdue 15+ days", href: "/jobber/invoices" },
-      { label: "Sales", score: 72, detail: "34% win rate \u2022 8 open quotes", href: "/jobber/sales" },
-      { label: "Operations", score: 65, detail: "7 unscheduled jobs", href: "/jobber/capacity" },
-      { label: "Responsiveness", score: 85, detail: "3 open requests awaiting response", href: "/jobber/sales" },
+      { label: "Sales", score: 68, detail: "34% win rate \u2022 8 open quotes \u2022 5 pending action", action: "Follow up on cold quotes", href: "/jobber/sales" },
+      { label: "Capacity", score: 65, detail: "15% of jobs unscheduled \u2022 target: under 10%", action: "Schedule unbooked jobs", href: "/jobber/capacity" },
+      { label: "Invoices", score: 60, detail: "25% of overdue amount is 15+ days old \u2022 target: under 10%", action: "Send payment reminders", href: "/jobber/invoices" },
     ];
     const demoFunnel = [
       { label: "Leads", count: 3, value: null, icon: "\uD83D\uDCE5", href: "/jobber/sales", color: "#8b5cf6", unitLabel: "requests" },
@@ -315,7 +317,7 @@ export default async function DashboardPage({
 
           {/* AccuScore */}
           <div className="panel animate-in delay-1" style={{ marginTop: 20, padding: "20px 24px" }}>
-            <AccuScore score={demoAccuScore} breakdown={demoBreakdown} />
+            <AccuScore score={demoHealthScore} breakdown={demoBreakdown} />
           </div>
 
           {/* Primary KPIs */}
@@ -390,15 +392,21 @@ export default async function DashboardPage({
             </div>
             <div style={{ padding: "10px 16px" }}>
               {[
-                { text: `Collect ${money(215500)} \u2014 5 invoices overdue 15+ days. Call your oldest accounts today.`, priority: "high" as const, href: "/jobber/invoices" },
-                { text: "2 quotes need your revisions. These clients are ready to buy.", priority: "high" as const, href: "/jobber/sales" },
-                { text: `Win back ${money(308500)} \u2014 8 quotes worth ${money(1234000)} are going cold. Follow up on the largest ones today.`, priority: "medium" as const, href: "/jobber/sales" },
-              ].map((rec, i) => (
-                <a key={i} href={rec.href} className="rec-card" style={{ borderLeft: `3px solid ${rec.priority === "high" ? "#ef4444" : "#f59e0b"}` }}>
-                  <span className="text-secondary" style={{ flex: 1 }}>{rec.text}</span>
-                  <span className="text-muted" style={{ fontSize: 12, flexShrink: 0, fontWeight: 600 }}>&rarr;</span>
-                </a>
-              ))}
+                { headline: `Collect ${money(215500)}`, detail: "5 invoices overdue 15+ days. Call your oldest accounts today.", priority: "high" as const, href: "/jobber/invoices" },
+                { headline: "Close $3,500 faster", detail: "2 quotes need your revisions. These clients are ready to buy.", priority: "high" as const, href: "/jobber/sales" },
+                { headline: `Win back ${money(308500)}`, detail: `8 quotes worth ${money(1234000)} going cold. Follow up on the largest ones today.`, priority: "medium" as const, href: "/jobber/sales" },
+              ].map((rec, i) => {
+                const prioClass = rec.priority === "high" ? "rec-card-high" : "rec-card-medium";
+                return (
+                  <a key={i} href={rec.href} className={`rec-card ${prioClass}`} style={{ borderLeft: `3px solid ${rec.priority === "high" ? "#ef4444" : "#f59e0b"}`, flexDirection: "column", gap: 2 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                      <span className="text-primary" style={{ fontSize: 13, fontWeight: 700 }}>{rec.headline}</span>
+                      <span className="text-muted" style={{ fontSize: 11, flexShrink: 0, fontWeight: 600 }}>&rarr;</span>
+                    </div>
+                    <span className="text-muted" style={{ fontSize: 11, lineHeight: 1.4 }}>{rec.detail}</span>
+                  </a>
+                );
+              })}
             </div>
           </div>
 
@@ -487,7 +495,7 @@ export default async function DashboardPage({
   // Connection summary (including billing info)
   const { data: conn } = await supabaseAdmin
     .from("jobber_connections")
-    .select("last_sync_at,trial_started_at,trial_ends_at,billing_status,currency_code,company_name,jobber_account_name")
+    .select("last_sync_at,trial_started_at,trial_ends_at,billing_status,currency_code,company_name,jobber_account_name,weekly_capacity_cents")
     .eq("id", connectionId)
     .maybeSingle();
 
@@ -602,7 +610,7 @@ export default async function DashboardPage({
   const lastSyncPretty = conn?.last_sync_at ? formatSyncTime(new Date(conn.last_sync_at)) : "Not synced yet";
 
   // Fetch facts IN PARALLEL (paginated to bypass PostgREST max_rows=100)
-  const [invoices, jobs, quotes, requests] = await Promise.all([
+  const [invoices, jobs, quotes, requests, visits] = await Promise.all([
     fetchAllRows("fact_invoices", "*", connectionId),
     fetchAllRows("fact_jobs", "*", connectionId),
     fetchAllRows(
@@ -613,6 +621,11 @@ export default async function DashboardPage({
     fetchAllRows(
       "fact_requests",
       "jobber_request_id,title,request_status,source,client_name,jobber_url,created_at_jobber",
+      connectionId,
+    ),
+    fetchAllRows(
+      "fact_visits",
+      "jobber_visit_id,jobber_job_id,title,visit_status,is_complete,start_at,completed_at,duration_minutes",
       connectionId,
     ),
   ]);
@@ -658,6 +671,8 @@ export default async function DashboardPage({
   // ---- Outlier cutoffs ----
   // Many Jobber accounts have old quotes/jobs that were never closed out.
   // We exclude these so stale data doesn't penalize owners with messy workflows.
+  // KPI cards/funnel use 6-month window for pipeline data.
+  // Business Health Score uses 90-day window — responsive to recent improvements.
   const sixMonthsAgo = addDaysUTC(todayUTC, -180);
   const ninetyDaysAgo = addDaysUTC(todayUTC, -90);
   const sixMonthsAgoMs = sixMonthsAgo.getTime();
@@ -673,7 +688,11 @@ export default async function DashboardPage({
   const unscheduledCents = unscheduledJobs.reduce((sum, j) => sum + Number(j.total_amount_cents ?? 0), 0);
 
   // Completed & profitability
-  const completedDateKeys = ["completed_at_jobber", "completed_at", "completedAt", "completedAtJobber"];
+  // "Completed" in Jobber means different things — most businesses never use the "completed" status.
+  // Jobs go: active → requires_invoicing → archived. We treat requires_invoicing/archived as done.
+  // For timing, we check completed_at fields first, then fall back to updated_at_jobber.
+  const completedDateKeys = ["completed_at_jobber", "completed_at", "completedAt", "completedAtJobber", "updated_at_jobber"];
+  const completedStatuses = ["completed", "requires_invoicing", "archived"];
 
   const completedInRange = jobs.filter((j) => {
     const raw = completedDateKeys.map((k) => j[k]).find((v) => v);
@@ -833,7 +852,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
     .map((inv) => {
       const due = safeDate(inv.due_at ?? inv.dueDate ?? inv.due_date)!;
       const paidAt = safeDate(inv.paid_at);
-      return { enterAt: due.getTime() + 15 * 86400000, exitAt: paidAt ? paidAt.getTime() : null, amount: Number(inv.balance_cents ?? inv.total_amount_cents ?? 0) };
+      return { enterAt: due.getTime(), exitAt: paidAt ? paidAt.getTime() : null, amount: Number(inv.balance_cents ?? inv.total_amount_cents ?? 0) };
     });
 
   const unschedEvents = jobs
@@ -844,6 +863,190 @@ const quoteWonPct = quotesInLast30Days.length > 0
       return { enterAt: createdAt.getTime(), exitAt: scheduledAt ? scheduledAt.getTime() : null, amount: Number(j.total_amount_cents ?? 0) };
     });
 
+  // ===== Week at a Glance =====
+  const thisWeekStart = startOfWeekUTC(todayUTC);
+  const thisWeekEnd = addDaysUTC(thisWeekStart, 7);
+  const lastWeekStart = addDaysUTC(thisWeekStart, -7);
+  const nextWeekStart = thisWeekEnd;
+  const nextWeekEnd = addDaysUTC(nextWeekStart, 7);
+
+  const weeklyTargetCents: number | null = conn?.weekly_capacity_cents ?? null;
+
+  // Build job visit counts and totals for per-visit revenue distribution
+  const jobVisitCountMap = new Map<string, number>();
+  const jobTotalMap = new Map<string, number>();
+  for (const v of visits) {
+    const jid = (v as any).jobber_job_id;
+    if (jid) jobVisitCountMap.set(jid, (jobVisitCountMap.get(jid) || 0) + 1);
+  }
+  for (const j of jobs) {
+    jobTotalMap.set((j as any).jobber_job_id, Number((j as any).total_amount_cents ?? 0));
+  }
+  const jobIdsWithVisits = new Set(visits.map((v: any) => v.jobber_job_id).filter(Boolean));
+
+  function weekSnapshot(wStart: Date, wEnd: Date) {
+    const wStartMs = wStart.getTime();
+    const wEndMs = wEnd.getTime();
+
+    // Visits scheduled this week
+    const scheduledVisits = visits.filter((v: any) => {
+      const s = safeDate(v.start_at);
+      return s && s.getTime() >= wStartMs && s.getTime() < wEndMs;
+    });
+    // Visitless jobs scheduled this week
+    const scheduledVisitlessJobs = jobs.filter((j: any) => {
+      if (jobIdsWithVisits.has(j.jobber_job_id)) return false;
+      const s = safeDate(j.scheduled_start_at);
+      return s && s.getTime() >= wStartMs && s.getTime() < wEndMs;
+    });
+
+    // Revenue: visit revenue (job total / visit count) + visitless job totals
+    let scheduledRevenue = 0;
+    for (const v of scheduledVisits) {
+      const jid = (v as any).jobber_job_id;
+      const jobTotal = jobTotalMap.get(jid) || 0;
+      const visitCount = jobVisitCountMap.get(jid) || 1;
+      scheduledRevenue += Math.round(jobTotal / visitCount);
+    }
+    for (const j of scheduledVisitlessJobs) {
+      scheduledRevenue += Number((j as any).total_amount_cents ?? 0);
+    }
+
+    const totalScheduledCount = scheduledVisits.length + scheduledVisitlessJobs.length;
+    const revenuePerJob = totalScheduledCount > 0 ? Math.round(scheduledRevenue / totalScheduledCount) : 0;
+
+    // Capacity fill %
+    const fillPct = weeklyTargetCents && weeklyTargetCents > 0
+      ? Math.round((scheduledRevenue / weeklyTargetCents) * 100) : null;
+
+    // Completed this week: completed visits + completed visitless jobs
+    const completedVisits = visits.filter((v: any) => {
+      const c = safeDate(v.completed_at);
+      return c && c.getTime() >= wStartMs && c.getTime() < wEndMs;
+    });
+    const completedVisitlessJobs = jobs.filter((j: any) => {
+      if (jobIdsWithVisits.has(j.jobber_job_id)) return false;
+      const st = (j.status || "").toLowerCase();
+      if (!completedStatuses.includes(st)) return false;
+      const raw = completedDateKeys.map((k: string) => j[k]).find((v: any) => v);
+      const dt = safeDate(raw);
+      return dt && dt.getTime() >= wStartMs && dt.getTime() < wEndMs;
+    });
+
+    let completedRevenue = 0;
+    for (const v of completedVisits) {
+      const jid = (v as any).jobber_job_id;
+      const jobTotal = jobTotalMap.get(jid) || 0;
+      const visitCount = jobVisitCountMap.get(jid) || 1;
+      completedRevenue += Math.round(jobTotal / visitCount);
+    }
+    for (const j of completedVisitlessJobs) {
+      completedRevenue += Number((j as any).job_revenue_cents ?? (j as any).total_amount_cents ?? 0);
+    }
+    const completedCount = completedVisits.length + completedVisitlessJobs.length;
+
+    // Invoices due this week
+    const invoicesDue = invoices.filter((inv: any) => {
+      const due = safeDate(inv.due_at);
+      if (!due) return false;
+      const st = (inv.status || "").toLowerCase();
+      if (st === "paid" || st === "draft" || st === "voided" || st === "bad_debt") return false;
+      return due.getTime() >= wStartMs && due.getTime() < wEndMs;
+    });
+    const invoicesDueCents = invoicesDue.reduce((s: number, inv: any) => s + Number(inv.balance_cents ?? inv.total_amount_cents ?? 0), 0);
+
+    // Invoices collected (paid this week)
+    const collected = invoices.filter((inv: any) => {
+      const pd = safeDate(inv.paid_at);
+      if (!pd) return false;
+      return pd.getTime() >= wStartMs && pd.getTime() < wEndMs && (inv.status || "").toLowerCase() === "paid";
+    });
+    const collectedCents = collected.reduce((s: number, inv: any) => s + Number(inv.total_amount_cents ?? 0), 0);
+
+    // Quotes sent + won this week
+    const quotesSent = quotes.filter((q: any) => {
+      const sent = safeDate(q.sent_at);
+      return sent && sent.getTime() >= wStartMs && sent.getTime() < wEndMs;
+    });
+    const quotesWon = quotes.filter((q: any) => {
+      const updated = safeDate(q.updated_at_jobber);
+      if (!updated || updated.getTime() < wStartMs || updated.getTime() >= wEndMs) return false;
+      return statusLooksWon(String(q.quote_status ?? ""));
+    });
+
+    // Needs attention count (overdue + unscheduled + pending requests + changes requested in this window)
+    const overdueThisWeek = invoices.filter((inv: any) => {
+      const due = safeDate(inv.due_at);
+      if (!due) return false;
+      const st = (inv.status || "").toLowerCase();
+      if (st === "paid" || st === "draft" || st === "voided" || st === "bad_debt") return false;
+      return due.getTime() < wStartMs; // was due before this week = overdue
+    }).length;
+
+    return {
+      jobCount: totalScheduledCount,
+      scheduledRevenue,
+      revenuePerJob,
+      fillPct,
+      completedCount,
+      completedRevenue,
+      invoicesDueCount: invoicesDue.length,
+      invoicesDueCents,
+      collectedCount: collected.length,
+      collectedCents,
+      quotesSent: quotesSent.length,
+      quotesWon: quotesWon.length,
+      overdueCount: overdueThisWeek,
+    };
+  }
+
+  const lastWeekSnap = weekSnapshot(lastWeekStart, thisWeekStart);
+  const thisWeekSnap = weekSnapshot(thisWeekStart, thisWeekEnd);
+  const nextWeekSnap = weekSnapshot(nextWeekStart, nextWeekEnd);
+
+  // Compute inline sparklines (8-week point-in-time snapshots)
+  type TrendEvent = { enterAt: number; exitAt: number | null; amount: number };
+  function computeSparkline(events: TrendEvent[], weeks: number): number[] {
+    const points: number[] = [];
+    for (let w = weeks - 1; w >= 0; w--) {
+      const weekEnd = addDaysUTC(startOfWeekUTC(todayUTC), -7 * w + 7);
+      const ts = weekEnd.getTime();
+      let sum = 0;
+      for (const ev of events) {
+        if (ev.enterAt < ts && (ev.exitAt === null || ev.exitAt >= ts)) {
+          sum += ev.amount;
+        }
+      }
+      points.push(sum);
+    }
+    return points;
+  }
+  const pipelineSparkline = computeSparkline(leakEvents, 8);
+  const unschedSparkline = computeSparkline(unschedEvents, 8);
+  const overdueSparkline = computeSparkline(arEvents, 8);
+
+  // Collections sparkline — cash received per week (aggregate, not point-in-time)
+  const collectionsSparkline: number[] = [];
+  for (let w = 7; w >= 0; w--) {
+    const wStart = addDaysUTC(startOfWeekUTC(todayUTC), -7 * w);
+    const wEnd = addDaysUTC(wStart, 7);
+    const wStartMs = wStart.getTime();
+    const wEndMs = wEnd.getTime();
+    const collected = invoices.filter((inv: any) => {
+      const pd = safeDate(inv.paid_at);
+      return pd && pd.getTime() >= wStartMs && pd.getTime() < wEndMs && (inv.status || "").toLowerCase() === "paid";
+    }).reduce((s: number, inv: any) => s + Number(inv.total_amount_cents ?? 0), 0);
+    collectionsSparkline.push(collected);
+  }
+
+  // Revenue sparkline (aggregate per month, last 6 months — uses visit completions)
+  const revenueSparkline: number[] = [];
+  for (let m = 5; m >= 0; m--) {
+    const mStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() - m, 1));
+    const mEnd = new Date(Date.UTC(mStart.getUTCFullYear(), mStart.getUTCMonth() + 1, 1));
+    revenueSparkline.push(monthRevenue(mStart, mEnd).revenue);
+  }
+
   // Needs invoicing (computed early for use in recommendations)
   const needsInvoiceJobs = jobs.filter((j: any) => (j.status || "").toLowerCase() === "requires_invoicing");
   const needsInvoiceCount = needsInvoiceJobs.length;
@@ -851,14 +1054,15 @@ const quoteWonPct = quotesInLast30Days.length > 0
 
   // Generate recommendations
   const adminQs = adminConnectionId ? `?admin_connection_id=${adminConnectionId}` : "";
-  type Recommendation = { text: string; priority: "high" | "medium"; href: string };
+  type Recommendation = { headline: string; detail: string; priority: "high" | "medium"; href: string };
   const recommendations: Recommendation[] = [];
 
   // Overdue invoices
   if (b15p > 0 && totalAR > 0) {
     const agedCount = agedARInvoices.length;
     recommendations.push({
-      text: `Collect ${money(b15p)} \u2014 ${agedCount} invoice${agedCount !== 1 ? "s" : ""} overdue 15+ days. Call your oldest accounts today.`,
+      headline: `Collect ${money(b15p)}`,
+      detail: `${agedCount} invoice${agedCount !== 1 ? "s" : ""} overdue 15+ days. Call your oldest accounts today.`,
       priority: "high",
       href: `/jobber/invoices${adminQs}`,
     });
@@ -867,7 +1071,8 @@ const quoteWonPct = quotesInLast30Days.length > 0
   // Needs invoicing
   if (needsInvoiceCount > 0) {
     recommendations.push({
-      text: `Bill ${money(needsInvoiceCents)} now \u2014 ${needsInvoiceCount} completed job${needsInvoiceCount > 1 ? "s aren't" : " isn't"} invoiced yet. Send invoices today to start the clock.`,
+      headline: `Bill ${money(needsInvoiceCents)}`,
+      detail: `${needsInvoiceCount} completed job${needsInvoiceCount > 1 ? "s aren't" : " isn't"} invoiced yet. Send invoices today.`,
       priority: "high",
       href: `/jobber/invoices${adminQs}`,
     });
@@ -876,7 +1081,8 @@ const quoteWonPct = quotesInLast30Days.length > 0
   // Changes requested
   if (changesRequestedCount > 0) {
     recommendations.push({
-      text: `Close ${money(changesRequestedCents)} faster \u2014 ${changesRequestedCount} quote${changesRequestedCount > 1 ? "s need" : " needs"} your revisions. These clients are ready to buy.`,
+      headline: `Close ${money(changesRequestedCents)} faster`,
+      detail: `${changesRequestedCount} quote${changesRequestedCount > 1 ? "s need" : " needs"} your revisions. These clients are ready to buy.`,
       priority: "high",
       href: `/jobber/sales${adminQs}`,
     });
@@ -886,7 +1092,8 @@ const quoteWonPct = quotesInLast30Days.length > 0
   if (unscheduledOlderThan7Days.length > 0) {
     const unschedOldCents = unscheduledOlderThan7Days.reduce((s: number, j: any) => s + Number(j.total_amount_cents ?? 0), 0);
     recommendations.push({
-      text: `Schedule ${unschedOldCents > 0 ? money(unschedOldCents) + " in" : ""} work \u2014 ${unscheduledOlderThan7Days.length} job${unscheduledOlderThan7Days.length > 1 ? "s" : ""} unscheduled 7+ days. Customers are waiting.`,
+      headline: unschedOldCents > 0 ? `Schedule ${money(unschedOldCents)}` : `Schedule ${unscheduledOlderThan7Days.length} jobs`,
+      detail: `${unscheduledOlderThan7Days.length} job${unscheduledOlderThan7Days.length > 1 ? "s" : ""} unscheduled 7+ days. Customers are waiting.`,
       priority: unscheduledOlderThan7Days.length > 5 ? "high" : "medium",
       href: `/jobber/capacity${adminQs}`,
     });
@@ -896,7 +1103,8 @@ const quoteWonPct = quotesInLast30Days.length > 0
   if (invoicesHitting7DaysThisWeek.length > 0) {
     const hittingCents = invoicesHitting7DaysThisWeek.reduce((s: number, inv: any) => s + Number(inv.balance_cents ?? inv.total_amount_cents ?? 0), 0);
     recommendations.push({
-      text: `Protect ${money(hittingCents)} \u2014 ${invoicesHitting7DaysThisWeek.length} invoice${invoicesHitting7DaysThisWeek.length > 1 ? "s" : ""} hitting 7 days overdue this week. Send reminders before they go stale.`,
+      headline: `Protect ${money(hittingCents)}`,
+      detail: `${invoicesHitting7DaysThisWeek.length} invoice${invoicesHitting7DaysThisWeek.length > 1 ? "s" : ""} hitting 7 days overdue this week. Send reminders now.`,
       priority: "medium",
       href: `/jobber/invoices${adminQs}`,
     });
@@ -906,7 +1114,8 @@ const quoteWonPct = quotesInLast30Days.length > 0
   if (leakCount > 3) {
     const potentialWin = Math.round(leakDollars * 0.25);
     recommendations.push({
-      text: `Win back ${money(potentialWin)} \u2014 ${leakCount} quotes worth ${money(leakDollars)} are going cold. Follow up on the largest ones today.`,
+      headline: `Win back ${money(potentialWin)}`,
+      detail: `${leakCount} quotes worth ${money(leakDollars)} going cold. Follow up on the largest ones today.`,
       priority: "medium",
       href: `/jobber/sales${adminQs}`,
     });
@@ -917,7 +1126,8 @@ const quoteWonPct = quotesInLast30Days.length > 0
     const marginPct = profitSum / revSum;
     if (marginPct < 0.20) {
       recommendations.push({
-        text: `Margins at ${pct(marginPct)} \u2014 you're leaving money on the table. Review your pricing or cut material costs to hit 25%+.`,
+        headline: `Margins at ${pct(marginPct)}`,
+        detail: `You're leaving money on the table. Review pricing or cut material costs to hit 25%+.`,
         priority: "medium",
         href: `/jobber/capacity${adminQs}`,
       });
@@ -976,19 +1186,45 @@ const quoteWonPct = quotesInLast30Days.length > 0
   const lastMonthStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() - 1, 1));
   const nextMonthStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() + 1, 1));
 
-  const completedThisMonth = jobs.filter((j) => {
-    const raw = completedDateKeys.map(k => j[k]).find(v => v);
-    const dt = safeDate(raw);
-    return dt && dt >= thisMonthStart && dt < nextMonthStart;
-  });
-  const revenueThisMonth = completedThisMonth.reduce((s: number, j: any) => s + Number(j.job_revenue_cents ?? j.total_amount_cents ?? 0), 0);
+  // Revenue this month: completed visits + completed visitless jobs
+  function monthRevenue(mStart: Date, mEnd: Date) {
+    const mStartMs = mStart.getTime();
+    const mEndMs = mEnd.getTime();
 
-  const completedLastMonth = jobs.filter((j) => {
-    const raw = completedDateKeys.map(k => j[k]).find(v => v);
-    const dt = safeDate(raw);
-    return dt && dt >= lastMonthStart && dt < thisMonthStart;
-  });
-  const revenueLastMonth = completedLastMonth.reduce((s: number, j: any) => s + Number(j.job_revenue_cents ?? j.total_amount_cents ?? 0), 0);
+    // Completed visits in this month
+    const monthVisits = visits.filter((v: any) => {
+      const c = safeDate(v.completed_at);
+      return c && c.getTime() >= mStartMs && c.getTime() < mEndMs;
+    });
+    let rev = 0;
+    for (const v of monthVisits) {
+      const jid = (v as any).jobber_job_id;
+      const jobTotal = jobTotalMap.get(jid) || 0;
+      const vCount = jobVisitCountMap.get(jid) || 1;
+      rev += Math.round(jobTotal / vCount);
+    }
+
+    // Completed visitless jobs in this month (requires_invoicing or archived)
+    const monthJobs = jobs.filter((j: any) => {
+      if (jobIdsWithVisits.has(j.jobber_job_id)) return false;
+      const st = (j.status || "").toLowerCase();
+      if (!completedStatuses.includes(st)) return false;
+      const raw = completedDateKeys.map((k: string) => j[k]).find((v: any) => v);
+      const dt = safeDate(raw);
+      return dt && dt.getTime() >= mStartMs && dt.getTime() < mEndMs;
+    });
+    for (const j of monthJobs) {
+      rev += Number((j as any).job_revenue_cents ?? (j as any).total_amount_cents ?? 0);
+    }
+
+    return { revenue: rev, count: monthVisits.length + monthJobs.length };
+  }
+
+  const thisMonthData = monthRevenue(thisMonthStart, nextMonthStart);
+  const lastMonthData = monthRevenue(lastMonthStart, thisMonthStart);
+  const revenueThisMonth = thisMonthData.revenue;
+  const completedThisMonthCount = thisMonthData.count;
+  const revenueLastMonth = lastMonthData.revenue;
 
   // Pipeline value (open quotes, not won/lost/draft, last 6 months only)
   const pipelineQuotes = quotes.filter((q: any) => {
@@ -1003,28 +1239,22 @@ const quoteWonPct = quotesInLast30Days.length > 0
   const revDelta = revenueLastMonth > 0 ? ((revenueThisMonth - revenueLastMonth) / revenueLastMonth) : null;
   const thisMonthName = new Date().toLocaleString(undefined, { month: "long" });
 
-  /* ===== AccuScore ===== */
-  // Collections (0-100): based on % of AR that's 15+ days
-  let collectionsScore = 85;
-  if (unpaidInvoices.length > 0) {
-    const aged15Pct = totalAR > 0 ? b15p / totalAR : 0;
-    if (totalAR === 0) collectionsScore = 100;
-    else if (aged15Pct === 0) collectionsScore = 95;
-    else if (aged15Pct <= 0.1) collectionsScore = 80;
-    else if (aged15Pct <= 0.25) collectionsScore = 60;
-    else if (aged15Pct <= 0.5) collectionsScore = 40;
-    else collectionsScore = 25;
-  }
+  /* ===== Business Health Score ===== */
+  // 3 categories, each maps to a tab: Sales, Capacity, Invoices
 
-  // Sales (0-100): win rate + cold quote ratio (6-month window for cold check)
+  // SALES score (0-100): win rate + cold quotes + open requests + changes requested
+  // Uses 90-day window — responsive to recent improvements
   let salesScore = 85;
-  if (quotes.length > 0) {
-    const winPts = quoteWonPct >= 0.4 ? 50 : quoteWonPct >= 0.25 ? 40 : quoteWonPct >= 0.1 ? 25 : 10;
+  if (quotes.length > 0 || openRequestsCount > 0) {
+    // Win rate component (0-35 pts)
+    const winPts = quoteWonPct >= 0.4 ? 35 : quoteWonPct >= 0.25 ? 28 : quoteWonPct >= 0.1 ? 18 : 8;
+
+    // Cold quote component (0-35 pts) — % of open quotes going cold (30+ days quiet)
     const openQuotesForScore = quotes.filter((q: any) => {
       const st = String(q.quote_status ?? "").toUpperCase();
       if (statusLooksWon(st) || statusLooksLost(st) || !q.sent_at) return false;
       const sent = safeDate(q.sent_at);
-      return sent && sent.getTime() >= sixMonthsAgoMs;
+      return sent && sent.getTime() >= ninetyDaysAgoMs;
     });
     const coldQuotes = openQuotesForScore.filter((q: any) => {
       const updated = safeDate(q.updated_at_jobber);
@@ -1032,90 +1262,95 @@ const quoteWonPct = quotesInLast30Days.length > 0
       return (nowMs - updated.getTime()) / 86400000 >= 30;
     });
     const coldPct = openQuotesForScore.length > 0 ? coldQuotes.length / openQuotesForScore.length : 0;
-    const coldPts = coldPct === 0 ? 50 : coldPct <= 0.2 ? 40 : coldPct <= 0.5 ? 25 : 10;
-    salesScore = winPts + coldPts;
+    const coldPts = coldPct === 0 ? 35 : coldPct <= 0.2 ? 28 : coldPct <= 0.5 ? 18 : 8;
+
+    // Response speed component (0-30 pts) — avg age of open requests + changes requested
+    const openReqs = requests.filter((r: any) => {
+      const status = (r.request_status || "").toUpperCase();
+      if (status !== "NEW" && status !== "PENDING" && status !== "UNSCHEDULED" && status !== "ASSESSMENT_COMPLETED" && status !== "ACTION_REQUIRED") return false;
+      const created = safeDate(r.created_at_jobber);
+      return created && created.getTime() >= ninetyDaysAgoMs;
+    });
+    const pendingCount = openReqs.length + changesRequestedCount;
+    let responsePts = 30;
+    if (pendingCount > 0) {
+      const avgAge = openReqs.length > 0
+        ? openReqs.reduce((s: number, r: any) => {
+            const created = safeDate(r.created_at_jobber);
+            return s + (created ? (nowMs - created.getTime()) / 86400000 : 0);
+          }, 0) / openReqs.length
+        : 0;
+      if (avgAge < 2 && changesRequestedCount === 0) responsePts = 30;
+      else if (avgAge < 3 && changesRequestedCount <= 1) responsePts = 25;
+      else if (avgAge < 5) responsePts = 18;
+      else if (avgAge < 7) responsePts = 12;
+      else responsePts = 5;
+    }
+
+    salesScore = Math.max(50, winPts + coldPts + responsePts);
   }
 
-  // Operations (0-100): unscheduled ratio (6-month window)
-  let opsScore = 85;
+  // CAPACITY score (0-100): unscheduled ratio (90-day window)
+  let capacityScore = 85;
   const activeJobs = jobs.filter((j: any) => {
     const st = (j.status || "").toLowerCase();
     if (st === "completed" || st === "archived" || st === "cancelled") return false;
     const created = safeDate(j.created_at_jobber);
-    return created && created.getTime() >= sixMonthsAgoMs;
+    return created && created.getTime() >= ninetyDaysAgoMs;
   });
   if (activeJobs.length > 0) {
     const unschedPct = unscheduledCount / activeJobs.length;
-    if (unschedPct === 0) opsScore = 100;
-    else if (unschedPct < 0.1) opsScore = 85;
-    else if (unschedPct < 0.25) opsScore = 65;
-    else if (unschedPct < 0.5) opsScore = 45;
-    else opsScore = 25;
+    if (unschedPct === 0) capacityScore = 100;
+    else if (unschedPct < 0.1) capacityScore = 85;
+    else if (unschedPct < 0.25) capacityScore = 65;
+    else if (unschedPct < 0.5) capacityScore = 50;
+    else capacityScore = 50;
   }
 
-  // Responsiveness (0-100): avg age of open requests (last 90 days only)
-  let responsivenessScore = 90;
-  const openReqs = requests.filter((r: any) => {
-    const status = (r.request_status || "").toUpperCase();
-    if (status !== "NEW" && status !== "PENDING" && status !== "UNSCHEDULED" && status !== "ASSESSMENT_COMPLETED" && status !== "ACTION_REQUIRED") return false;
-    const created = safeDate(r.created_at_jobber);
-    return created && created.getTime() >= ninetyDaysAgoMs;
-  });
-  if (openReqs.length > 0) {
-    const avgAge = openReqs.reduce((s: number, r: any) => {
-      const created = safeDate(r.created_at_jobber);
-      return s + (created ? (nowMs - created.getTime()) / 86400000 : 0);
-    }, 0) / openReqs.length;
-    if (avgAge < 2) responsivenessScore = 100;
-    else if (avgAge < 3) responsivenessScore = 85;
-    else if (avgAge < 5) responsivenessScore = 70;
-    else if (avgAge < 7) responsivenessScore = 50;
-    else responsivenessScore = 30;
+  // INVOICES score (0-100): based on % of AR that's 15+ days
+  let invoicesScore = 85;
+  if (unpaidInvoices.length > 0) {
+    const aged15Pct = totalAR > 0 ? b15p / totalAR : 0;
+    if (totalAR === 0) invoicesScore = 100;
+    else if (aged15Pct === 0) invoicesScore = 95;
+    else if (aged15Pct <= 0.1) invoicesScore = 80;
+    else if (aged15Pct <= 0.25) invoicesScore = 60;
+    else if (aged15Pct <= 0.5) invoicesScore = 50;
+    else invoicesScore = 50;
   }
 
-  const rawAccuScore = Math.round((collectionsScore + salesScore + opsScore + responsivenessScore) / 4);
-  const accuScore = Math.max(50, rawAccuScore);
+  const rawHealthScore = Math.round((salesScore + capacityScore + invoicesScore) / 3);
+  const healthScore = Math.max(50, rawHealthScore);
 
-  // Compute readable metrics for breakdown details
+  // Readable metrics for breakdown
   const aged15PctDisplay = totalAR > 0 ? Math.round((b15p / totalAR) * 100) : 0;
   const unschedPctDisplay = activeJobs.length > 0 ? Math.round((unscheduledCount / activeJobs.length) * 100) : 0;
-  const avgReqAge = openReqs.length > 0
-    ? Math.round(openReqs.reduce((s: number, r: any) => {
-        const created = safeDate(r.created_at_jobber);
-        return s + (created ? (nowMs - created.getTime()) / 86400000 : 0);
-      }, 0) / openReqs.length)
-    : 0;
 
-  const accuBreakdown = [
-    {
-      label: "Collections",
-      score: collectionsScore,
-      detail: totalAR === 0
-        ? "No overdue invoices \u2022 target: under 10% aged"
-        : `${aged15PctDisplay}% aged 15+ days \u2022 target: under 10%`,
-      href: `/jobber/invoices${adminQs}`,
-    },
+  const healthBreakdown = [
     {
       label: "Sales",
       score: salesScore,
-      detail: `${pct(quoteWonPct)} win rate \u2022 target: 40%+`,
+      detail: `${pct(quoteWonPct)} win rate \u2022 ${leakCount} open quotes \u2022 ${openRequestsCount + changesRequestedCount} pending action`,
+      action: salesScore >= 80 ? "Looking good" : salesScore >= 60 ? "Follow up on cold quotes" : "Urgent: respond to pending quotes",
       href: `/jobber/sales${adminQs}`,
     },
     {
-      label: "Operations",
-      score: opsScore,
+      label: "Capacity",
+      score: capacityScore,
       detail: activeJobs.length === 0
         ? "No active jobs yet"
-        : `${unschedPctDisplay}% unscheduled \u2022 target: under 10%`,
+        : `${unschedPctDisplay}% of jobs unscheduled \u2022 target: under 10%`,
+      action: capacityScore >= 80 ? "Schedule is healthy" : capacityScore >= 60 ? "Schedule unbooked jobs" : "Urgent: jobs need scheduling",
       href: `/jobber/capacity${adminQs}`,
     },
     {
-      label: "Responsiveness",
-      score: responsivenessScore,
-      detail: openReqs.length === 0
-        ? "No pending requests \u2022 target: under 2 days"
-        : `avg ${avgReqAge}d response \u2022 target: under 2 days`,
-      href: `/jobber/sales${adminQs}`,
+      label: "Invoices",
+      score: invoicesScore,
+      detail: totalAR === 0
+        ? "No overdue invoices"
+        : `${aged15PctDisplay}% of overdue amount is 15+ days old \u2022 target: under 10%`,
+      action: invoicesScore >= 80 ? "Collections on track" : invoicesScore >= 60 ? "Send payment reminders" : "Urgent: call overdue accounts",
+      href: `/jobber/invoices${adminQs}`,
     },
   ];
 
@@ -1257,168 +1492,65 @@ const quoteWonPct = quotesInLast30Days.length > 0
           </div>
         )}
 
-        {/* ===== AccuScore ===== */}
-        <div className="panel animate-in delay-1" style={{ marginTop: 20, padding: "20px 24px" }}>
-          <AccuScore score={accuScore} breakdown={accuBreakdown} />
+        {/* ===== Week at a Glance ===== */}
+        <div className="panel animate-in delay-1" style={{ marginTop: 16, padding: "14px 16px", overflow: "visible" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <h2 className="text-primary" style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Week at a Glance</h2>
+            <span className="info-tooltip">?<span className="tooltip-text">Compare last week, this week, and next week side by side. The health score reflects your last 90 days across sales, capacity, and invoices.</span></span>
+          </div>
+          <WeekGlance
+            lastWeek={lastWeekSnap}
+            thisWeek={thisWeekSnap}
+            nextWeek={nextWeekSnap}
+            currencyCode={currencyCode}
+            sparklines={{
+              revenue: revenueSparkline,
+              pipeline: pipelineSparkline,
+              collections: collectionsSparkline,
+              unscheduled: unschedSparkline,
+            }}
+          />
         </div>
 
-        {/* ===== Primary KPIs ===== */}
-        <div className="kpi-grid-primary animate-in delay-1" style={{ marginTop: 16 }}>
-          <div className="kpi-primary gradient-purple hover-lift">
-            <div style={{ position: "relative", zIndex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <span className="kpi-label" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  Revenue {thisMonthName}
-                </span>
-              </div>
-              <div className="kpi-value-large text-primary">{money(revenueThisMonth)}</div>
-              <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
-                {revDelta !== null ? (
-                  <span style={{ color: revDelta >= 0 ? "#10b981" : "#ef4444", fontWeight: 600 }}>
-                    {revDelta >= 0 ? "\u25B2" : "\u25BC"} {Math.abs(Math.round(revDelta * 100))}% vs last month
-                  </span>
-                ) : (
-                  <>{completedThisMonth.length} job{completedThisMonth.length !== 1 ? "s" : ""} completed</>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="kpi-primary hover-lift" style={{
-            background: "linear-gradient(145deg, rgba(90,166,255,0.1) 0%, rgba(255,255,255,0.02) 100%)",
-            borderColor: "rgba(90,166,255,0.3)",
-          }}>
-            <div style={{ position: "relative", zIndex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <span className="kpi-label" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  Pipeline Value
-                </span>
-              </div>
-              <div className="kpi-value-large" style={{ color: "#5aa6ff" }}>{money(pipelineValue)}</div>
-              <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
-                {pipelineQuotes.length} open quote{pipelineQuotes.length !== 1 ? "s" : ""}
-              </div>
-            </div>
-          </div>
-
-          <div className="kpi-primary hover-lift" style={{
-            background: `linear-gradient(145deg, ${sevBg(arSev)} 0%, rgba(255,255,255,0.02) 100%)`,
-            borderColor: `${sevColor(arSev)}40`,
-          }}>
-            <div style={{ position: "relative", zIndex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <span className="kpi-label" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  Overdue Invoices
-                </span>
-              </div>
-              <div className={`kpi-value-large ${totalAR === 0 ? "text-success" : arSev === "critical" ? "text-critical" : arSev === "warning" ? "text-warning" : "text-primary"}`}>
-                {money(totalAR)}
-              </div>
-              <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
-                {totalPastDueCount} invoice{totalPastDueCount !== 1 ? "s" : ""} past due
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ===== Secondary KPIs ===== */}
-        <div className="kpi-grid-secondary animate-in delay-2" style={{ marginTop: 16 }}>
-          <div className="kpi-secondary">
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
-              <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Win Rate (30d)</span>
-            </div>
-            <div className={`kpi-value-medium ${quoteWonPct >= 0.4 ? "text-success" : quoteWonPct >= 0.2 ? "text-warning" : "text-critical"}`}>
-              {pct(quoteWonPct)}
-            </div>
-            <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>
-              {quotesWonLast30Days.length} won of {quotesInLast30Days.length} quotes
-            </div>
-          </div>
-
-          <div className="kpi-secondary">
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
-              <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Unscheduled</span>
-            </div>
-            <div className={`kpi-value-medium ${unscheduledCount > 10 ? "text-critical" : unscheduledCount > 5 ? "text-warning" : "text-success"}`}>
-              {unscheduledCents > 0 ? money(unscheduledCents) : unscheduledCount}
-            </div>
-            <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>
-              {unscheduledCount} job{unscheduledCount !== 1 ? "s" : ""} in backlog
-            </div>
-          </div>
-
-          <div className="kpi-secondary">
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
-              <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Needs Invoicing</span>
-            </div>
-            <div className={`kpi-value-medium ${needsInvoiceCount > 3 ? "text-critical" : needsInvoiceCount > 0 ? "text-warning" : "text-success"}`}>
-              {needsInvoiceCents > 0 ? money(needsInvoiceCents) : needsInvoiceCount}
-            </div>
-            <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>
-              {needsInvoiceCount} job{needsInvoiceCount !== 1 ? "s" : ""} completed, not billed
-            </div>
-          </div>
-
-          <div className="kpi-secondary">
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
-              <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Open Requests</span>
-            </div>
-            <div className={`kpi-value-medium ${openRequestsCount > 10 ? "text-critical" : openRequestsCount > 5 ? "text-warning" : "text-success"}`}>
-              {openRequestsCount}
-            </div>
-            <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>
-              {openRequestsCount} pending request{openRequestsCount !== 1 ? "s" : ""}
-            </div>
-          </div>
-        </div>
-
-        {/* ===== Recommendations ===== */}
-        {recommendations.length > 0 && (
-          <div className="panel animate-in delay-2" style={{ marginTop: 20 }}>
-            <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>This Week&apos;s Focus</h2>
-                <span className="info-tooltip">?<span className="tooltip-text">Actionable recommendations based on your current data. Click any item to go fix it.</span></span>
-              </div>
-            </div>
-            <div style={{ padding: "10px 16px" }}>
-              {recommendations.slice(0, 4).map((rec, i) => {
-                const prioColor = rec.priority === "high" ? "#ef4444" : "#f59e0b";
-                return (
-                  <a key={i} href={rec.href} className="rec-card" style={{ borderLeft: `3px solid ${prioColor}` }}>
-                    <span className="text-secondary" style={{ flex: 1 }}>{rec.text}</span>
-                    <span className="text-muted" style={{ fontSize: 12, flexShrink: 0, fontWeight: 600 }}>&rarr;</span>
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ===== Money Flow ===== */}
-        <div className="panel animate-in delay-3" style={{ marginTop: 20, overflow: "visible" }}>
-          <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Money Flow</h2>
+        {/* ===== Side-by-side: Money Flow + Recommendations ===== */}
+        <div className="side-by-side animate-in delay-2" style={{ marginTop: 16 }}>
+          {/* Left: Money Flow */}
+          <div className="panel" style={{ padding: "14px 16px", overflow: "visible" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <h2 className="text-primary" style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Money Flow</h2>
               <span className="info-tooltip">?<span className="tooltip-text">Where work and money sit in your pipeline right now. Click any stage to drill in.</span></span>
             </div>
-            <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
-              Track jobs from lead to collected payment
-            </p>
+            <MoneyFlowList stages={funnelStages} />
           </div>
-          <div style={{ padding: "16px 20px" }}>
-            <MoneyFlowFunnel stages={funnelStages} />
-          </div>
-        </div>
 
-        {/* ===== Trends ===== */}
-        <div className="animate-in delay-3" style={{ marginTop: 20 }}>
-          <TrendsSection
-            leakEvents={leakEvents}
-            arEvents={arEvents}
-            unschedEvents={unschedEvents}
-            currencyCode={currencyCode}
-          />
+          {/* Right: Recommendations */}
+          <div className="panel" style={{ padding: "14px 16px", overflow: "visible" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <h2 className="text-primary" style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>This Week's Focus</h2>
+              <span className="info-tooltip">?<span className="tooltip-text">Actionable recommendations based on your current data. Click any item to go fix it.</span></span>
+            </div>
+            {recommendations.length > 0 ? (
+              <div>
+                {recommendations.slice(0, 5).map((rec, i) => {
+                  const prioClass = rec.priority === "high" ? "rec-card-high" : "rec-card-medium";
+                  const prioColor = rec.priority === "high" ? "#ef4444" : "#f59e0b";
+                  return (
+                    <a key={i} href={rec.href} className={`rec-card ${prioClass}`} style={{ borderLeft: `3px solid ${prioColor}`, flexDirection: "column", gap: 2 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                        <span className="text-primary" style={{ fontSize: 13, fontWeight: 700 }}>{rec.headline}</span>
+                        <span className="text-muted" style={{ fontSize: 11, flexShrink: 0, fontWeight: 600 }}>&rarr;</span>
+                      </div>
+                      <span className="text-muted" style={{ fontSize: 11, lineHeight: 1.4 }}>{rec.detail}</span>
+                    </a>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-muted" style={{ textAlign: "center", padding: 20, fontSize: 13 }}>
+                No action items right now.
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer */}

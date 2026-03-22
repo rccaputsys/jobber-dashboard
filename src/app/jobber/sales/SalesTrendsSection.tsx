@@ -356,7 +356,7 @@ export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, currencyC
     ? "Monthly"
     : "Weekly";
 
-  const { revenuePoints, winRatePoints } = useMemo(() => {
+  const { revenuePoints, winRatePoints, weightedWinRate } = useMemo(() => {
     let start: Date, end: Date, granularity: Granularity;
 
     if (weekOffset !== null) {
@@ -383,13 +383,18 @@ export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, currencyC
 
     const endExclusive = addDaysUTC(end, 1);
 
+    const today = startOfDayUTC(new Date());
+    const todayTs = today.getTime();
     const starts: Date[] = [];
     let cur = bucketStartUTC(start, granularity);
     while (cur.getTime() < endExclusive.getTime()) {
+      const bucketEnd = nextBucketUTC(cur, granularity);
+      if (granularity !== "day" && bucketEnd.getTime() > todayTs + 86400000) {
+        cur = bucketEnd; continue;
+      }
       starts.push(cur);
-      const nxt = nextBucketUTC(cur, granularity);
-      if (nxt.getTime() === cur.getTime()) break;
-      cur = nxt;
+      if (bucketEnd.getTime() === cur.getTime()) break;
+      cur = bucketEnd;
       if (starts.length > 200) break;
     }
 
@@ -434,7 +439,19 @@ export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, currencyC
       };
     });
 
-    return { revenuePoints: revPointsFinal, winRatePoints: wrPts };
+    // Weighted win rate average: total won / total closures across visible range
+    const rangeStartMs = start.getTime();
+    const rangeEndMs = addDaysUTC(end, 1).getTime();
+    let totalWon = 0, totalClosures = 0;
+    for (const ev of allClosureEvents) {
+      if (ev.closedAt >= rangeStartMs && ev.closedAt < rangeEndMs) {
+        totalClosures++;
+        if (ev.won) totalWon++;
+      }
+    }
+    const weightedWinRate = totalClosures > 0 ? (totalWon / totalClosures) * 100 : 0;
+
+    return { revenuePoints: revPointsFinal, winRatePoints: wrPts, weightedWinRate };
   }, [weekOffset, range, g, wonQuoteEvents, allClosureEvents, money]);
 
   const hasData = wonQuoteEvents.length > 0 || allClosureEvents.length > 0;
@@ -510,6 +527,7 @@ export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, currencyC
             color="#5aa6ff"
             invertChangeColor={false}
             targetValue={winRateTarget > 0 ? winRateTarget : undefined}
+            overrideAvg={weightedWinRate}
           />
         </div>
       )}

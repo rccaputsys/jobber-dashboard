@@ -225,14 +225,19 @@ export function InvoiceTrendsSection({ events, agingBuckets, totalOutstandingCen
   // Outstanding balance over time (point-in-time: sent adds, paid removes)
   const outstandingPoints = useMemo(() => {
     const r = defaultRange(range);
+    const today = startOfDayUTC(new Date());
+    const todayTs = today.getTime();
     const starts: Date[] = [];
     let cur = bucketStartUTC(r.start, g);
     const endExcl = addDaysUTC(r.end, 1);
     while (cur.getTime() < endExcl.getTime()) {
+      const bucketEnd = nextBucketUTC(cur, g);
+      if (g !== "week" && bucketEnd.getTime() > todayTs + 86400000) {
+        cur = bucketEnd; continue;
+      }
       starts.push(cur);
-      const nxt = nextBucketUTC(cur, g);
-      if (nxt.getTime() === cur.getTime()) break;
-      cur = nxt;
+      if (bucketEnd.getTime() === cur.getTime()) break;
+      cur = bucketEnd;
       if (starts.length > 200) break;
     }
 

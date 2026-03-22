@@ -16,6 +16,9 @@ type Props = {
   arEvents: TrendEvent[];
   unschedEvents: TrendEvent[];
   currencyCode: string;
+  currentPipelineCents?: number;
+  currentOverdueCents?: number;
+  currentUnschedCents?: number;
 };
 
 /* ---- date helpers (duplicated from page to keep client bundle small) ---- */
@@ -211,7 +214,7 @@ function computePoints(
 }
 
 /* ---- Main Component ---- */
-export function TrendsSection({ leakEvents, arEvents, unschedEvents, currencyCode }: Props) {
+export function TrendsSection({ leakEvents, arEvents, unschedEvents, currencyCode, currentPipelineCents, currentOverdueCents, currentUnschedCents }: Props) {
   const sp = useSearchParams();
 
   // Initialize from URL params, then manage locally
@@ -229,13 +232,21 @@ export function TrendsSection({ leakEvents, arEvents, unschedEvents, currencyCod
     const { start, end } = defaultRange(range);
     const endExclusive = addDaysUTC(end, 1);
 
+    const today = startOfDayUTC(new Date());
+    const todayTs = today.getTime();
     const starts: Date[] = [];
     let cur = bucketStartUTC(start, g);
     while (cur.getTime() < endExclusive.getTime()) {
+      // Exclude the current incomplete period (its end hasn't arrived yet)
+      const bucketEnd = nextBucketUTC(cur, g);
+      if (bucketEnd.getTime() > todayTs + 86400000) {
+        // This bucket's end is after today — it's incomplete, skip it
+        // Exception: for "day" granularity, include today
+        if (g !== "day") { cur = bucketEnd; continue; }
+      }
       starts.push(cur);
-      const nxt = nextBucketUTC(cur, g);
-      if (nxt.getTime() === cur.getTime()) break;
-      cur = nxt;
+      if (bucketEnd.getTime() === cur.getTime()) break;
+      cur = bucketEnd;
       if (starts.length > 200) break;
     }
 
@@ -254,9 +265,12 @@ export function TrendsSection({ leakEvents, arEvents, unschedEvents, currencyCod
       </div>
 
       <div className="chart-grid" style={{ padding: "0 16px 16px" }}>
-        <SparkLine title="Quote Leak" subtitle="Point-in-time balance" points={leakPoints} formatType="money" chartType={chart} color="#ef4444" />
-        <SparkLine title="AR 15+ Days" subtitle="Point-in-time balance" points={ar15Points} formatType="money" chartType={chart} color="#f59e0b" />
-        <SparkLine title="Unscheduled" subtitle="Point-in-time backlog value" points={unschedPoints} formatType="money" chartType={chart} color="#5aa6ff" />
+        <SparkLine title="Pipeline" subtitle="Open quote value over time" points={leakPoints} formatType="money" chartType={chart} color="#5aa6ff"
+          overrideAvg={currentPipelineCents} overrideAvgLabel="Current Total" />
+        <SparkLine title="Unscheduled Work" subtitle="Backlog value over time" points={unschedPoints} formatType="money" chartType={chart} color="#06b6d4"
+          overrideAvg={currentUnschedCents} overrideAvgLabel="Current" />
+        <SparkLine title="Overdue Invoices" subtitle="Past-due balance over time" points={ar15Points} formatType="money" chartType={chart} color="#f59e0b"
+          overrideAvg={currentOverdueCents} overrideAvgLabel="Current" />
       </div>
     </div>
   );

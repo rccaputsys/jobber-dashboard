@@ -1110,6 +1110,54 @@ export const globalStyles = `
     fill: rgba(255,255,255,0.85);
   }
 
+  /* Command Strip — dense KPI row */
+  .command-strip {
+    display: grid;
+    grid-template-columns: auto repeat(3, 1fr);
+    gap: 0;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    overflow: visible;
+  }
+  .command-strip > div {
+    padding: 14px 16px;
+    border-right: 1px solid rgba(255,255,255,0.06);
+  }
+  .command-strip > div:last-child { border-right: none; }
+  @media (max-width: 768px) {
+    .command-strip {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .command-strip > div:nth-child(odd) { border-right: 1px solid rgba(255,255,255,0.06); }
+    .command-strip > div:nth-child(even) { border-right: none; }
+  }
+  @media (max-width: 480px) {
+    .command-strip { grid-template-columns: 1fr; }
+    .command-strip > div { border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .command-strip > div:last-child { border-bottom: none; }
+  }
+  html[data-theme="light"] .command-strip {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06) !important;
+  }
+  html[data-theme="light"] .command-strip > div {
+    border-color: #e2e8f0 !important;
+  }
+
+  /* Side-by-side layout */
+  .side-by-side {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: stretch;
+  }
+  @media (max-width: 768px) {
+    .side-by-side { grid-template-columns: 1fr; }
+  }
+
   /* Recommendation cards (inside a .panel) */
   .rec-card {
     display: flex;
@@ -1139,5 +1187,41 @@ export const globalStyles = `
   html[data-theme="light"] .rec-card:hover {
     background: #f1f5f9 !important;
     border-color: #cbd5e1 !important;
+  }
+  /* Priority-tinted rec cards for visibility */
+  .rec-card-high {
+    background: rgba(239,68,68,0.04) !important;
+    border-color: rgba(239,68,68,0.1) !important;
+  }
+  .rec-card-medium {
+    background: rgba(245,158,11,0.04) !important;
+    border-color: rgba(245,158,11,0.1) !important;
+  }
+  html[data-theme="light"] .rec-card-high {
+    background: #fef2f2 !important;
+    border-color: #fecaca !important;
+  }
+  html[data-theme="light"] .rec-card-medium {
+    background: #fffbeb !important;
+    border-color: #fde68a !important;
+  }
+
+  /* Money Flow vertical list */
+  .money-flow-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.12s ease;
+    margin-bottom: 2px;
+  }
+  .money-flow-row:last-child { margin-bottom: 0; }
+  .money-flow-row:hover {
+    background: rgba(255,255,255,0.04);
+  }
+  html[data-theme="light"] .money-flow-row:hover {
+    background: #f8fafc !important;
   }
 `;

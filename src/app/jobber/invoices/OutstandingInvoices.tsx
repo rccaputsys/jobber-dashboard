@@ -40,7 +40,7 @@ function moneyFmt(cents: number, code: string): string {
 
 function fmtDate(d: string | null) {
   if (!d) return "";
-  return new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" });
 }
 
 function ageColor(days: number): string {

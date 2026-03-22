@@ -20,6 +20,8 @@ export function SparkLine(props: {
   secondaryPoints?: { xLabel: string; value: number; tooltip: string; hoverLabel?: string }[];
   secondaryColor?: string;
   secondaryLabel?: string;
+  overrideAvg?: number;
+  overrideAvgLabel?: string;
 }) {
   const formatY = (v: number): string => {
     if (props.formatType === "percent") {
@@ -143,8 +145,19 @@ export function SparkLine(props: {
   // Data point labels: show when few enough points to fit
   const showDataLabels = pointCount > 0 && pointCount <= 12;
 
-  // Period average (includes all periods — zeros are real data)
-  const periodAvg = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+  // Period average
+  // - If overrideAvg is provided, use it (caller computed a weighted average)
+  // - For percentages: exclude zero-value periods (no data that period, not "0%")
+  // - For money/number: straight average of all periods (zeros are real)
+  const periodAvg = props.overrideAvg != null
+    ? props.overrideAvg
+    : (() => {
+        if (props.formatType === "percent") {
+          const nonZero = vals.filter(v => v > 0);
+          return nonZero.length > 0 ? nonZero.reduce((a, b) => a + b, 0) / nonZero.length : 0;
+        }
+        return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+      })();
 
   function formatYAxisLabel(value: number): string {
     if (props.formatType === "percent") {
@@ -269,7 +282,7 @@ export function SparkLine(props: {
           <div style={{ fontSize: 20, fontWeight: 800, color: hasTarget ? (targetColor(periodAvg) || accentColor) : accentColor, letterSpacing: -0.5 }}>
             {formatY(periodAvg)}
           </div>
-          <div className="chart-label" style={{ fontSize: 10, marginTop: 2 }}>Avg / Period</div>
+          <div className="chart-label" style={{ fontSize: 10, marginTop: 2 }}>{props.overrideAvgLabel || "Avg / Period"}</div>
         </div>
       </div>
 
