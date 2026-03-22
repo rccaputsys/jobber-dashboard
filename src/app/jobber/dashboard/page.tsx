@@ -14,6 +14,7 @@ import { MoneyFlowFunnel } from "./MoneyFlowFunnel";
 import { MoneyFlowList } from "./MoneyFlowList";
 import { CommandStrip } from "./CommandStrip";
 import { WeekGlance } from "./WeekGlance";
+import { BusinessPulse } from "./BusinessPulse";
 import { DashboardTopbar } from "./DashboardTopbar";
 import {
   safeDate as _safeDate,
@@ -1047,6 +1048,41 @@ const quoteWonPct = quotesInLast30Days.length > 0
     revenueSparkline.push(monthRevenue(mStart, mEnd).revenue);
   }
 
+  // Business Pulse: monthly revenue + collections + overdue for 6 months
+  const pulseMonths: { label: string; revenueCents: number; overdueCents: number; collectedCents: number; isCurrent: boolean }[] = [];
+  for (let m = 5; m >= 0; m--) {
+    const mStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() - m, 1));
+    const mEnd = new Date(Date.UTC(mStart.getUTCFullYear(), mStart.getUTCMonth() + 1, 1));
+    const mStartMs = mStart.getTime();
+    const mEndMs = mEnd.getTime();
+    const mLabel = mStart.toLocaleString(undefined, { month: "short", timeZone: "UTC" });
+
+    // Revenue earned (visit completions + visitless job completions)
+    const rev = monthRevenue(mStart, mEnd).revenue;
+
+    // Collected (paid invoices this month)
+    const collected = invoices.filter((inv: any) => {
+      const pd = safeDate(inv.paid_at);
+      return pd && pd.getTime() >= mStartMs && pd.getTime() < mEndMs && (inv.status || "").toLowerCase() === "paid";
+    }).reduce((s: number, inv: any) => s + Number(inv.total_amount_cents ?? 0), 0);
+
+    // Overdue balance at end of month (invoices due before month end, not paid by month end)
+    const overdue = invoices.filter((inv: any) => {
+      const due = safeDate(inv.due_at);
+      if (!due || due.getTime() >= mEndMs) return false;
+      const st = (inv.status || "").toLowerCase();
+      if (st === "paid" || st === "draft" || st === "voided" || st === "bad_debt") {
+        const pd = safeDate(inv.paid_at);
+        if (pd && pd.getTime() < mEndMs) return false; // was paid before end of month
+        if (st === "draft" || st === "voided" || st === "bad_debt") return false;
+      }
+      return true;
+    }).reduce((s: number, inv: any) => s + Number(inv.balance_cents ?? inv.total_amount_cents ?? 0), 0);
+
+    pulseMonths.push({ label: mLabel, revenueCents: rev, overdueCents: overdue, collectedCents: collected, isCurrent: m === 0 });
+  }
+  const totalPulseRevenue = pulseMonths.reduce((s, m) => s + m.revenueCents, 0);
+
   // Needs invoicing (computed early for use in recommendations)
   const needsInvoiceJobs = jobs.filter((j: any) => (j.status || "").toLowerCase() === "requires_invoicing");
   const needsInvoiceCount = needsInvoiceJobs.length;
@@ -1491,6 +1527,16 @@ const quoteWonPct = quotesInLast30Days.length > 0
             </div>
           </div>
         )}
+
+        {/* ===== Business Pulse — the hero chart ===== */}
+        <div className="panel animate-in delay-1" style={{ marginTop: 16, padding: "20px 24px", overflow: "visible" }}>
+          <BusinessPulse
+            months={pulseMonths}
+            currencyCode={currencyCode}
+            totalRevenue={totalPulseRevenue}
+            totalOverdue={totalAR}
+          />
+        </div>
 
         {/* ===== Week at a Glance ===== */}
         <div className="panel animate-in delay-1" style={{ marginTop: 16, padding: "14px 16px", overflow: "visible" }}>
