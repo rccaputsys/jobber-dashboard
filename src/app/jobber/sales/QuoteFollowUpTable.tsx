@@ -104,8 +104,6 @@ export function QuoteFollowUpTable({
             <th>Quote</th>
             <th className="sortable" onClick={() => toggleSort("sent")} style={{ textAlign: "center" }}>Sent {arrow("sent")}</th>
             <th className="sortable" onClick={() => toggleSort("amount")} style={{ textAlign: "right" }}>Amount {arrow("amount")}</th>
-            <th className="sortable" onClick={() => toggleSort("activity")} style={{ textAlign: "center" }}>Last Activity {arrow("activity")}</th>
-            <th style={{ textAlign: "center" }}>Status</th>
             <th style={{ textAlign: "center", width: 70 }}>Action</th>
           </tr>
         </thead>
@@ -119,7 +117,7 @@ export function QuoteFollowUpTable({
                 onClick={() => toggle(bucket.key)}
                 style={{ cursor: "pointer" }}
               >
-                <td colSpan={7} style={{
+                <td colSpan={5} style={{
                   padding: "12px 16px",
                   background: bucket.bg,
                   borderLeft: `3px solid ${bucket.color}`,
@@ -190,23 +188,6 @@ export function QuoteFollowUpTable({
                   </td>
                   <td className="cell-primary" style={{ fontWeight: 600, whiteSpace: "nowrap", textAlign: "right" }}>
                     {money(q.amount_cents)}
-                  </td>
-                  <td className="cell-muted" style={{ whiteSpace: "nowrap", textAlign: "center" }}>
-                    {fmtDate(q.updated_at)}
-                  </td>
-                  <td style={{ textAlign: "center" }}>
-                    <span style={{
-                      display: "inline-block",
-                      padding: "3px 8px",
-                      borderRadius: 6,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      background: "rgba(90,166,255,0.15)",
-                      color: "#5aa6ff",
-                      textTransform: "capitalize",
-                    }}>
-                      {(q.status || "").replace(/_/g, " ").toLowerCase()}
-                    </span>
                   </td>
                   <td style={{ textAlign: "center" }}>
                     {q.quote_url && (

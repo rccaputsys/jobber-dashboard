@@ -114,7 +114,7 @@ export function CapacityWeekBreakdown({
   // Include all day targets in max so target lines never go off the chart
   const allDayTargets = DAY_KEYS.map(k => getDayTarget(k));
   const maxRevenue = Math.max(...days.map(d => d.revenue), ...allDayTargets, 1);
-  const BAR_HEIGHT = 120;
+  const BAR_HEIGHT = 180;
 
   const pillGroup: React.CSSProperties = { display: "flex", gap: 2, background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.05)", borderRadius: 10, padding: 3 };
   const btnStyle = (active: boolean, h: boolean): React.CSSProperties => ({
@@ -128,11 +128,10 @@ export function CapacityWeekBreakdown({
   function barColor(revenue: number, target: number): string {
     if (!target) return "#5aa6ff";
     const ratio = revenue / target;
-    if (ratio > 1.3) return "#ef4444";
-    if (ratio > 1.15) return "#f59e0b";
-    if (ratio >= 0.85) return "#10b981";
-    if (ratio >= 0.5) return "#f59e0b";
-    return "#ef4444";
+    if (ratio > 1.5) return "#f59e0b";     // way over — amber, not red
+    if (ratio >= 0.7) return "#10b981";     // 70-150% = green (wide range)
+    if (ratio >= 0.3) return "#f59e0b";     // 30-70% = amber
+    return "#5aa6ff";                        // under 30% = blue (neutral, not alarming)
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -205,7 +204,7 @@ export function CapacityWeekBreakdown({
                   {enabled ? money(day.revenue) : "\u2014"}
                 </div>
                 <div className="text-muted" style={{ fontSize: 10, marginTop: 2 }}>
-                  {enabled ? `${day.jobCount} ${day.jobCount === 1 ? "job" : "jobs"}` : "Off"}
+                  {enabled ? `${day.jobCount} ${day.jobCount === 1 ? "booked" : "booked"}` : "Off"}
                 </div>
               </div>
             );

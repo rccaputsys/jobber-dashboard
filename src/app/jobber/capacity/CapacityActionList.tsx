@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ExportCSV } from "../dashboard/ExportCSV";
 
 type UnscheduledJob = {
@@ -10,6 +10,14 @@ type UnscheduledJob = {
   jobber_url: string;
   status: string;
   created_at: string | null;
+};
+
+type LateVisit = {
+  title: string;
+  job_number: number;
+  start_at: string | null;
+  days_late: number;
+  amount_cents: number;
 };
 
 type Bucket = {
@@ -152,18 +160,32 @@ function GroupedTable({ buckets, money }: { buckets: Bucket[]; money: (c: number
 /* ---- Main component ---- */
 export function CapacityActionList({
   unscheduledJobs,
+  lateVisits = [],
   currencyCode,
 }: {
   unscheduledJobs: UnscheduledJob[];
+  lateVisits?: LateVisit[];
   currencyCode: string;
 }) {
+  const [tab, setTab] = useState<"unscheduled" | "late">("unscheduled");
+  const [isLight, setIsLight] = useState(false);
+  const [hovered, setHovered] = useState<string | null>(null);
   const money = useMemo(() => (cents: number) => moneyFmt(cents, currencyCode), [currencyCode]);
 
-  if (unscheduledJobs.length === 0) return null;
+  useEffect(() => {
+    const check = () => setIsLight(document.documentElement.getAttribute("data-theme") === "light");
+    check();
+    const obs = new MutationObserver(check);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => obs.disconnect();
+  }, []);
+
+  if (unscheduledJobs.length === 0 && lateVisits.length === 0) return null;
 
   const totalCents = unscheduledJobs.reduce((s, j) => s + j.total_amount_cents, 0);
+  const activeTab = tab === "late" && lateVisits.length === 0 ? "unscheduled" : tab;
 
-  // Bucket by value
+  // Bucket unscheduled by value
   const buckets: Bucket[] = [
     { key: "high", label: "High Value", range: "$1,000+", color: "#10b981", bg: "rgba(16,185,129,0.08)", jobs: [], totalCents: 0 },
     { key: "medium", label: "Medium Value", range: "$250\u2013$999", color: "#5aa6ff", bg: "rgba(90,166,255,0.08)", jobs: [], totalCents: 0 },
@@ -176,39 +198,89 @@ export function CapacityActionList({
     bucket.jobs.push(j);
   }
 
+  // Bucket late visits by how late
+  const lateBuckets: Bucket[] = [
+    { key: "very-late", label: "7+ Days Late", range: "Critical", color: "#ef4444", bg: "rgba(239,68,68,0.08)", jobs: [], totalCents: 0 },
+    { key: "late", label: "1\u20136 Days Late", range: "Overdue", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", jobs: [], totalCents: 0 },
+  ];
+  for (const v of lateVisits) {
+    const bucket = v.days_late >= 7 ? lateBuckets[0] : lateBuckets[1];
+    bucket.totalCents += v.amount_cents;
+    bucket.jobs.push({
+      job_number: v.job_number,
+      job_title: v.title,
+      total_amount_cents: v.amount_cents,
+      jobber_url: "",
+      status: "late",
+      created_at: v.start_at,
+    });
+  }
+
+  const pillGroup: React.CSSProperties = { display: "flex", gap: 2, background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.05)", borderRadius: 10, padding: 3 };
+  const btnStyle = (active: boolean, h: boolean): React.CSSProperties => ({
+    padding: "6px 14px", borderRadius: 8, border: "none",
+    background: active ? "linear-gradient(135deg, #7c5cff, #5aa6ff)" : h ? (isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)") : "transparent",
+    color: active ? "#fff" : isLight ? "#334155" : "rgba(255,255,255,0.85)",
+    fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s ease",
+    boxShadow: active ? "0 4px 12px rgba(124,92,255,0.3)" : "none", whiteSpace: "nowrap",
+  });
+
+  const titles = { unscheduled: "Unscheduled Jobs", late: "Late Visits" };
+  const tooltips = {
+    unscheduled: "Jobs without a scheduled date. Schedule these to fill your capacity gaps.",
+    late: "Visits that are past their scheduled date and haven't been completed. These need immediate attention.",
+  };
+  const subtitles = {
+    unscheduled: `${unscheduledJobs.length} ${unscheduledJobs.length === 1 ? "job" : "jobs"} totaling ${money(totalCents)} not yet scheduled`,
+    late: `${lateVisits.length} visit${lateVisits.length !== 1 ? "s" : ""} behind schedule`,
+  };
+
   return (
     <div className="panel animate-in delay-2" style={{ marginTop: 20, padding: 20 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
-              Unscheduled Jobs
+              {titles[activeTab]}
             </h2>
-            <span className="info-tooltip">?<span className="tooltip-text">Jobs without a scheduled date. Schedule these to fill your capacity gaps — sorted by value so you can prioritize the biggest opportunities first.</span></span>
+            <span className="info-tooltip">?<span className="tooltip-text">{tooltips[activeTab]}</span></span>
           </div>
           <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
-            {unscheduledJobs.length} {unscheduledJobs.length === 1 ? "job" : "jobs"} totaling {money(totalCents)} not yet scheduled
+            {subtitles[activeTab]}
           </p>
         </div>
-        <ExportCSV
-          data={unscheduledJobs.map(j => ({
-            "Value Group": j.total_amount_cents >= 100000 ? "High Value" : j.total_amount_cents >= 25000 ? "Medium Value" : "Low Value",
-            "Job #": j.job_number,
-            "Title": j.job_title,
-            "Amount": (j.total_amount_cents / 100).toFixed(2),
-            "Created": j.created_at ? new Date(j.created_at).toLocaleDateString() : "",
-            "Jobber URL": j.jobber_url,
-          }))}
-          filename="unscheduled-jobs"
-          label="Export CSV"
-        />
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {activeTab === "unscheduled" && (
+            <ExportCSV
+              data={unscheduledJobs.map(j => ({
+                "Value Group": j.total_amount_cents >= 100000 ? "High Value" : j.total_amount_cents >= 25000 ? "Medium Value" : "Low Value",
+                "Job #": j.job_number,
+                "Title": j.job_title,
+                "Amount": (j.total_amount_cents / 100).toFixed(2),
+                "Created": j.created_at ? new Date(j.created_at).toLocaleDateString() : "",
+                "Jobber URL": j.jobber_url,
+              }))}
+              filename="unscheduled-jobs"
+              label="Export CSV"
+            />
+          )}
+          <div style={pillGroup}>
+            <button onClick={() => setTab("unscheduled")} onMouseEnter={() => setHovered("unsched")} onMouseLeave={() => setHovered(null)} style={btnStyle(activeTab === "unscheduled", hovered === "unsched")}>
+              Unscheduled ({unscheduledJobs.length})
+            </button>
+            <button onClick={() => setTab("late")} onMouseEnter={() => setHovered("late")} onMouseLeave={() => setHovered(null)} style={btnStyle(activeTab === "late", hovered === "late")}>
+              Late ({lateVisits.length})
+            </button>
+          </div>
+        </div>
       </div>
 
+      {activeTab === "unscheduled" && unscheduledJobs.length > 0 && (<>
       {/* Distribution bar */}
       <div style={{ marginBottom: 20 }}>
         <div style={{
           display: "flex", height: 32, borderRadius: 8, overflow: "hidden",
-          background: "rgba(255,255,255,0.04)",
+          background: isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
         }}>
           {buckets.map((bucket) => {
             const widthPct = totalCents > 0 ? (bucket.totalCents / totalCents) * 100 : 0;
@@ -258,6 +330,23 @@ export function CapacityActionList({
 
       {/* Collapsible grouped table */}
       <GroupedTable buckets={buckets} money={money} />
+      </>)}
+
+      {activeTab === "late" && lateVisits.length > 0 && (
+        <GroupedTable buckets={lateBuckets} money={money} />
+      )}
+
+      {activeTab === "late" && lateVisits.length === 0 && (
+        <div className="text-muted" style={{ textAlign: "center", padding: 24, fontSize: 14 }}>
+          No late visits — all on schedule.
+        </div>
+      )}
+
+      {activeTab === "unscheduled" && unscheduledJobs.length === 0 && (
+        <div className="text-muted" style={{ textAlign: "center", padding: 24, fontSize: 14 }}>
+          No unscheduled jobs.
+        </div>
+      )}
     </div>
   );
 }

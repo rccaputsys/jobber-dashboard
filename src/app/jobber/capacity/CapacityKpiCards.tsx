@@ -24,19 +24,19 @@ type PeriodMetrics = {
 export type { PeriodMetrics };
 
 function fillColor(fill: number) {
-  if (fill > 1.3) return "#ef4444";    // significantly overbooked
-  if (fill > 1.15) return "#f59e0b";   // over capacity
-  if (fill >= 0.85) return "#10b981";  // on target (±15%)
-  if (fill >= 0.5) return "#f59e0b";   // building
-  return "#ef4444";                     // well below target
+  if (fill > 1.5) return "#f59e0b";    // way overbooked — amber
+  if (fill >= 0.7) return "#10b981";   // 70-150% = green (healthy range)
+  if (fill >= 0.3) return "#f59e0b";   // 30-70% = amber (building)
+  return "#5aa6ff";                     // under 30% = blue (just starting)
 }
 
 function fillLabel(fill: number) {
-  if (fill > 1.3) return "Overbooked";
-  if (fill > 1.15) return "Over Capacity";
+  if (fill > 1.5) return "Overbooked";
+  if (fill > 1.15) return "Ahead of Target";
   if (fill >= 0.85) return "On Target";
-  if (fill >= 0.5) return "Filling";
-  return "Below Target";
+  if (fill >= 0.7) return "Almost There";
+  if (fill >= 0.3) return "Building";
+  return "Getting Started";
 }
 
 /* ---- SVG donut gauge (tachometer style) ---- */
@@ -260,6 +260,7 @@ export function CapacityKpiCards({
   currencyCode,
   adminConnectionId,
   projectionSummary,
+  targetsOnly,
 }: {
   thisWeek: PeriodMetrics;
   nextWeek: PeriodMetrics;
@@ -271,6 +272,7 @@ export function CapacityKpiCards({
   currencyCode: string;
   adminConnectionId?: string;
   projectionSummary?: { fillPct: number; gapCents: number; weeks: number } | null;
+  targetsOnly?: boolean;
 }) {
   const [period, setPeriod] = useState<"thisWeek" | "nextWeek" | "thisMonth" | "nextMonth">("thisWeek");
   const [isLight, setIsLight] = useState(false);
@@ -315,6 +317,17 @@ export function CapacityKpiCards({
 
   const pctFmt = (v: number) => `${Math.round(v * 100)}%`;
 
+  // Targets-only mode: just render the target inputs inline
+  if (targetsOnly) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+        <TargetInput label="Weekly Target" field="weekly_capacity_cents" currentCents={currentWeeklyCents} currencyCode={currencyCode} isLight={isLight} adminConnectionId={adminConnectionId} />
+        <div style={{ width: 1, height: 20, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)" }} />
+        <TargetInput label="Monthly Target" field="monthly_capacity_cents" currentCents={currentMonthlyCents} currencyCode={currencyCode} isLight={isLight} adminConnectionId={adminConnectionId} />
+      </div>
+    );
+  }
+
   return (
     <div className="panel" style={{ padding: 0, overflow: "visible" }}>
       {/* Row 1: Target input + period toggle */}
@@ -344,62 +357,83 @@ export function CapacityKpiCards({
         </div>
       </div>
 
-      {/* Row 2: Hero revenue + gauge + KPI cards */}
+      {/* Row 2: Hero stats + capacity fill bar */}
       <div style={{ padding: "24px 24px 20px" }}>
-        {/* Top: Big revenue number with change badge */}
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 24 }}>
+        {/* Stats header row — like the collection chart */}
+        <div style={{ display: "flex", gap: 24, marginBottom: 20, flexWrap: "wrap" }}>
           <div>
-            <div className="text-muted" style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
-              Scheduled Revenue &bull; {metrics.periodLabel}
+            <div style={{ fontSize: 32, fontWeight: 800, color: revenueColor, letterSpacing: -1.5, lineHeight: 1 }}>
+              {metrics.scheduledRevenue}
             </div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
-              <div className="text-primary" style={{ fontSize: 42, fontWeight: 800, letterSpacing: -1.5, lineHeight: 1 }}>
-                {metrics.scheduledRevenue}
-              </div>
-              {metrics.priorRevenueCents > 0 && (() => {
-                const changePct = ((metrics.scheduledRevenueCents - metrics.priorRevenueCents) / metrics.priorRevenueCents) * 100;
-                const up = changePct >= 0;
-                const changeColor = up ? "#10b981" : "#ef4444";
-                const changeBg = up ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)";
-                return (
-                  <span style={{
-                    display: "inline-flex", alignItems: "center", gap: 3,
-                    padding: "4px 10px", borderRadius: 8,
-                    background: changeBg, fontSize: 13, fontWeight: 700, color: changeColor,
-                  }}>
-                    {up ? "\u2191" : "\u2193"} {Math.abs(Math.round(changePct))}%
-                    <span style={{ fontWeight: 500, opacity: 0.7 }}>vs prior</span>
-                  </span>
-                );
-              })()}
+            <div style={{ fontSize: 12, color: isLight ? "#64748b" : "rgba(255,255,255,0.5)", marginTop: 4, fontWeight: 500 }}>
+              Scheduled &bull; {metrics.periodLabel}
             </div>
           </div>
           {hasTarget && (
-            <div className="text-muted" style={{ fontSize: 13, fontWeight: 500 }}>
-              {metrics.jobCount} {metrics.jobCount === 1 ? "job" : "jobs"} &bull; {moneyFmt(metrics.targetCents)} target
+            <div style={{ borderLeft: `1px solid ${isLight ? "#e2e8f0" : "rgba(255,255,255,0.06)"}`, paddingLeft: 24 }}>
+              <div style={{ fontSize: 22, fontWeight: 800, color: revenueColor, letterSpacing: -0.5, lineHeight: 1 }}>
+                {pctFmt(metrics.fillRate)}
+              </div>
+              <div style={{ fontSize: 12, color: isLight ? "#64748b" : "rgba(255,255,255,0.5)", marginTop: 4, fontWeight: 500 }}>
+                {fillLabel(metrics.fillRate)}
+              </div>
             </div>
           )}
+          <div style={{ borderLeft: `1px solid ${isLight ? "#e2e8f0" : "rgba(255,255,255,0.06)"}`, paddingLeft: 24 }}>
+            <div className="text-primary" style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.5, lineHeight: 1 }}>
+              {metrics.jobCount}
+            </div>
+            <div style={{ fontSize: 12, color: isLight ? "#64748b" : "rgba(255,255,255,0.5)", marginTop: 4, fontWeight: 500 }}>
+              Booked
+            </div>
+          </div>
+          {metrics.priorRevenueCents > 0 && (() => {
+            const changePct = ((metrics.scheduledRevenueCents - metrics.priorRevenueCents) / metrics.priorRevenueCents) * 100;
+            const up = changePct >= 0;
+            return (
+              <div style={{ borderLeft: `1px solid ${isLight ? "#e2e8f0" : "rgba(255,255,255,0.06)"}`, paddingLeft: 24 }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: up ? "#10b981" : "#ef4444", letterSpacing: -0.5, lineHeight: 1 }}>
+                  {up ? "+" : ""}{Math.round(changePct)}%
+                </div>
+                <div style={{ fontSize: 12, color: isLight ? "#64748b" : "rgba(255,255,255,0.5)", marginTop: 4, fontWeight: 500 }}>
+                  vs Prior Period
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
-        {/* Middle: Gauge + KPI stat cards */}
-        <div style={{ display: "flex", alignItems: "stretch", gap: 20, flexWrap: "wrap" }}>
-          {/* Gauge */}
-          <div style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
-            {hasTarget ? (
-              <Gauge fillRate={metrics.fillRate} size={180} isLight={isLight} />
-            ) : (
+        {/* Capacity fill bar — big horizontal progress bar */}
+        {hasTarget && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{
+              height: 24, borderRadius: 12,
+              background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)",
+              overflow: "hidden", position: "relative",
+            }}>
               <div style={{
-                width: 180, height: 180, borderRadius: "50%",
-                border: `3px dashed ${isLight ? "#cbd5e1" : "rgba(255,255,255,0.12)"}`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                textAlign: "center", padding: 24,
-              }}>
-                <span style={{ fontSize: 12, color: isLight ? "#94a3b8" : "rgba(255,255,255,0.35)", lineHeight: 1.4, fontWeight: 500 }}>
-                  Set a target above to see fill rate
-                </span>
-              </div>
-            )}
+                height: "100%", borderRadius: 12,
+                width: `${Math.min(metrics.fillRate * 100, 100)}%`,
+                background: `linear-gradient(90deg, ${revenueColor}cc, ${revenueColor})`,
+                transition: "width 0.5s ease",
+                minWidth: metrics.fillRate > 0 ? 8 : 0,
+              }} />
+              {/* Target marker at 100% */}
+              <div style={{
+                position: "absolute", top: 0, bottom: 0, left: "100%",
+                width: 2, background: isLight ? "#334155" : "rgba(255,255,255,0.4)",
+                transform: "translateX(-2px)",
+              }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+              <span style={{ fontSize: 10, color: isLight ? "#94a3b8" : "rgba(255,255,255,0.3)" }}>$0</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: isLight ? "#475569" : "rgba(255,255,255,0.5)" }}>Target: {moneyFmt(metrics.targetCents)}</span>
+            </div>
           </div>
+        )}
+
+        {/* KPI stat cards */}
+        <div style={{ display: "flex", alignItems: "stretch", gap: 20, flexWrap: "wrap" }}>
 
           {/* KPI stat cards — neutral values, color only on change indicators */}
           <div style={{ flex: 1, display: "grid", gridTemplateColumns: hasTarget ? "1fr 1fr" : "1fr", gap: 12, minWidth: 200, alignItems: "center" }}>
@@ -449,19 +483,19 @@ export function CapacityKpiCards({
                     </span>
                   );
                 })() : (
-                  <span className="text-muted">{metrics.jobCount} {metrics.jobCount === 1 ? "job" : "jobs"}</span>
+                  <span className="text-muted">{metrics.jobCount} {metrics.jobCount === 1 ? "booked" : "booked"}</span>
                 )}
               </div>
             </div>
 
-            {/* Jobs Booked */}
+            {/* Booked */}
             {hasTarget && (
               <div className="kpi-secondary" style={{
                 borderLeft: `3px solid ${isLight ? "#94a3b8" : "rgba(255,255,255,0.15)"}`,
                 padding: "16px 18px",
               }}>
                 <div className="text-muted" style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
-                  Jobs Booked
+                  Booked
                 </div>
                 <div className="text-primary" style={{ fontSize: 28, fontWeight: 800, letterSpacing: -0.5, lineHeight: 1 }}>
                   {metrics.jobCount}
