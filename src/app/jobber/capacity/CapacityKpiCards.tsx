@@ -252,8 +252,11 @@ function TargetInput({ label, field, currentCents, currencyCode, isLight, adminC
 /* ---- Main component ---- */
 export function CapacityKpiCards({
   thisWeek,
-  nextWeek,
+  lastWeek,
   thisMonth,
+  lastMonth,
+  allTime,
+  nextWeek,
   nextMonth,
   hasTarget,
   currentWeeklyCents,
@@ -264,8 +267,11 @@ export function CapacityKpiCards({
   targetsOnly,
 }: {
   thisWeek: PeriodMetrics;
-  nextWeek: PeriodMetrics;
+  lastWeek?: PeriodMetrics;
   thisMonth: PeriodMetrics;
+  lastMonth?: PeriodMetrics;
+  allTime?: PeriodMetrics;
+  nextWeek: PeriodMetrics;
   nextMonth: PeriodMetrics;
   hasTarget: boolean;
   currentWeeklyCents: number | null;
@@ -275,17 +281,26 @@ export function CapacityKpiCards({
   projectionSummary?: { fillPct: number; gapCents: number; weeks: number } | null;
   targetsOnly?: boolean;
 }) {
-  const [period, setPeriod] = useState<"thisWeek" | "nextWeek" | "thisMonth" | "nextMonth">("thisWeek");
+  type PeriodKey = "thisWeek" | "lastWeek" | "thisMonth" | "lastMonth" | "allTime";
+  const [period, setPeriod] = useState<PeriodKey>("thisWeek");
   const isLight = useIsLight();
   const [hovered, setHovered] = useState<string | null>(null);
 
-  const metrics = period === "thisWeek" ? thisWeek : period === "nextWeek" ? nextWeek : period === "thisMonth" ? thisMonth : nextMonth;
+  const metricsMap: Record<PeriodKey, PeriodMetrics> = {
+    thisWeek,
+    lastWeek: lastWeek || thisWeek,
+    thisMonth,
+    lastMonth: lastMonth || thisMonth,
+    allTime: allTime || thisWeek,
+  };
+  const metrics = metricsMap[period];
 
-  const options = [
-    { key: "thisWeek" as const, label: "This Week" },
-    { key: "nextWeek" as const, label: "Next Week" },
-    { key: "thisMonth" as const, label: "This Month" },
-    { key: "nextMonth" as const, label: "Next Month" },
+  const options: { key: PeriodKey; label: string }[] = [
+    { key: "thisWeek", label: "This Week" },
+    { key: "lastWeek", label: "Last Week" },
+    { key: "thisMonth", label: "This Month" },
+    { key: "lastMonth", label: "Last Month" },
+    { key: "allTime", label: "All Time" },
   ];
 
   const pillGroup: React.CSSProperties = { display: "flex", gap: 2, background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.05)", borderRadius: 10, padding: 3 };

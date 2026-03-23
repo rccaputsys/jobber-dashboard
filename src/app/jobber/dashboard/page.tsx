@@ -1022,6 +1022,14 @@ const quoteWonPct = quotesInLast30Days.length > 0
   const thisWeekSnap = weekSnapshot(thisWeekStart, thisWeekEnd);
   const nextWeekSnap = weekSnapshot(nextWeekStart, nextWeekEnd);
 
+  // Additional period snapshots for the period toggle
+  const thisMonthStart = startOfMonthUTC(todayUTC);
+  const thisMonthEnd = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() + 1, 1));
+  const lastMonthStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() - 1, 1));
+  const thisMonthSnap = weekSnapshot(thisMonthStart, thisMonthEnd);
+  const lastMonthSnap = weekSnapshot(lastMonthStart, thisMonthStart);
+  const allTimeSnap = weekSnapshot(new Date(0), new Date(Date.now() + 86400000));
+
   // Compute inline sparklines (8-week point-in-time snapshots)
   type TrendEvent = { enterAt: number; exitAt: number | null; amount: number };
   function computeSparkline(events: TrendEvent[], weeks: number): number[] {
@@ -1286,8 +1294,6 @@ const quoteWonPct = quotesInLast30Days.length > 0
   };
 
   /* ===== Revenue & collection metrics ===== */
-  const thisMonthStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth(), 1));
-  const lastMonthStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() - 1, 1));
   const nextMonthStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() + 1, 1));
 
   const thisMonthData = monthRevenue(thisMonthStart, nextMonthStart);
@@ -1569,6 +1575,9 @@ const quoteWonPct = quotesInLast30Days.length > 0
             lastWeek={lastWeekSnap}
             thisWeek={thisWeekSnap}
             nextWeek={nextWeekSnap}
+            thisMonth={thisMonthSnap}
+            lastMonth={lastMonthSnap}
+            allTime={allTimeSnap}
             currencyCode={currencyCode}
             sparklines={{
               revenue: revenueSparkline,

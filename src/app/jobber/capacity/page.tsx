@@ -307,7 +307,10 @@ export default async function CapacityPage({
   const kpiThisWeek = computePeriodMetrics(thisWeekStart, thisWeekEnd, weeklyCapacityCents, "This Week");
   const kpiNextWeek = computePeriodMetrics(nextWeekStart, nextWeekEnd, weeklyCapacityCents, "Next Week");
   const kpiThisMonth = computePeriodMetrics(thisMonthStart, thisMonthEnd, weeklyCapacityCents, "This Month", monthlyCapacityCents);
+  const lastMonthStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() - 1, 1));
+  const kpiLastMonth = computePeriodMetrics(lastMonthStart, thisMonthStart, weeklyCapacityCents, "Last Month", monthlyCapacityCents);
   const kpiNextMonth = computePeriodMetrics(nextMonthStart, nextMonthEnd, weeklyCapacityCents, "Next Month", monthlyCapacityCents);
+  const kpiAllTime = computePeriodMetrics(new Date(0), new Date(Date.now() + 86400000), weeklyCapacityCents, "All Time");
 
   // 8-week capacity chart data: 4 weeks back + current + 3 forward
   const capacityWeeks: { label: string; revenueCents: number; count: number; isCurrent: boolean; isFuture: boolean }[] = [];
@@ -500,8 +503,11 @@ export default async function CapacityPage({
             </div>
             <CapacityKpiCards
               thisWeek={kpiThisWeek}
-              nextWeek={kpiNextWeek}
+              lastWeek={kpiLastWeek}
               thisMonth={kpiThisMonth}
+              lastMonth={kpiLastMonth}
+              allTime={kpiAllTime}
+              nextWeek={kpiNextWeek}
               nextMonth={kpiNextMonth}
               hasTarget={!!(weeklyCapacityCents || monthlyCapacityCents)}
               currentWeeklyCents={weeklyCapacityCents}
