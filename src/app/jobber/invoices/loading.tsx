@@ -1,5 +1,5 @@
 import { TabLoadingScreen } from "../dashboard/loading";
 
 export default function Loading() {
-  return <TabLoadingScreen tab="Sales" />;
+  return <TabLoadingScreen tab="Invoices" />;
 }
