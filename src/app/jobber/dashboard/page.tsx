@@ -1231,37 +1231,51 @@ const quoteWonPct = quotesInLast30Days.length > 0
   const nextMonthStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() + 1, 1));
 
   // Revenue this month: completed visits + completed visitless jobs
+  // Pre-bucket completed visits and visitless jobs by month key (single pass)
+  const _monthRevCache = new Map<string, { revenue: number; count: number }>();
+  function _monthKey(d: Date) { return `${d.getUTCFullYear()}-${d.getUTCMonth()}`; }
+  for (const v of visits) {
+    const c = safeDate((v as any).completed_at);
+    if (!c) continue;
+    const key = _monthKey(c);
+    const entry = _monthRevCache.get(key) || { revenue: 0, count: 0 };
+    const jid = (v as any).jobber_job_id;
+    const jobTotal = jobTotalMap.get(jid) || 0;
+    const vCount = jobVisitCountMap.get(jid) || 1;
+    entry.revenue += Math.round(jobTotal / vCount);
+    entry.count++;
+    _monthRevCache.set(key, entry);
+  }
+  for (const j of jobs) {
+    if (jobIdsWithVisits.has((j as any).jobber_job_id)) continue;
+    const st = ((j as any).status || "").toLowerCase();
+    if (!completedStatuses.includes(st)) continue;
+    const raw = completedDateKeys.map((k: string) => (j as any)[k]).find((v: any) => v);
+    const dt = safeDate(raw);
+    if (!dt) continue;
+    const key = _monthKey(dt);
+    const entry = _monthRevCache.get(key) || { revenue: 0, count: 0 };
+    entry.revenue += Number((j as any).job_revenue_cents ?? (j as any).total_amount_cents ?? 0);
+    entry.count++;
+    _monthRevCache.set(key, entry);
+  }
+
   function monthRevenue(mStart: Date, mEnd: Date) {
-    const mStartMs = mStart.getTime();
-    const mEndMs = mEnd.getTime();
-
-    // Completed visits in this month
-    const monthVisits = visits.filter((v: any) => {
-      const c = safeDate(v.completed_at);
-      return c && c.getTime() >= mStartMs && c.getTime() < mEndMs;
-    });
-    let rev = 0;
-    for (const v of monthVisits) {
-      const jid = (v as any).jobber_job_id;
-      const jobTotal = jobTotalMap.get(jid) || 0;
-      const vCount = jobVisitCountMap.get(jid) || 1;
-      rev += Math.round(jobTotal / vCount);
+    // For single-month lookups, use the cache directly
+    if (mEnd.getUTCMonth() === (mStart.getUTCMonth() + 1) % 12 ||
+        (mEnd.getUTCMonth() === 0 && mStart.getUTCMonth() === 11)) {
+      const cached = _monthRevCache.get(_monthKey(mStart));
+      return cached || { revenue: 0, count: 0 };
     }
-
-    // Completed visitless jobs in this month (requires_invoicing or archived)
-    const monthJobs = jobs.filter((j: any) => {
-      if (jobIdsWithVisits.has(j.jobber_job_id)) return false;
-      const st = (j.status || "").toLowerCase();
-      if (!completedStatuses.includes(st)) return false;
-      const raw = completedDateKeys.map((k: string) => j[k]).find((v: any) => v);
-      const dt = safeDate(raw);
-      return dt && dt.getTime() >= mStartMs && dt.getTime() < mEndMs;
-    });
-    for (const j of monthJobs) {
-      rev += Number((j as any).job_revenue_cents ?? (j as any).total_amount_cents ?? 0);
+    // Multi-month range: sum buckets
+    let rev = 0, count = 0;
+    const cursor = new Date(mStart);
+    while (cursor < mEnd) {
+      const cached = _monthRevCache.get(_monthKey(cursor));
+      if (cached) { rev += cached.revenue; count += cached.count; }
+      cursor.setUTCMonth(cursor.getUTCMonth() + 1);
     }
-
-    return { revenue: rev, count: monthVisits.length + monthJobs.length };
+    return { revenue: rev, count };
   }
 
   const thisMonthData = monthRevenue(thisMonthStart, nextMonthStart);
