@@ -103,7 +103,7 @@ function WeekCard({ title, last, current, next, isLight, sparkline, sparklineCol
     }}>
       {/* Title + sparkline */}
       <div style={{
-        padding: "7px 12px",
+        padding: "8px 14px",
         background: isLight ? "#f8fafc" : "rgba(255,255,255,0.03)",
         borderBottom: `1px solid ${border}`,
         display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -118,14 +118,14 @@ function WeekCard({ title, last, current, next, isLight, sparkline, sparklineCol
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr 1fr" }}>
         {/* Last */}
-        <div style={{ padding: "10px 10px", background: sideBg, borderRight: `1px solid ${border}` }}>
+        <div style={{ padding: "12px 12px", background: sideBg, borderRight: `1px solid ${border}` }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: labelColor, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.3 }}>Last</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: mutedColor }}>{last.primary}</div>
           {last.secondary && <div style={{ fontSize: 11, marginTop: 2, color: mutedColor }}>{last.secondary}</div>}
         </div>
 
         {/* This week */}
-        <div style={{ padding: "10px 10px", background: heroBg, borderRight: `1px solid ${border}` }}>
+        <div style={{ padding: "12px 12px", background: heroBg, borderRight: `1px solid ${border}` }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: "#10b981", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.3 }}>This Week</div>
           <div style={{ fontSize: 17, fontWeight: 800, color: current.color || primaryColor, letterSpacing: -0.3 }}>
             {current.primary}
@@ -135,7 +135,7 @@ function WeekCard({ title, last, current, next, isLight, sparkline, sparklineCol
         </div>
 
         {/* Next */}
-        <div style={{ padding: "10px 10px", background: sideBg }}>
+        <div style={{ padding: "12px 12px", background: sideBg }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: labelColor, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.3 }}>Next</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: mutedColor }}>{next.primary}</div>
           {next.secondary && <div style={{ fontSize: 11, marginTop: 2, color: mutedColor }}>{next.secondary}</div>}

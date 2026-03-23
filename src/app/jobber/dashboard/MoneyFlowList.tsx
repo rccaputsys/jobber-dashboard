@@ -25,7 +25,7 @@ export function MoneyFlowList({ stages }: Props) {
   }, []);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       {stages.map((stage, i) => {
         const empty = stage.count === 0;
         const unit = stage.unitLabel || "items";
@@ -40,7 +40,7 @@ export function MoneyFlowList({ stages }: Props) {
               alignItems: "center",
               justifyContent: "space-between",
               textDecoration: "none",
-              padding: "9px 12px",
+              padding: "11px 14px",
               borderRadius: 8,
               borderLeft: `3px solid ${empty ? (isLight ? "#e2e8f0" : "rgba(255,255,255,0.06)") : stage.color}`,
               background: empty

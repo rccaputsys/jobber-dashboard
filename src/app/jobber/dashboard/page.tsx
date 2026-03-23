@@ -1048,40 +1048,18 @@ const quoteWonPct = quotesInLast30Days.length > 0
     revenueSparkline.push(monthRevenue(mStart, mEnd).revenue);
   }
 
-  // Business Pulse: monthly revenue + collections + overdue for 6 months
-  const pulseMonths: { label: string; revenueCents: number; overdueCents: number; collectedCents: number; isCurrent: boolean }[] = [];
-  for (let m = 5; m >= 0; m--) {
+  // Business Pulse: monthly revenue for 12 months (trim leading empty months)
+  const pulseMonthsRaw: { label: string; revenueCents: number; completedCount: number; isCurrent: boolean }[] = [];
+  for (let m = 11; m >= 0; m--) {
     const mStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() - m, 1));
     const mEnd = new Date(Date.UTC(mStart.getUTCFullYear(), mStart.getUTCMonth() + 1, 1));
-    const mStartMs = mStart.getTime();
-    const mEndMs = mEnd.getTime();
     const mLabel = mStart.toLocaleString(undefined, { month: "short", timeZone: "UTC" });
-
-    // Revenue earned (visit completions + visitless job completions)
-    const rev = monthRevenue(mStart, mEnd).revenue;
-
-    // Collected (paid invoices this month)
-    const collected = invoices.filter((inv: any) => {
-      const pd = safeDate(inv.paid_at);
-      return pd && pd.getTime() >= mStartMs && pd.getTime() < mEndMs && (inv.status || "").toLowerCase() === "paid";
-    }).reduce((s: number, inv: any) => s + Number(inv.total_amount_cents ?? 0), 0);
-
-    // Overdue balance at end of month (invoices due before month end, not paid by month end)
-    const overdue = invoices.filter((inv: any) => {
-      const due = safeDate(inv.due_at);
-      if (!due || due.getTime() >= mEndMs) return false;
-      const st = (inv.status || "").toLowerCase();
-      if (st === "paid" || st === "draft" || st === "voided" || st === "bad_debt") {
-        const pd = safeDate(inv.paid_at);
-        if (pd && pd.getTime() < mEndMs) return false; // was paid before end of month
-        if (st === "draft" || st === "voided" || st === "bad_debt") return false;
-      }
-      return true;
-    }).reduce((s: number, inv: any) => s + Number(inv.balance_cents ?? inv.total_amount_cents ?? 0), 0);
-
-    pulseMonths.push({ label: mLabel, revenueCents: rev, overdueCents: overdue, collectedCents: collected, isCurrent: m === 0 });
+    const mData = monthRevenue(mStart, mEnd);
+    pulseMonthsRaw.push({ label: mLabel, revenueCents: mData.revenue, completedCount: mData.count, isCurrent: m === 0 });
   }
-  const totalPulseRevenue = pulseMonths.reduce((s, m) => s + m.revenueCents, 0);
+  // Trim leading months with no data
+  const firstWithData = pulseMonthsRaw.findIndex(m => m.revenueCents > 0 || m.completedCount > 0);
+  const pulseMonths = firstWithData >= 0 ? pulseMonthsRaw.slice(firstWithData) : pulseMonthsRaw.slice(-1);
 
   // Needs invoicing (computed early for use in recommendations)
   const needsInvoiceJobs = jobs.filter((j: any) => (j.status || "").toLowerCase() === "requires_invoicing");
@@ -1528,21 +1506,66 @@ const quoteWonPct = quotesInLast30Days.length > 0
           </div>
         )}
 
-        {/* ===== Business Pulse — the hero chart ===== */}
-        <div className="panel animate-in delay-1" style={{ marginTop: 16, padding: "20px 24px", overflow: "visible" }}>
+        {/* ===== Business Pulse — hero chart ===== */}
+        <div className="panel animate-in delay-1" style={{ marginTop: 20, padding: "24px 28px", overflow: "visible" }}>
           <BusinessPulse
             months={pulseMonths}
             currencyCode={currencyCode}
-            totalRevenue={totalPulseRevenue}
-            totalOverdue={totalAR}
           />
         </div>
 
+        {/* ===== This Week's Focus + Money Flow ===== */}
+        <div className="side-by-side animate-in delay-1" style={{ marginTop: 20 }}>
+          {/* Left: Recommendations */}
+          <div className="panel" style={{ padding: "18px 20px", overflow: "visible", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>This Week&apos;s Focus</h2>
+              {recommendations.length > 0 && (
+                <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 6, background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>
+                  {recommendations.filter(r => r.priority === "high").length} urgent
+                </span>
+              )}
+            </div>
+            {recommendations.length > 0 ? (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                {recommendations.slice(0, 5).map((rec, i) => {
+                  const prioClass = rec.priority === "high" ? "rec-card-high" : "rec-card-medium";
+                  const prioColor = rec.priority === "high" ? "#ef4444" : "#f59e0b";
+                  return (
+                    <a key={i} href={rec.href} className={`rec-card ${prioClass}`} style={{ borderLeft: `3px solid ${prioColor}`, flexDirection: "column", gap: 3, padding: "12px 14px" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                        <span className="text-primary" style={{ fontSize: 14, fontWeight: 700 }}>{rec.headline}</span>
+                        <span style={{ fontSize: 12, flexShrink: 0, fontWeight: 600, color: prioColor }}>&rarr;</span>
+                      </div>
+                      <span className="text-muted" style={{ fontSize: 12, lineHeight: 1.4 }}>{rec.detail}</span>
+                    </a>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-muted" style={{ textAlign: "center", padding: 32, fontSize: 14, flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                Nothing urgent — you&apos;re on top of things.
+              </div>
+            )}
+          </div>
+
+          {/* Right: Money Flow */}
+          <div className="panel" style={{ padding: "18px 20px", overflow: "visible", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Money Flow</h2>
+              <span className="info-tooltip">?<span className="tooltip-text">Where work and money sit in your pipeline. Click any stage to drill in.</span></span>
+            </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+              <MoneyFlowList stages={funnelStages} />
+            </div>
+          </div>
+        </div>
+
         {/* ===== Week at a Glance ===== */}
-        <div className="panel animate-in delay-1" style={{ marginTop: 16, padding: "14px 16px", overflow: "visible" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <h2 className="text-primary" style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Week at a Glance</h2>
-            <span className="info-tooltip">?<span className="tooltip-text">Compare last week, this week, and next week side by side. The health score reflects your last 90 days across sales, capacity, and invoices.</span></span>
+        <div className="panel animate-in delay-2" style={{ marginTop: 20, padding: "18px 20px", overflow: "visible" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+            <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Week at a Glance</h2>
+            <span className="info-tooltip">?<span className="tooltip-text">Compare last week, this week, and next week across schedule, completed work, collections, and sales.</span></span>
           </div>
           <WeekGlance
             lastWeek={lastWeekSnap}
@@ -1556,47 +1579,6 @@ const quoteWonPct = quotesInLast30Days.length > 0
               unscheduled: unschedSparkline,
             }}
           />
-        </div>
-
-        {/* ===== Side-by-side: Money Flow + Recommendations ===== */}
-        <div className="side-by-side animate-in delay-2" style={{ marginTop: 16 }}>
-          {/* Left: Money Flow */}
-          <div className="panel" style={{ padding: "14px 16px", overflow: "visible" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <h2 className="text-primary" style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Money Flow</h2>
-              <span className="info-tooltip">?<span className="tooltip-text">Where work and money sit in your pipeline right now. Click any stage to drill in.</span></span>
-            </div>
-            <MoneyFlowList stages={funnelStages} />
-          </div>
-
-          {/* Right: Recommendations */}
-          <div className="panel" style={{ padding: "14px 16px", overflow: "visible" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <h2 className="text-primary" style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>This Week's Focus</h2>
-              <span className="info-tooltip">?<span className="tooltip-text">Actionable recommendations based on your current data. Click any item to go fix it.</span></span>
-            </div>
-            {recommendations.length > 0 ? (
-              <div>
-                {recommendations.slice(0, 5).map((rec, i) => {
-                  const prioClass = rec.priority === "high" ? "rec-card-high" : "rec-card-medium";
-                  const prioColor = rec.priority === "high" ? "#ef4444" : "#f59e0b";
-                  return (
-                    <a key={i} href={rec.href} className={`rec-card ${prioClass}`} style={{ borderLeft: `3px solid ${prioColor}`, flexDirection: "column", gap: 2 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                        <span className="text-primary" style={{ fontSize: 13, fontWeight: 700 }}>{rec.headline}</span>
-                        <span className="text-muted" style={{ fontSize: 11, flexShrink: 0, fontWeight: 600 }}>&rarr;</span>
-                      </div>
-                      <span className="text-muted" style={{ fontSize: 11, lineHeight: 1.4 }}>{rec.detail}</span>
-                    </a>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-muted" style={{ textAlign: "center", padding: 20, fontSize: 13 }}>
-                No action items right now.
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Footer */}
