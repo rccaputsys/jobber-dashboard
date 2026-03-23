@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     const body = await req.json();
 
     // Support admin setting target for a specific connection
-    const ADMIN_EMAILS = ["rcaputo91@gmail.com"];
+    const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").split(",").map(e => e.trim()).filter(Boolean);
     const isAdmin = ADMIN_EMAILS.includes(user.email || "");
     const connectionId = isAdmin && body.connection_id ? body.connection_id : null;
     const eqField = connectionId ? "id" : "user_id";

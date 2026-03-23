@@ -26,7 +26,7 @@ export default async function InvoicesPage({
   const user = await getUser();
   if (!user) redirect("/login?redirect=/jobber/invoices");
 
-  const ADMIN_EMAILS = ["rcaputo91@gmail.com"];
+  const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").split(",").map(e => e.trim()).filter(Boolean);
   const isAdmin = ADMIN_EMAILS.includes(user.email || "");
   const adminConnectionId = isAdmin ? sp.admin_connection_id : undefined;
 

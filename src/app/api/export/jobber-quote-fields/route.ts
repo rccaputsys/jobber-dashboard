@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server";
 import { getValidAccessToken } from "@/lib/jobberAuth";
 import { jobberGraphQL } from "@/lib/jobberGraphQL";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getUser } from "@/lib/supabaseAuth";
 
 // Introspect Quote fields so we can use the correct schema names (status, totals, url, etc.)
 export async function GET(req: Request) {
@@ -9,6 +11,20 @@ export async function GET(req: Request) {
   const connectionId = searchParams.get("connection_id");
   if (!connectionId) {
     return NextResponse.json({ ok: false, error: "Missing connection_id" }, { status: 400 });
+  }
+
+  const user = await getUser();
+  if (!user) {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+  const { data: ownerCheck } = await supabaseAdmin
+    .from("jobber_connections")
+    .select("id")
+    .eq("id", connectionId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!ownerCheck) {
+    return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
   }
 
   const token = await getValidAccessToken(connectionId);

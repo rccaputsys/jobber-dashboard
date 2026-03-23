@@ -6,7 +6,7 @@ export async function GET() {
     t: Date.now(),
     nonce: crypto.randomUUID(),
   });
-  const state = await encryptText(stateRaw);
+  const state = await encryptText(stateRaw, "10m");
 
   const url = new URL(process.env.JOBBER_OAUTH_AUTHORIZE_URL!);
   url.searchParams.set("client_id", process.env.JOBBER_CLIENT_ID!);

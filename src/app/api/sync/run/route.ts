@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, fetchAllRows } from "@/lib/supabaseAdmin";
 import { getValidAccessToken } from "@/lib/jobberAuth";
 import { sendSyncFailureEmail } from "@/lib/resend";
+import { getUser } from "@/lib/supabaseAuth";
 
 export const maxDuration = 300; // Tell Vercel this route needs full 300s
 
@@ -769,6 +770,34 @@ export async function GET(req: Request) {
 
   if (!connectionId) {
     return NextResponse.json({ ok: false, error: "Missing connection_id" }, { status: 400 });
+  }
+
+  // Auth: allow either (a) logged-in user who owns the connection, or (b) internal server call
+  const internalToken = req.headers.get("x-internal-token");
+  const isInternalCall = internalToken === process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!isInternalCall) {
+    const user = await getUser();
+    if (!user) {
+      const wantsJson = req.headers.get("accept")?.includes("application/json") ||
+                        searchParams.get("json") === "true";
+      if (wantsJson) {
+        return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      }
+      return NextResponse.redirect(new URL("/auth/login", req.url));
+    }
+
+    // Verify user owns this connection
+    const { data: ownerCheck } = await supabaseAdmin
+      .from("jobber_connections")
+      .select("id")
+      .eq("id", connectionId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!ownerCheck) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
   }
 
   // Multi-step sync: dispatch to step handler if step param is present

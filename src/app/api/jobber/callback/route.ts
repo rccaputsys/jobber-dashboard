@@ -261,8 +261,9 @@ export async function GET(req: Request) {
     }
   }
 
-  // Redirect to complete signup (email/password collection)
-    return NextResponse.redirect(new URL(`/complete-signup?connection_id=${connectionId}`, req.url));
+  // Redirect to complete signup with encrypted token (10-min expiry)
+    const signupToken = await encryptText(connectionId, "10m");
+    return NextResponse.redirect(new URL(`/complete-signup?signup_token=${encodeURIComponent(signupToken)}`, req.url));
   } catch (error) {
     console.error("Jobber callback failed:", error);
     return NextResponse.redirect(new URL("/jobber?err=oauth_failed", req.url));

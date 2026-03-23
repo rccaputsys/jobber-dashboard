@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-const ADMIN_EMAILS = ["rcaputo91@gmail.com"];
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").split(",").map(e => e.trim()).filter(Boolean);
 
 async function isAdmin(req: NextRequest): Promise<boolean> {
   const { createServerClient } = await import("@supabase/ssr");

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getUser } from "@/lib/supabaseAuth";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -9,10 +10,17 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Missing connection_id" }, { status: 400 });
   }
 
+  // Auth: require logged-in user who owns this connection
+  const user = await getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { data, error } = await supabaseAdmin
     .from("jobber_connections")
     .select("sync_status, sync_started_at, sync_error, last_sync_at")
     .eq("id", connectionId)
+    .eq("user_id", user.id)
     .single();
 
   if (error || !data) {

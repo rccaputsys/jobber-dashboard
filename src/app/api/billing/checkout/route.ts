@@ -5,24 +5,41 @@ import { getUser } from "@/lib/supabaseAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 // ============================================
-// PRICING CONFIGURATION
+// PRICING TIERS — set price IDs in env vars
 // ============================================
-// When ready to raise prices:
-// 1. Create new price in Stripe ($49/mo)
-// 2. Replace CURRENT_PRICE_ID with the new price ID
-// 3. Existing subscribers stay on their original price automatically
+// STRIPE_PRICE_CORE       — Core tier
+// STRIPE_PRICE_PRO        — Pro tier (default)
+// STRIPE_PRICE_PRO_PLUS   — Pro Plus tier
 // ============================================
 
-const FOUNDING_PRICE_ID = "price_1SrjmhRjFeoAh97X3sJL3RC0"; // $29/mo - founding members
-const STANDARD_PRICE_ID = "price_1SvmInRjFeoAh97X6lspqnOJ"; // $49/mo - standard pricing
-
-const CURRENT_PRICE_ID = FOUNDING_PRICE_ID; // <-- Change this when ready to raise prices
+const TIER_PRICES: Record<string, string | undefined> = {
+  core:     process.env.STRIPE_PRICE_CORE,
+  pro:      process.env.STRIPE_PRICE_PRO,
+  pro_plus: process.env.STRIPE_PRICE_PRO_PLUS,
+};
 
 export async function POST(req: Request) {
   const user = await getUser();
 
   if (!user) {
     return NextResponse.redirect(new URL("/login", req.url));
+  }
+
+  // Read tier from form data (default to "pro")
+  let tier = "pro";
+  try {
+    const formData = await req.formData();
+    const t = formData.get("tier");
+    if (typeof t === "string" && TIER_PRICES[t]) {
+      tier = t;
+    }
+  } catch {
+    // No form data or not form-encoded — use default tier
+  }
+
+  const priceId = TIER_PRICES[tier];
+  if (!priceId) {
+    return NextResponse.redirect(new URL("/jobber/dashboard?error=invalid_tier", req.url));
   }
 
   // Get the user's connection
@@ -66,7 +83,7 @@ export async function POST(req: Request) {
     payment_method_types: ["card"],
     line_items: [
       {
-        price: CURRENT_PRICE_ID,
+        price: priceId,
         quantity: 1,
       },
     ],
@@ -75,6 +92,7 @@ export async function POST(req: Request) {
     metadata: {
       user_id: user.id,
       connection_id: connection.id,
+      tier,
     },
   });
 

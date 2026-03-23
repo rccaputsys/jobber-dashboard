@@ -8,7 +8,9 @@ import { useSearchParams, useRouter } from "next/navigation";
 function CompleteSignupForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const connectionId = searchParams.get("connection_id");
+  const signupToken = searchParams.get("signup_token");
+  // Legacy support: if old connection_id param is used, treat as invalid
+  const connectionId = signupToken;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -86,7 +88,7 @@ function CompleteSignupForm() {
       const res = await fetch("/api/auth/complete-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, connectionId, ownerName, businessType, teamSize }),
+        body: JSON.stringify({ email, password, signupToken, ownerName, businessType, teamSize }),
       });
 
       const data = await res.json();

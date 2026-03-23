@@ -452,7 +452,7 @@ export default async function DashboardPage({
   if (!user) redirect("/login");
 
   // Admin impersonation: if admin_connection_id is set and user is admin, use that connection
-  const ADMIN_EMAILS = ["rcaputo91@gmail.com"];
+  const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").split(",").map(e => e.trim()).filter(Boolean);
   const isAdmin = ADMIN_EMAILS.includes(user.email || "");
   const adminConnectionId = isAdmin ? sp.admin_connection_id : undefined;
 

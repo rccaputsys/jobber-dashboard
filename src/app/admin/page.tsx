@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { AdminTabs } from "./AdminTabs";
 import type { UserAnalyticsSummary, AggregateAnalytics } from "./AdminTabs";
 
-const ADMIN_EMAILS = ["rcaputo91@gmail.com"];
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").split(",").map(e => e.trim()).filter(Boolean);
 const DEMO_CONNECTION_ID = "00000000-0000-0000-0000-de0000000001";
 
 async function getAdminUser() {

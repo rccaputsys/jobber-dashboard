@@ -1,19 +1,28 @@
-﻿// src/app/api/auth/complete-signup/route.ts
+// src/app/api/auth/complete-signup/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { sendWelcomeEmail } from "@/lib/resend";
+import { decryptText } from "@/lib/crypto";
 
 export async function POST(req: Request) {
-  const { email, password, connectionId, ownerName, businessType, teamSize } = await req.json();
+  const { email, password, signupToken, ownerName, businessType, teamSize } = await req.json();
 
   if (!email || !password) {
     return NextResponse.json({ error: "Email and password required" }, { status: 400 });
   }
 
-  if (!connectionId) {
-    return NextResponse.json({ error: "Connection ID required" }, { status: 400 });
+  if (!signupToken) {
+    return NextResponse.json({ error: "Invalid or expired signup link" }, { status: 400 });
+  }
+
+  // Decrypt the signup token to get the connection ID
+  let connectionId: string;
+  try {
+    connectionId = await decryptText(signupToken);
+  } catch {
+    return NextResponse.json({ error: "Invalid or expired signup link. Please reconnect your Jobber account." }, { status: 400 });
   }
 
   // Verify the connection exists and doesn't have a user yet
@@ -49,7 +58,7 @@ export async function POST(req: Request) {
   // Link the user to the connection and save profile data
   const { error: linkError } = await supabaseAdmin
     .from("jobber_connections")
-    .update({ 
+    .update({
       user_id: newUser.user.id,
       owner_name: ownerName || null,
       business_type: businessType || null,
@@ -92,22 +101,16 @@ export async function POST(req: Request) {
 
   // Send welcome email
   try {
-    console.log("Sending welcome email to:", email);
     await sendWelcomeEmail(email);
-    console.log("Welcome email sent successfully");
   } catch (err) {
-    console.error("Failed to send welcome email:", err);
+    console.error("Failed to send welcome email");
   }
 
-  // Trigger initial sync
+  // Trigger initial sync (internal server-to-server call with auth bypass)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  fetch(`${appUrl}/api/sync/run?connection_id=${connectionId}`).catch(() => {});
+  fetch(`${appUrl}/api/sync/run?connection_id=${connectionId}`, {
+    headers: { "x-internal-token": process.env.SUPABASE_SERVICE_ROLE_KEY || "" },
+  }).catch(() => {});
 
   return NextResponse.json({ success: true });
-
-  // Send welcome email (don't block signup if it fails)
-console.log("Attempting to send welcome email to:", email);
-sendWelcomeEmail(email).catch((err) => {
-  console.error("Failed to send welcome email:", err);
-});
 }
