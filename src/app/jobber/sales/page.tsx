@@ -208,14 +208,10 @@ export default async function SalesPage({
       return d >= periodStart && d < periodEnd;
     };
 
-    // Win Rate: quotes closed in period
+    // Win Rate: won / (won + lost) — only resolved quotes, matches chart calculation
     const periodWon = wonQuotes.filter((q: any) => inPeriod(safeDate(q.updated_at_jobber)));
     const periodLost = lostQuotes.filter((q: any) => inPeriod(safeDate(q.updated_at_jobber)));
-    const periodSentOpen = sentQuotes.filter((q: any) => {
-      const sent = safeDate(q.sent_at);
-      return periodStart ? (sent && sent >= periodStart && sent < (periodEnd || todayUTC)) : true;
-    });
-    const winDenom = periodWon.length + periodLost.length + periodSentOpen.length;
+    const winDenom = periodWon.length + periodLost.length;
     const winRate = winDenom > 0 ? periodWon.length / winDenom : 0;
 
     // Avg days to close for won quotes in period
