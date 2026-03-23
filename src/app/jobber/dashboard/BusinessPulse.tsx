@@ -53,7 +53,7 @@ export function BusinessPulse({ months, weeks, currencyCode }: Props) {
     : null;
   const avgRevenue = Math.round(totalRevenue / data.length);
 
-  const hovered = hoveredIdx !== null ? months[hoveredIdx] : null;
+  const hovered = hoveredIdx !== null ? data[hoveredIdx] : null;
 
   const pillGroup: React.CSSProperties = { display: "flex", gap: 2, background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.05)", borderRadius: 8, padding: 2 };
   const pBtnStyle = (active: boolean, h: boolean): React.CSSProperties => ({

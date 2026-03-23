@@ -5,9 +5,11 @@ import { useSearchParams } from "next/navigation";
 import { useIsLight, useIsMobile } from "@/lib/hooks";
 import { SparkLine } from "./SparkLine";
 import { trackEvent } from "./analytics";
-
-type ChartType = "line" | "bar";
-type Granularity = "day" | "week" | "month" | "quarter";
+import {
+  type Granularity, type ChartType,
+  startOfDayUTC, addDaysUTC, startOfWeekUTC, startOfMonthUTC, startOfQuarterUTC,
+  bucketStartUTC, nextBucketUTC, labelForBucket, moneyFactory,
+} from "@/lib/dashboardHelpers";
 
 /** Compact event: { enterAt: ms, exitAt: ms | null, amount: cents } */
 export type TrendEvent = { enterAt: number; exitAt: number | null; amount: number };
@@ -21,61 +23,6 @@ type Props = {
   currentOverdueCents?: number;
   currentUnschedCents?: number;
 };
-
-/* ---- date helpers (duplicated from page to keep client bundle small) ---- */
-function startOfDayUTC(d: Date) {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-}
-function addDaysUTC(d: Date, n: number) {
-  const x = new Date(d.getTime());
-  x.setUTCDate(x.getUTCDate() + n);
-  return x;
-}
-function startOfWeekUTC(d: Date) {
-  const x = startOfDayUTC(d);
-  x.setUTCDate(x.getUTCDate() - ((x.getUTCDay() + 6) % 7));
-  return x;
-}
-function startOfMonthUTC(d: Date) {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
-}
-function startOfQuarterUTC(d: Date) {
-  return new Date(Date.UTC(d.getUTCFullYear(), Math.floor(d.getUTCMonth() / 3) * 3, 1));
-}
-function bucketStartUTC(d: Date, g: Granularity) {
-  if (g === "day") return startOfDayUTC(d);
-  if (g === "week") return startOfWeekUTC(d);
-  if (g === "month") return startOfMonthUTC(d);
-  return startOfQuarterUTC(d);
-}
-function nextBucketUTC(d: Date, g: Granularity) {
-  if (g === "day") return addDaysUTC(d, 1);
-  if (g === "week") return addDaysUTC(d, 7);
-  if (g === "month") return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 3, 1));
-}
-function labelForBucket(d: Date, g: Granularity) {
-  const y = d.getUTCFullYear();
-  const m = d.toLocaleString(undefined, { month: "short", timeZone: "UTC" });
-  const day = d.getUTCDate();
-  if (g === "day") return `${m} ${day}`;
-  if (g === "week") return `${m} ${day}`;
-  if (g === "month") return `${m} ${y.toString().slice(2)}`;
-  const q = Math.floor(d.getUTCMonth() / 3) + 1;
-  return `Q${q} ${y.toString().slice(2)}`;
-}
-
-function moneyFmt(cents: number, code: string): string {
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency", currency: code, maximumFractionDigits: 0,
-    }).format(cents / 100);
-  } catch {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency", currency: "USD", maximumFractionDigits: 0,
-    }).format(cents / 100);
-  }
-}
 
 function defaultRange(preset: string) {
   const today = startOfDayUTC(new Date());
@@ -208,7 +155,7 @@ export function TrendsSection({ leakEvents, arEvents, unschedEvents, currencyCod
   const setG = useCallback((v: Granularity) => { setGRaw(v); trackEvent("sparkline_control", { control: "granularity", value: v }); }, []);
   const setChart = useCallback((v: ChartType) => { setChartRaw(v); trackEvent("sparkline_control", { control: "chart_type", value: v }); }, []);
 
-  const money = useMemo(() => (cents: number) => moneyFmt(cents, currencyCode), [currencyCode]);
+  const money = useMemo(() => moneyFactory(currencyCode), [currencyCode]);
 
   const { bucketStarts, leakPoints, ar15Points, unschedPoints } = useMemo(() => {
     const { start, end } = defaultRange(range);
