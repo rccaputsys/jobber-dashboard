@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import { useIsLight, useIsMobile } from "@/lib/hooks";
 import { SparkLine } from "./SparkLine";
 import { trackEvent } from "./analytics";
 
@@ -86,17 +87,6 @@ function defaultRange(preset: string) {
 }
 
 /* ---- Controls (inline, no URL navigation) ---- */
-function useIsMobile() {
-  const [m, setM] = useState(false);
-  useEffect(() => {
-    const check = () => setM(window.innerWidth < 640);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-  return m;
-}
-
 function InlineControls({
   range, setRange, g, setG, chart, setChart,
 }: {
@@ -104,17 +94,9 @@ function InlineControls({
   g: Granularity; setG: (v: Granularity) => void;
   chart: ChartType; setChart: (v: ChartType) => void;
 }) {
-  const [isLight, setIsLight] = useState(false);
+  const isLight = useIsLight();
   const [hovered, setHovered] = useState<string | null>(null);
   const isMobile = useIsMobile();
-
-  useEffect(() => {
-    const check = () => setIsLight(document.documentElement.getAttribute("data-theme") === "light");
-    check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => obs.disconnect();
-  }, []);
 
   const rangeOptions = [
     { key: "7d", label: "7D", fullLabel: "7 Days" },

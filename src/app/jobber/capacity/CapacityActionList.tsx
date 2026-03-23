@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
+import { useIsLight } from "@/lib/hooks";
 import { ExportCSV } from "../dashboard/ExportCSV";
 
 type UnscheduledJob = {
@@ -168,17 +169,9 @@ export function CapacityActionList({
   currencyCode: string;
 }) {
   const [tab, setTab] = useState<"unscheduled" | "late">("unscheduled");
-  const [isLight, setIsLight] = useState(false);
+  const isLight = useIsLight();
   const [hovered, setHovered] = useState<string | null>(null);
   const money = useMemo(() => (cents: number) => moneyFmt(cents, currencyCode), [currencyCode]);
-
-  useEffect(() => {
-    const check = () => setIsLight(document.documentElement.getAttribute("data-theme") === "light");
-    check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => obs.disconnect();
-  }, []);
 
   if (unscheduledJobs.length === 0 && lateVisits.length === 0) return null;
 

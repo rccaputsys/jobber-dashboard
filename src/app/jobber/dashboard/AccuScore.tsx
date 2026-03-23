@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useIsLight } from "@/lib/hooks";
 
 type ScoreBreakdown = {
   label: string;
@@ -23,15 +24,7 @@ function barColor(s: number) {
 
 export function AccuScore({ score, breakdown }: Props) {
   const [animated, setAnimated] = useState(0);
-  const [isLight, setIsLight] = useState(false);
-
-  useEffect(() => {
-    const check = () => setIsLight(document.documentElement.getAttribute("data-theme") === "light");
-    check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => obs.disconnect();
-  }, []);
+  const isLight = useIsLight();
 
   useEffect(() => {
     const duration = 1000;

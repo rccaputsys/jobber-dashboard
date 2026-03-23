@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useIsLight } from "@/lib/hooks";
 import { ExportCSV } from "./ExportCSV";
 import { trackEvent } from "./analytics";
 
@@ -42,8 +43,9 @@ function moneyFactory(currency: string, locale = "en-US") {
 
 // Check if user is on mobile
 function useIsMobile() {
+  // Note: This component uses 768px breakpoint + UA check, different from shared hook (640px)
   const [isMobile, setIsMobile] = useState(false);
-  
+
   useEffect(() => {
     const check = () => {
       setIsMobile(window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
@@ -52,25 +54,8 @@ function useIsMobile() {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
-  
-  return isMobile;
-}
 
-// Check theme
-function useIsLight() {
-  const [isLight, setIsLight] = useState(false);
-  
-  useEffect(() => {
-    const check = () => {
-      setIsLight(document.documentElement.getAttribute("data-theme") === "light");
-    };
-    check();
-    const observer = new MutationObserver(check);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => observer.disconnect();
-  }, []);
-  
-  return isLight;
+  return isMobile;
 }
 
 /* --------------------------------- types --------------------------------- */

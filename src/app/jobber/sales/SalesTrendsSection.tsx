@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useIsLight, useIsMobile } from "@/lib/hooks";
 import { SparkLine } from "../dashboard/SparkLine";
 import { trackEvent } from "../dashboard/analytics";
 
@@ -82,18 +83,6 @@ function defaultRange(preset: string) {
   return { start: addDaysUTC(today, -56), end: today }; // 8w default
 }
 
-/* ---- responsive hook ---- */
-function useIsMobile() {
-  const [m, setM] = useState(false);
-  useEffect(() => {
-    const check = () => setM(window.innerWidth < 640);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-  return m;
-}
-
 /* ---- localStorage-backed target hook ---- */
 function usePersistedTarget(key: string, fallback: number): [number, (v: number) => void] {
   const [value, setValue] = useState(fallback);
@@ -111,19 +100,6 @@ function usePersistedTarget(key: string, fallback: number): [number, (v: number)
     try { localStorage.setItem(key, String(v)); } catch {}
   }, [key]);
   return [value, set];
-}
-
-/* ---- theme hook ---- */
-function useIsLight() {
-  const [isLight, setIsLight] = useState(false);
-  useEffect(() => {
-    const check = () => setIsLight(document.documentElement.getAttribute("data-theme") === "light");
-    check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => obs.disconnect();
-  }, []);
-  return isLight;
 }
 
 /* ---- Editable target input ---- */

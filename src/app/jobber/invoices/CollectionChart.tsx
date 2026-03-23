@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useIsLight } from "@/lib/hooks";
 
 type PeriodData = {
   label: string;
@@ -22,16 +23,8 @@ function moneyFmt(cents: number, code: string): string {
 }
 
 export function CollectionChart({ periods, currencyCode, outstandingCents, draftCount, draftCents }: Props) {
-  const [isLight, setIsLight] = useState(false);
+  const isLight = useIsLight();
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-
-  useEffect(() => {
-    const check = () => setIsLight(document.documentElement.getAttribute("data-theme") === "light");
-    check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => obs.disconnect();
-  }, []);
 
   const money = (c: number) => moneyFmt(c, currencyCode);
   const maxVal = Math.max(...periods.map(p => Math.max(p.invoiced, p.collected)), 1);

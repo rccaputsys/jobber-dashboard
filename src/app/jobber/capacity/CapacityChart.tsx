@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
+import { useIsLight } from "@/lib/hooks";
 
 type WeekBar = {
   label: string;
@@ -34,18 +35,10 @@ function moneyFmt(cents: number, code: string): string {
 }
 
 export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetCents, currencyCode, connectionId, adminConnectionId }: Props) {
-  const [isLight, setIsLight] = useState(false);
+  const isLight = useIsLight();
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [view, setView] = useState<"weekly" | "monthly">("weekly");
   const [btnHovered, setBtnHovered] = useState<string | null>(null);
-
-  useEffect(() => {
-    const check = () => setIsLight(document.documentElement.getAttribute("data-theme") === "light");
-    check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => obs.disconnect();
-  }, []);
 
   const money = useMemo(() => (c: number) => moneyFmt(c, currencyCode), [currencyCode]);
 

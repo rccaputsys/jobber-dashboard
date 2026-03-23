@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useIsLight } from "@/lib/hooks";
 
 type FunnelStage = {
   label: string;
@@ -24,15 +24,7 @@ const stageStyles: Record<string, { color: string; bg: string; border: string }>
 };
 
 export function MoneyFlowFunnel({ stages }: Props) {
-  const [isLight, setIsLight] = useState(false);
-
-  useEffect(() => {
-    const check = () => setIsLight(document.documentElement.getAttribute("data-theme") === "light");
-    check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => obs.disconnect();
-  }, []);
+  const isLight = useIsLight();
 
   return (
     <div style={{ width: "100%" }}>

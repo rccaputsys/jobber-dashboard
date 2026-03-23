@@ -1,7 +1,8 @@
 // src/app/jobber/capacity/CapacityTrendsSection.tsx
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { useIsLight, useIsMobile } from "@/lib/hooks";
 import { SparkLine } from "../dashboard/SparkLine";
 import { trackEvent } from "../dashboard/analytics";
 
@@ -79,30 +80,6 @@ function defaultRange(preset: string) {
   if (preset === "t12m") return { start: addDaysUTC(today, -365), end: today };
   if (preset === "all") return { start: addDaysUTC(today, -730), end: today };
   return { start: addDaysUTC(today, -56), end: today };
-}
-
-/* ---- hooks ---- */
-function useIsMobile() {
-  const [m, setM] = useState(false);
-  useEffect(() => {
-    const check = () => setM(window.innerWidth < 640);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-  return m;
-}
-
-function useIsLight() {
-  const [isLight, setIsLight] = useState(false);
-  useEffect(() => {
-    const check = () => setIsLight(document.documentElement.getAttribute("data-theme") === "light");
-    check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => obs.disconnect();
-  }, []);
-  return isLight;
 }
 
 /* ---- Inline Controls ---- */

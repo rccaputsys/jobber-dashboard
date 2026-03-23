@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useIsLight } from "@/lib/hooks";
 
 type DayData = {
   label: string;
@@ -23,18 +24,6 @@ const DEFAULT_CONFIG: DayConfig = {
   sat: { enabled: false, target: 0 },
   sun: { enabled: false, target: 0 },
 };
-
-function useIsLight() {
-  const [isLight, setIsLight] = useState(false);
-  useEffect(() => {
-    const check = () => setIsLight(document.documentElement.getAttribute("data-theme") === "light");
-    check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => obs.disconnect();
-  }, []);
-  return isLight;
-}
 
 function moneyFmt(cents: number, code: string): string {
   try {

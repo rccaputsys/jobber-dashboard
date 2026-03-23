@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useIsLight } from "@/lib/hooks";
 
 type PeriodMetrics = {
   scheduledRevenue: string;
@@ -275,16 +276,8 @@ export function CapacityKpiCards({
   targetsOnly?: boolean;
 }) {
   const [period, setPeriod] = useState<"thisWeek" | "nextWeek" | "thisMonth" | "nextMonth">("thisWeek");
-  const [isLight, setIsLight] = useState(false);
+  const isLight = useIsLight();
   const [hovered, setHovered] = useState<string | null>(null);
-
-  useEffect(() => {
-    const check = () => setIsLight(document.documentElement.getAttribute("data-theme") === "light");
-    check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => obs.disconnect();
-  }, []);
 
   const metrics = period === "thisWeek" ? thisWeek : period === "nextWeek" ? nextWeek : period === "thisMonth" ? thisMonth : nextMonth;
 

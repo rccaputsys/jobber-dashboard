@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useIsLight } from "@/lib/hooks";
 
 type WeekData = {
   jobCount: number;
@@ -59,17 +60,9 @@ function MiniSparkline({ data, color, height = 32, width = 80 }: { data: number[
 
 export function WeekGlance({ lastWeek, thisWeek, nextWeek, currencyCode, sparklines }: Props) {
   const money = (cents: number) => moneyFmt(cents, currencyCode);
-  const [isLight, setIsLight] = useState(false);
+  const isLight = useIsLight();
   const [period, setPeriod] = useState<"this" | "last">("this");
   const [btnHovered, setBtnHovered] = useState<string | null>(null);
-
-  useEffect(() => {
-    const check = () => setIsLight(document.documentElement.getAttribute("data-theme") === "light");
-    check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => obs.disconnect();
-  }, []);
 
   const primaryColor = isLight ? "#1e293b" : "#EAF1FF";
   const mutedColor = isLight ? "#475569" : "rgba(255,255,255,0.55)";

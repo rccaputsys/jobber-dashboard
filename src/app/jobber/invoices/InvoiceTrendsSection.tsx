@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
+import { useIsLight } from "@/lib/hooks";
 import { CollectionChart } from "./CollectionChart";
 
 type InvoiceEvent = { ts: number; amount: number; type: "sent" | "paid" };
@@ -36,18 +37,6 @@ function defaultRange(preset: string) {
   if (preset === "ytd") return { start: new Date(Date.UTC(today.getUTCFullYear(), 0, 1)), end: today };
   if (preset === "t12m") return { start: addDaysUTC(today, -365), end: today };
   return { start: addDaysUTC(today, -56), end: today };
-}
-
-function useIsLight() {
-  const [isLight, setIsLight] = useState(false);
-  useEffect(() => {
-    const check = () => setIsLight(document.documentElement.getAttribute("data-theme") === "light");
-    check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => obs.disconnect();
-  }, []);
-  return isLight;
 }
 
 /* ---- Aging donut panel ---- */

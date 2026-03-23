@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useIsLight, useIsMobile } from "@/lib/hooks";
 
 type Granularity = "day" | "week" | "month" | "quarter";
 type ChartType = "line" | "bar";
@@ -35,34 +36,13 @@ function defaultRange(preset: string) {
   return { start, end };
 }
 
-function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState(false);
-  React.useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 640);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-  return isMobile;
-}
-
 export function Controls({ onLoadingChange }: { onLoadingChange?: (loading: boolean) => void }) {
   const router = useRouter();
   const sp = useSearchParams();
-  const [isLight, setIsLight] = React.useState(false);
+  const isLight = useIsLight();
   const [hoveredButton, setHoveredButton] = React.useState<string | null>(null);
   const [showCustom, setShowCustom] = React.useState(false);
   const isMobile = useIsMobile();
-
-  React.useEffect(() => {
-    const checkTheme = () => {
-      setIsLight(document.documentElement.getAttribute("data-theme") === "light");
-    };
-    checkTheme();
-    const observer = new MutationObserver(checkTheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => observer.disconnect();
-  }, []);
 
   const rangePreset = sp.get("range") ?? "8w";
   const g = (sp.get("g") ?? "week") as Granularity;

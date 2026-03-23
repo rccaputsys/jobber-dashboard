@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useIsLight } from "@/lib/hooks";
 
 type PeriodMetrics = {
   collectedRevenue: string;
@@ -39,16 +40,8 @@ export function InvoiceKpiCards({
   pastDueCount: number;
 }) {
   const [period, setPeriod] = useState<"thisWeek" | "lastWeek" | "thisMonth" | "lastMonth" | "allTime">("thisWeek");
-  const [isLight, setIsLight] = useState(false);
+  const isLight = useIsLight();
   const [hovered, setHovered] = useState<string | null>(null);
-
-  useEffect(() => {
-    const check = () => setIsLight(document.documentElement.getAttribute("data-theme") === "light");
-    check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => obs.disconnect();
-  }, []);
 
   const metricsMap = { thisWeek, lastWeek, thisMonth, lastMonth, allTime };
   const metrics = metricsMap[period];

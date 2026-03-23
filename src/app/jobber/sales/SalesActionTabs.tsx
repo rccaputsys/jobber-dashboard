@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useIsLight } from "@/lib/hooks";
 import { ExportCSV } from "../dashboard/ExportCSV";
 
 type RequestItem = {
@@ -347,16 +348,8 @@ export function SalesActionTabs({
   changesRequested: ChangeRequestedItem[];
 }) {
   const [tab, setTab] = useState<"quotes" | "requests" | "changes">("quotes");
-  const [isLight, setIsLight] = useState(false);
+  const isLight = useIsLight();
   const [hovered, setHovered] = useState<string | null>(null);
-
-  useEffect(() => {
-    const check = () => setIsLight(document.documentElement.getAttribute("data-theme") === "light");
-    check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => obs.disconnect();
-  }, []);
 
   // Bucket requests by age
   const requestBuckets: Bucket[] = [
