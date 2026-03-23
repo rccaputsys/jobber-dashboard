@@ -11,6 +11,7 @@ type Props = {
   trialEndsAt: number;
   subscriptionActive: boolean;
   adminConnectionId?: string;
+  autoSync?: boolean;
 };
 
 export function DashboardTopbar({
@@ -21,6 +22,7 @@ export function DashboardTopbar({
   trialEndsAt,
   subscriptionActive,
   adminConnectionId,
+  autoSync,
 }: Props) {
   return (
     <div className="dashboard-topbar animate-in">
@@ -58,7 +60,7 @@ export function DashboardTopbar({
         </div>
 
         <div className="header-actions" style={{ gap: 6 }}>
-          <SyncButton connectionId={connectionId} />
+          <SyncButton connectionId={connectionId} autoSync={autoSync} />
           <span className="header-subtitle" style={{ fontSize: 9, whiteSpace: "nowrap" }}>{lastSyncPretty}</span>
           <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
           <ThemeToggle />

@@ -26,13 +26,11 @@ async function tokenExchange(code: string) {
   try {
     json = JSON.parse(text);
   } catch (e) {
-    throw new Error(`Token exchange non-JSON response: ${res.status} ${text}`);
+    throw new Error(`Token exchange non-JSON response: ${res.status}`);
   }
 
   if (!res.ok) {
-    throw new Error(
-      `Token exchange failed: ${res.status} keys=${Object.keys(json ?? {}).join(",")}`
-    );
+    throw new Error(`Token exchange failed: ${res.status}`);
   }
 
   return json as {
@@ -89,8 +87,8 @@ async function getLoggedInUser() {
 }
 
 async function saveToken(connectionId: string, accessToken: string, refreshToken: string, expiresAt: string) {
-  const encAccess = await encryptText(accessToken);
-  const encRefresh = await encryptText(refreshToken);
+  const encAccess = await encryptText(accessToken, "365d");
+  const encRefresh = await encryptText(refreshToken, "365d");
 
   // First, delete any existing token for this connection
   await supabaseAdmin
@@ -165,7 +163,7 @@ export async function GET(req: Request) {
   }
 
   if (!acctResult.data?.account) {
-    throw new Error(`Could not get account from Jobber. Response: ${JSON.stringify(acctResult.raw)}`);
+    throw new Error("Could not get account from Jobber");
   }
 
   const acct = acctResult.data.account;

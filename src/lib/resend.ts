@@ -28,7 +28,7 @@ export async function sendSyncFailureEmail(details: {
       <p><strong>Error:</strong> ${details.error}</p>
       ${countsHtml}
       <p><strong>Time:</strong> ${new Date().toISOString()}</p>
-      <p><a href="https://app.ownerview.io/api/sync/run?connection_id=${details.connectionId}&full=true&json=true">Retry Full Sync</a></p>
+      <p><a href="${process.env.NEXT_PUBLIC_APP_URL || "https://app.ownerview.io"}/jobber/dashboard?retry_sync=true">Retry Full Sync</a></p>
     `,
   });
 }

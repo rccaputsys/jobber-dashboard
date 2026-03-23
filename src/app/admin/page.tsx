@@ -381,7 +381,7 @@ export default async function AdminPage() {
   // Fetch connections
   const { data: connections } = await supabaseAdmin
     .from("jobber_connections")
-    .select("*")
+    .select("id,billing_status,trial_ends_at,canceled_at,jobber_account_name,company_name,owner_name,created_at,last_sync_at,job_count,quote_count,quote_leak_cents,quote_leak_count,request_count,unscheduled_job_count,invoices_past_due_cents,user_id,stripe_customer_id")
     .order("created_at", { ascending: false })
     .limit(10000);
 

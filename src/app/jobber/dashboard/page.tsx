@@ -236,11 +236,13 @@ export default async function DashboardPage({
     demo?: string;
     sync_error?: string;
     admin_connection_id?: string;
+    retry_sync?: string;
   }>;
 }) {
   const sp = await searchParams;
   const isDemo = sp.demo === "true";
   const syncError = sp.sync_error;
+  const retrySync = sp.retry_sync === "true";
 
   if (isDemo) {
     const money = moneyFactory(DEMO_DATA.currencyCode);
@@ -612,8 +614,8 @@ export default async function DashboardPage({
 
   // Fetch facts IN PARALLEL (paginated to bypass PostgREST max_rows=100)
   const [invoices, jobs, quotes, requests, visits] = await Promise.all([
-    fetchAllRows("fact_invoices", "*", connectionId),
-    fetchAllRows("fact_jobs", "*", connectionId),
+    fetchAllRows("fact_invoices", "status,balance_cents,total_amount_cents,due_at,paid_at,invoice_number,client_name,jobber_invoice_id,jobber_url", connectionId),
+    fetchAllRows("fact_jobs", "jobber_job_id,status,total_amount_cents,job_revenue_cents,job_cost_cents,job_profit_cents,scheduled_start_at,created_at_jobber,completed_at,completed_at_jobber,updated_at_jobber,jobber_url,job_number,job_title", connectionId),
     fetchAllRows(
       "fact_quotes",
       "jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,sent_at,updated_at_jobber,created_at_jobber",
@@ -1435,6 +1437,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
           trialEndsAt={trialEndsAt}
           subscriptionActive={subscriptionActive}
           adminConnectionId={adminConnectionId}
+          autoSync={retrySync}
         />
 
         {/* Empty State - Show when no data */}

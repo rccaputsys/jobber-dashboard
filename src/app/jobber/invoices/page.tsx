@@ -74,7 +74,7 @@ export default async function InvoicesPage({
       .eq("id", connectionId)
       .maybeSingle()
       .then((r) => r.data),
-    fetchAllRows("fact_invoices", "*", connectionId),
+    fetchAllRows("fact_invoices", "status,paid_at,total_amount_cents,created_at_jobber,due_at,invoice_number,client_name,subject,balance_cents,jobber_url,jobber_invoice_id", connectionId),
     supabaseAdmin
       .from("fact_jobs")
       .select("job_number,job_title,total_amount_cents,jobber_url,scheduled_start_at,jobber_job_id")

@@ -83,8 +83,8 @@ export default async function CapacityPage({
       .eq("id", connectionId)
       .maybeSingle()
       .then((r) => r.data),
-    fetchAllRows("fact_jobs", "*", connectionId),
-    fetchAllRows("fact_visits", "*", connectionId),
+    fetchAllRows("fact_jobs", "jobber_job_id,total_amount_cents,job_title,job_number,scheduled_start_at,scheduled_end_at,status,jobber_url,created_at_jobber,created_at", connectionId),
+    fetchAllRows("fact_visits", "jobber_visit_id,jobber_job_id,title,job_number,start_at,end_at,completed_at,visit_status,created_at_jobber,duration_minutes,is_complete", connectionId),
   ]);
 
   // Build unified schedule items: visits first, then backfill jobs without visits
@@ -153,11 +153,16 @@ export default async function CapacityPage({
   for (const j of jobs) {
     jobTotals.set(j.jobber_job_id, Number(j.total_amount_cents ?? 0));
   }
+  // Build visit ID → job ID lookup (O(n) instead of O(n²) find)
+  const visitToJobId = new Map<string, string>();
+  for (const v of visits) {
+    const vid = v.jobber_visit_id || v.id;
+    if (vid && v.jobber_job_id) visitToJobId.set(vid, v.jobber_job_id);
+  }
   // Assign per-visit revenue: job total / number of visits for that job
   for (const item of scheduleItems) {
     if (item.type === "visit") {
-      // Find the parent job's total and split across visits
-      const jobId = visits.find((v: any) => (v.jobber_visit_id || v.id) === item.id)?.jobber_job_id;
+      const jobId = visitToJobId.get(item.id);
       if (jobId) {
         const total = jobTotals.get(jobId) || 0;
         const count = jobVisitCounts.get(jobId) || 1;

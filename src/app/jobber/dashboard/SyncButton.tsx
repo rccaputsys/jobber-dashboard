@@ -4,10 +4,11 @@ import { trackEvent } from "./analytics";
 
 type SyncStatus = "idle" | "syncing" | "complete" | "failed";
 
-export function SyncButton({ connectionId }: { connectionId: string }) {
+export function SyncButton({ connectionId, autoSync = false }: { connectionId: string; autoSync?: boolean }) {
   const [syncing, setSyncing] = useState(false);
   const [statusText, setStatusText] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoSyncFired = useRef(false);
 
   useEffect(() => {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
@@ -77,6 +78,14 @@ export function SyncButton({ connectionId }: { connectionId: string }) {
       setTimeout(() => setStatusText(""), 8000);
     }
   };
+
+  useEffect(() => {
+    if (autoSync && !autoSyncFired.current && !syncing) {
+      autoSyncFired.current = true;
+      handleSync();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSync]);
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>

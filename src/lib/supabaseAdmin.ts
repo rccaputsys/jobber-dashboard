@@ -6,14 +6,14 @@ export const supabaseAdmin = createClient(
 );
 
 /**
- * Paginated fetch that works around Supabase PostgREST max_rows limit (100).
+ * Paginated fetch that works around Supabase PostgREST max_rows limit.
  * Fetches all rows in batches using .range().
  */
 export async function fetchAllRows(
   table: string,
   select: string,
   connectionId: string,
-  pageSize = 100,
+  pageSize = 1000,
 ): Promise<any[]> {
   const allRows: any[] = [];
   let from = 0;
