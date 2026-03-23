@@ -17,6 +17,7 @@ type WeekData = {
   quotesSent: number;
   quotesWon: number;
   quotesWonCents: number;
+  winRate: number;
   overdueCount: number;
 };
 
@@ -63,11 +64,6 @@ export function WeekGlance({ lastWeek, thisWeek, nextWeek, currencyCode, sparkli
   const isLight = useIsLight();
   const [period, setPeriod] = useState<"this" | "last">("this");
   const [btnHovered, setBtnHovered] = useState<string | null>(null);
-
-  const primaryColor = isLight ? "#1e293b" : "#EAF1FF";
-  const mutedColor = isLight ? "#475569" : "rgba(255,255,255,0.55)";
-  const cardBg = isLight ? "#ffffff" : "rgba(255,255,255,0.03)";
-  const cardBorder = isLight ? "#e2e8f0" : "rgba(255,255,255,0.06)";
 
   function delta(current: number, last: number) {
     if (!showDelta) return null;
@@ -134,7 +130,7 @@ export function WeekGlance({ lastWeek, thisWeek, nextWeek, currencyCode, sparkli
     {
       label: `Quotes Won ${periodLabel}`,
       value: active.quotesWonCents > 0 ? money(active.quotesWonCents) : "\u2014",
-      sub: `${active.quotesWon} won of ${active.quotesSent} sent${active.quotesSent > 0 ? ` \u2022 ${Math.round((active.quotesWon / active.quotesSent) * 100)}% close rate` : ""}`,
+      sub: `${active.quotesWon} won of ${active.quotesSent} sent${active.winRate > 0 ? ` \u2022 ${active.winRate}% close rate` : ""}`,
       color: "#8b5cf6",
       currentRaw: active.quotesWonCents,
       lastRaw: lastWeek.quotesWonCents,
@@ -160,44 +156,33 @@ export function WeekGlance({ lastWeek, thisWeek, nextWeek, currencyCode, sparkli
           <button onClick={() => setPeriod("this")} onMouseEnter={() => setBtnHovered("tw")} onMouseLeave={() => setBtnHovered(null)} style={pBtnStyle(period === "this", btnHovered === "tw")}>This Week</button>
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-      {cards.map((card, i) => (
-        <div key={i} className="hover-lift" style={{
-          padding: "16px 18px",
-          borderRadius: 12,
-          background: cardBg,
-          border: `1px solid ${cardBorder}`,
-          borderTop: `3px solid ${card.color}`,
-          display: "flex", flexDirection: "column", justifyContent: "space-between",
-          minHeight: 120,
-          cursor: "default",
-        }}>
-          {/* Header */}
-          <div style={{ marginBottom: 10 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: card.color }}>
-              {card.label}
-            </span>
-          </div>
-
-          {/* Value */}
+      <div className="kpi-grid-secondary">
+      {cards.map((card, i) => {
+        const accent = card.color === "#10b981" ? "green" : card.color === "#5aa6ff" ? "blue" : card.color === "#8b5cf6" ? "purple" : "blue";
+        return (
+        <div key={i} className="kpi-secondary" data-accent={accent} style={{ borderLeft: `3px solid ${card.color}` }}>
           <div>
+            <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
+              {card.label}
+            </div>
             <div style={{ display: "flex", alignItems: "baseline" }}>
-              <span style={{ fontSize: 22, fontWeight: 800, color: primaryColor, letterSpacing: -0.5, lineHeight: 1 }}>
+              <div className="kpi-value-medium" style={{ color: card.color }}>
                 {card.value}
-              </span>
+              </div>
               {delta(card.currentRaw, card.lastRaw)}
             </div>
-            <div style={{ fontSize: 12, color: mutedColor, marginTop: 6, lineHeight: 1.3 }}>
-              {card.sub}
-            </div>
-            {card.nextLabel && (
-              <div style={{ fontSize: 11, color: mutedColor, marginTop: 4, opacity: 0.7 }}>
-                {card.nextLabel}
-              </div>
-            )}
           </div>
+          <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>
+            {card.sub}
+          </div>
+          {card.nextLabel && (
+            <div className="text-muted" style={{ fontSize: 11, marginTop: 2, opacity: 0.7 }}>
+              {card.nextLabel}
+            </div>
+          )}
         </div>
-      ))}
+        );
+      })}
       </div>
     </div>
   );

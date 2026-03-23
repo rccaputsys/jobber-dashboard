@@ -966,7 +966,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
     });
     const collectedCents = collected.reduce((s: number, inv: any) => s + Number(inv.total_amount_cents ?? 0), 0);
 
-    // Quotes sent + won this week
+    // Quotes sent, won, and lost this week
     const quotesSent = quotes.filter((q: any) => {
       const sent = safeDate(q.sent_at);
       return sent && sent.getTime() >= wStartMs && sent.getTime() < wEndMs;
@@ -976,7 +976,19 @@ const quoteWonPct = quotesInLast30Days.length > 0
       if (!updated || updated.getTime() < wStartMs || updated.getTime() >= wEndMs) return false;
       return statusLooksWon(String(q.quote_status ?? ""));
     });
+    const quotesLost = quotes.filter((q: any) => {
+      const updated = safeDate(q.updated_at_jobber);
+      if (!updated || updated.getTime() < wStartMs || updated.getTime() >= wEndMs) return false;
+      return statusLooksLost(String(q.quote_status ?? ""));
+    });
     const quotesWonCents = quotesWon.reduce((s: number, q: any) => s + Number(q.quote_total_cents ?? 0), 0);
+    // Sent-but-still-open quotes sent in this period
+    const sentStillOpen = quotesSent.filter((q: any) => {
+      const st = String(q.quote_status ?? "").toLowerCase();
+      return !statusLooksWon(st) && !statusLooksLost(st);
+    });
+    const winDenom = quotesWon.length + quotesLost.length + sentStillOpen.length;
+    const winRate = winDenom > 0 ? Math.round((quotesWon.length / winDenom) * 100) : 0;
 
     // Needs attention count (overdue + unscheduled + pending requests + changes requested in this window)
     const overdueThisWeek = invoices.filter((inv: any) => {
@@ -1001,6 +1013,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
       quotesSent: quotesSent.length,
       quotesWon: quotesWon.length,
       quotesWonCents,
+      winRate,
       overdueCount: overdueThisWeek,
     };
   }
