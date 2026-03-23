@@ -974,6 +974,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
       if (!updated || updated.getTime() < wStartMs || updated.getTime() >= wEndMs) return false;
       return statusLooksWon(String(q.quote_status ?? ""));
     });
+    const quotesWonCents = quotesWon.reduce((s: number, q: any) => s + Number(q.quote_total_cents ?? 0), 0);
 
     // Needs attention count (overdue + unscheduled + pending requests + changes requested in this window)
     const overdueThisWeek = invoices.filter((inv: any) => {
@@ -997,6 +998,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
       collectedCents,
       quotesSent: quotesSent.length,
       quotesWon: quotesWon.length,
+      quotesWonCents,
       overdueCount: overdueThisWeek,
     };
   }
@@ -1097,13 +1099,13 @@ const quoteWonPct = quotesInLast30Days.length > 0
   type Recommendation = { headline: string; detail: string; priority: "high" | "medium"; href: string };
   const recommendations: Recommendation[] = [];
 
-  // Overdue invoices
+  // Overdue invoices — only high if large amount or many invoices
   if (b15p > 0 && totalAR > 0) {
     const agedCount = agedARInvoices.length;
     recommendations.push({
       headline: `Collect ${money(b15p)}`,
       detail: `${agedCount} invoice${agedCount !== 1 ? "s" : ""} overdue 15+ days. Call your oldest accounts today.`,
-      priority: "high",
+      priority: agedCount >= 5 || b15p > 500000 ? "high" : "medium",
       href: `/jobber/invoices${adminQs}`,
     });
   }
@@ -1113,7 +1115,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
     recommendations.push({
       headline: `Bill ${money(needsInvoiceCents)}`,
       detail: `${needsInvoiceCount} completed job${needsInvoiceCount > 1 ? "s aren't" : " isn't"} invoiced yet. Send invoices today.`,
-      priority: "high",
+      priority: needsInvoiceCount >= 5 ? "high" : "medium",
       href: `/jobber/invoices${adminQs}`,
     });
   }
@@ -1123,7 +1125,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
     recommendations.push({
       headline: `Close ${money(changesRequestedCents)} faster`,
       detail: `${changesRequestedCount} quote${changesRequestedCount > 1 ? "s need" : " needs"} your revisions. These clients are ready to buy.`,
-      priority: "high",
+      priority: changesRequestedCount >= 3 ? "high" : "medium",
       href: `/jobber/sales${adminQs}`,
     });
   }
@@ -1407,8 +1409,8 @@ const quoteWonPct = quotesInLast30Days.length > 0
     { label: "Quoting", count: pipelineQuotes.length, value: pipelineValue > 0 ? money(pipelineValue) : null, icon: "\uD83D\uDCDD", href: `/jobber/sales${adminQs}`, color: "#5aa6ff", unitLabel: "quotes" },
     { label: "Won", count: approvedNoJobCount, value: approvedNoJobCents > 0 ? money(approvedNoJobCents) : null, icon: "\uD83C\uDFC6", href: `/jobber/sales${adminQs}`, color: "#10b981", unitLabel: "quotes" },
     { label: "Scheduled", count: scheduledActiveJobs.length, value: scheduledActiveCents > 0 ? money(scheduledActiveCents) : null, icon: "\uD83D\uDCC5", href: `/jobber/capacity${adminQs}`, color: "#06b6d4", unitLabel: "jobs" },
-    { label: "Needs Invoice", count: needsInvoiceCount, value: needsInvoiceCents > 0 ? money(needsInvoiceCents) : null, icon: "\uD83D\uDCC4", href: `/jobber/invoices${adminQs}`, color: "#f59e0b", unitLabel: "jobs" },
-    { label: "Outstanding", count: totalPastDueCount, value: totalAR > 0 ? money(totalAR) : null, icon: "\uD83D\uDCB0", href: `/jobber/invoices${adminQs}`, color: "#ef4444", unitLabel: "invoices" },
+    { label: "Needs Invoice", count: needsInvoiceCount, value: needsInvoiceCents > 0 ? money(needsInvoiceCents) : null, icon: "\uD83D\uDCC4", href: `/jobber/invoices${adminQs}`, color: "#8b5cf6", unitLabel: "jobs" },
+    { label: "Outstanding", count: totalPastDueCount, value: totalAR > 0 ? money(totalAR) : null, icon: "\uD83D\uDCB0", href: `/jobber/invoices${adminQs}`, color: "#f59e0b", unitLabel: "invoices" },
   ];
 
   return (
@@ -1532,8 +1534,24 @@ const quoteWonPct = quotesInLast30Days.length > 0
           </div>
         )}
 
-        {/* ===== Business Pulse — hero chart ===== */}
-        <div className="panel animate-in delay-1" style={{ marginTop: 20, padding: "24px 28px", overflow: "visible" }}>
+        {/* ===== Week at a Glance — top KPI cards ===== */}
+        <div className="animate-in delay-1" style={{ marginTop: 20 }}>
+          <WeekGlance
+            lastWeek={lastWeekSnap}
+            thisWeek={thisWeekSnap}
+            nextWeek={nextWeekSnap}
+            currencyCode={currencyCode}
+            sparklines={{
+              revenue: revenueSparkline,
+              pipeline: pipelineSparkline,
+              collections: collectionsSparkline,
+              unscheduled: unschedSparkline,
+            }}
+          />
+        </div>
+
+        {/* ===== Business Pulse — revenue chart ===== */}
+        <div className="panel animate-in delay-1" style={{ marginTop: 16, padding: "24px 28px", overflow: "visible" }}>
           <BusinessPulse
             months={pulseMonths}
             weeks={pulseWeeks}
@@ -1542,22 +1560,22 @@ const quoteWonPct = quotesInLast30Days.length > 0
         </div>
 
         {/* ===== This Week's Focus + Money Flow ===== */}
-        <div className="side-by-side animate-in delay-1" style={{ marginTop: 20 }}>
+        <div className="side-by-side animate-in delay-2" style={{ marginTop: 16 }}>
           {/* Left: Recommendations */}
           <div className="panel" style={{ padding: "18px 20px", overflow: "visible", display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
               <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>This Week&apos;s Focus</h2>
               {recommendations.length > 0 && (
-                <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 6, background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>
-                  {recommendations.filter(r => r.priority === "high").length} urgent
+                <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 6, background: "rgba(90,166,255,0.1)", color: "#5aa6ff" }}>
+                  {recommendations.length} {recommendations.length === 1 ? "item" : "items"}
                 </span>
               )}
             </div>
             {recommendations.length > 0 ? (
               <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
-                {recommendations.slice(0, 5).map((rec, i) => {
+                {recommendations.slice(0, 4).map((rec, i) => {
+                  const prioColor = rec.priority === "high" ? "#f59e0b" : "#5aa6ff";
                   const prioClass = rec.priority === "high" ? "rec-card-high" : "rec-card-medium";
-                  const prioColor = rec.priority === "high" ? "#ef4444" : "#f59e0b";
                   return (
                     <a key={i} href={rec.href} className={`rec-card ${prioClass}`} style={{ borderLeft: `3px solid ${prioColor}`, flexDirection: "column", gap: 3, padding: "12px 14px" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
@@ -1586,26 +1604,6 @@ const quoteWonPct = quotesInLast30Days.length > 0
               <MoneyFlowList stages={funnelStages} />
             </div>
           </div>
-        </div>
-
-        {/* ===== Week at a Glance ===== */}
-        <div className="panel animate-in delay-2" style={{ marginTop: 20, padding: "18px 20px", overflow: "visible" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Week at a Glance</h2>
-            <span className="info-tooltip">?<span className="tooltip-text">Compare last week, this week, and next week across schedule, completed work, collections, and sales.</span></span>
-          </div>
-          <WeekGlance
-            lastWeek={lastWeekSnap}
-            thisWeek={thisWeekSnap}
-            nextWeek={nextWeekSnap}
-            currencyCode={currencyCode}
-            sparklines={{
-              revenue: revenueSparkline,
-              pipeline: pipelineSparkline,
-              collections: collectionsSparkline,
-              unscheduled: unschedSparkline,
-            }}
-          />
         </div>
 
         {/* Footer */}

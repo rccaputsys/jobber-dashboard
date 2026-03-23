@@ -41,8 +41,8 @@ export function BusinessPulse({ months, weeks, currencyCode }: Props) {
 
   const maxVal = Math.max(...data.map(m => m.revenueCents), 1);
   const chartHeight = 260;
-  const chartPadTop = 24;
-  const chartPadBot = 8;
+  const chartPadTop = 20;
+  const chartPadBot = 20;
   const usableHeight = chartHeight - chartPadTop - chartPadBot;
 
   const primaryColor = isLight ? "#1e293b" : "#EAF1FF";
@@ -164,7 +164,7 @@ export function BusinessPulse({ months, weeks, currencyCode }: Props) {
       </div>
 
       {/* Chart */}
-      <div style={{ display: "flex", gap: 0, position: "relative", overflow: "visible", minWidth: 0 }}>
+      <div style={{ display: "flex", gap: 0, position: "relative", overflow: "hidden", minWidth: 0 }}>
         {/* Y-axis */}
         <div style={{
           display: "flex", flexDirection: "column", justifyContent: "space-between",
@@ -289,31 +289,29 @@ export function BusinessPulse({ months, weeks, currencyCode }: Props) {
             })}
           </div>
 
-          {/* X-axis labels — positioned below the chart area */}
-          <div style={{
-            display: "flex", position: "absolute", bottom: -28, left: 0, right: 0,
-            gap: data.length > 8 ? 4 : 8,
-          }}>
-            {data.map((m, i) => (
-              <div key={i} style={{
-                flex: 1, textAlign: "center",
-                fontSize: data.length > 8 ? 10 : 12,
-                fontWeight: m.isCurrent ? 800 : 600,
-                color: m.isCurrent ? primaryColor : (hoveredIdx === i ? primaryColor : mutedColor),
-                transition: "color 0.15s ease",
-              }}>
-                {m.label}
-                {m.isCurrent && (
-                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: barColor, margin: "3px auto 0" }} />
-                )}
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
-      {/* Spacer for x-axis labels */}
-      <div style={{ height: 36 }} />
+      {/* X-axis labels — outside the clipped chart area */}
+      <div style={{
+        display: "flex", marginLeft: 50, marginTop: 8,
+        gap: data.length > 8 ? 4 : 8,
+      }}>
+        {data.map((m, i) => (
+          <div key={i} style={{
+            flex: 1, textAlign: "center",
+            fontSize: data.length > 8 ? 10 : 12,
+            fontWeight: m.isCurrent ? 800 : 600,
+            color: m.isCurrent ? primaryColor : (hoveredIdx === i ? primaryColor : mutedColor),
+            transition: "color 0.15s ease",
+          }}>
+            {m.label}
+            {m.isCurrent && (
+              <div style={{ width: 4, height: 4, borderRadius: "50%", background: barColor, margin: "3px auto 0" }} />
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

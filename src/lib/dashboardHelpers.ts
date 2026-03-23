@@ -1150,7 +1150,7 @@ export const globalStyles = `
   /* Side-by-side layout */
   .side-by-side {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 3fr 2fr;
     gap: 16px;
     align-items: stretch;
   }
@@ -1201,22 +1201,22 @@ export const globalStyles = `
     background: #f1f5f9 !important;
     border-color: #cbd5e1 !important;
   }
-  /* Priority-tinted rec cards for visibility */
+  /* Priority-tinted rec cards */
   .rec-card-high {
-    background: rgba(239,68,68,0.04) !important;
-    border-color: rgba(239,68,68,0.1) !important;
-  }
-  .rec-card-medium {
     background: rgba(245,158,11,0.04) !important;
     border-color: rgba(245,158,11,0.1) !important;
   }
-  html[data-theme="light"] .rec-card-high {
-    background: #fef2f2 !important;
-    border-color: #fecaca !important;
+  .rec-card-medium {
+    background: rgba(90,166,255,0.04) !important;
+    border-color: rgba(90,166,255,0.1) !important;
   }
-  html[data-theme="light"] .rec-card-medium {
+  html[data-theme="light"] .rec-card-high {
     background: #fffbeb !important;
     border-color: #fde68a !important;
+  }
+  html[data-theme="light"] .rec-card-medium {
+    background: #eff6ff !important;
+    border-color: #bfdbfe !important;
   }
 
   /* Money Flow vertical list */
