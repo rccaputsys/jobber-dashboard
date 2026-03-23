@@ -136,11 +136,11 @@ export function SalesKpiCards({
               Quotes Sent
             </div>
             <div className="kpi-value-medium" style={{ color: "#5aa6ff" }}>
-              {metrics.quotesSent}
+              {metrics.quotesSentValue}
             </div>
           </div>
           <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>
-            {metrics.quotesSentValue} &bull; {periodSuffix}
+            {metrics.quotesSent} {metrics.quotesSent === 1 ? "quote" : "quotes"} &bull; {periodSuffix}
           </div>
         </div>
       </div>

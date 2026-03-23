@@ -13,10 +13,12 @@ import {
 
 export type WonQuoteEvent = { closedAt: number; amount: number };
 export type ClosureEvent = { closedAt: number; won: boolean };
+export type SentOpenEvent = { sentAt: number };
 
 type Props = {
   wonQuoteEvents: WonQuoteEvent[];
   allClosureEvents: ClosureEvent[];
+  sentOpenEvents?: SentOpenEvent[];
   currencyCode: string;
 };
 
@@ -251,7 +253,7 @@ function InlineControls({
 }
 
 /* ---- Main Component ---- */
-export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, currencyCode }: Props) {
+export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, sentOpenEvents = [], currencyCode }: Props) {
   const [weekOffset, setWeekOffsetRaw] = useState<number | null>(null);
   const [range, setRangeRaw] = useState("8w");
   const [g, setGRaw] = useState<Granularity>("week");
@@ -358,31 +360,39 @@ export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, currencyC
           if (ev.won) won++; else lost++;
         }
       }
-      const denom = won + lost;
+      // Count sent-but-open quotes in this bucket (by sent date)
+      let sentOpen = 0;
+      for (const ev of sentOpenEvents) {
+        if (ev.sentAt >= bsTs && ev.sentAt < beTs) sentOpen++;
+      }
+      const denom = won + lost + sentOpen;
       const rate = denom > 0 ? (won / denom) * 100 : 0;
       const xLabel = labelForBucket(bs, granularity);
       return {
         xLabel,
         value: rate,
         tooltip: `${xLabel}: ${rate.toFixed(0)}%`,
-        hoverLabel: `${won}W / ${lost}L`,
+        hoverLabel: `${won}W / ${lost}L${sentOpen > 0 ? ` / ${sentOpen} open` : ""}`,
       };
     });
 
-    // Weighted win rate average: total won / total closures across visible range
+    // Weighted win rate average: won / (won + lost + sent-open) across visible range
     const rangeStartMs = start.getTime();
     const rangeEndMs = addDaysUTC(end, 1).getTime();
-    let totalWon = 0, totalClosures = 0;
+    let totalWon = 0, totalDenom = 0;
     for (const ev of allClosureEvents) {
       if (ev.closedAt >= rangeStartMs && ev.closedAt < rangeEndMs) {
-        totalClosures++;
+        totalDenom++;
         if (ev.won) totalWon++;
       }
     }
-    const weightedWinRate = totalClosures > 0 ? (totalWon / totalClosures) * 100 : 0;
+    for (const ev of sentOpenEvents) {
+      if (ev.sentAt >= rangeStartMs && ev.sentAt < rangeEndMs) totalDenom++;
+    }
+    const weightedWinRate = totalDenom > 0 ? (totalWon / totalDenom) * 100 : 0;
 
     return { revenuePoints: revPointsFinal, winRatePoints: wrPts, weightedWinRate };
-  }, [weekOffset, range, g, wonQuoteEvents, allClosureEvents, money]);
+  }, [weekOffset, range, g, wonQuoteEvents, allClosureEvents, sentOpenEvents, money]);
 
   const hasData = wonQuoteEvents.length > 0 || allClosureEvents.length > 0;
 

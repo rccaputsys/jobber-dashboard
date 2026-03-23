@@ -208,10 +208,15 @@ export default async function SalesPage({
       return d >= periodStart && d < periodEnd;
     };
 
-    // Win Rate: won / (won + lost) — only resolved quotes, matches chart calculation
+    // Win Rate: won / (won + lost + sent-still-open) — includes unresolved quotes
+    // so owners who don't archive quotes still see an honest rate
     const periodWon = wonQuotes.filter((q: any) => inPeriod(safeDate(q.updated_at_jobber)));
     const periodLost = lostQuotes.filter((q: any) => inPeriod(safeDate(q.updated_at_jobber)));
-    const winDenom = periodWon.length + periodLost.length;
+    const periodSentOpen = sentQuotes.filter((q: any) => {
+      const sent = safeDate(q.sent_at);
+      return periodStart ? (sent && sent >= periodStart && sent < (periodEnd || todayUTC)) : true;
+    });
+    const winDenom = periodWon.length + periodLost.length + periodSentOpen.length;
     const winRate = winDenom > 0 ? periodWon.length / winDenom : 0;
 
     // Avg days to close for won quotes in period
@@ -264,6 +269,10 @@ export default async function SalesPage({
   const allClosureEvents = quotes
     .filter((q: any) => (statusLooksWon(q.quote_status) || statusLooksLost(q.quote_status)) && safeDate(q.updated_at_jobber))
     .map((q: any) => ({ closedAt: safeDate(q.updated_at_jobber)!.getTime(), won: statusLooksWon(q.quote_status) }));
+  // Sent-but-still-open quotes — bucketed by sent_at so they count in the period they were sent
+  const sentOpenEvents = sentQuotes
+    .filter((q: any) => safeDate(q.sent_at))
+    .map((q: any) => ({ sentAt: safeDate(q.sent_at)!.getTime() }));
 
   // Quote follow-up table: open quotes sorted by staleness
   const followUpQuotes = openQuotes
@@ -393,6 +402,7 @@ export default async function SalesPage({
         <SalesTrendsSection
           wonQuoteEvents={wonQuoteEvents}
           allClosureEvents={allClosureEvents}
+          sentOpenEvents={sentOpenEvents}
           currencyCode={currencyCode}
         />
 
