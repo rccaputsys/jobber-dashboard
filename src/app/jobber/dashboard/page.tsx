@@ -1061,6 +1061,32 @@ const quoteWonPct = quotesInLast30Days.length > 0
   const firstWithData = pulseMonthsRaw.findIndex(m => m.revenueCents > 0 || m.completedCount > 0);
   const pulseMonths = firstWithData >= 0 ? pulseMonthsRaw.slice(firstWithData) : pulseMonthsRaw.slice(-1);
 
+  // Weekly revenue (12 weeks, trim leading empty)
+  const pulseWeeksRaw: typeof pulseMonthsRaw = [];
+  for (let w = 11; w >= 0; w--) {
+    const wStart = addDaysUTC(startOfWeekUTC(todayUTC), -7 * w);
+    const wEnd = addDaysUTC(wStart, 7);
+    const wLabel = `${wStart.toLocaleString(undefined, { month: "short", timeZone: "UTC" })} ${wStart.getUTCDate()}`;
+    const wData = (() => {
+      const wStartMs = wStart.getTime(); const wEndMs = wEnd.getTime();
+      const cv = visits.filter((v: any) => { const c = safeDate(v.completed_at); return c && c.getTime() >= wStartMs && c.getTime() < wEndMs; });
+      let rev = 0;
+      for (const v of cv) { const jid = (v as any).jobber_job_id; rev += Math.round((jobTotalMap.get(jid) || 0) / (jobVisitCountMap.get(jid) || 1)); }
+      const cj = jobs.filter((j: any) => {
+        if (jobIdsWithVisits.has(j.jobber_job_id)) return false;
+        const st = (j.status || "").toLowerCase();
+        if (!completedStatuses.includes(st)) return false;
+        const raw = completedDateKeys.map((k: string) => j[k]).find((v: any) => v);
+        const dt = safeDate(raw); return dt && dt.getTime() >= wStartMs && dt.getTime() < wEndMs;
+      });
+      for (const j of cj) rev += Number((j as any).job_revenue_cents ?? (j as any).total_amount_cents ?? 0);
+      return { revenue: rev, count: cv.length + cj.length };
+    })();
+    pulseWeeksRaw.push({ label: wLabel, revenueCents: wData.revenue, completedCount: wData.count, isCurrent: w === 0 });
+  }
+  const firstWeekWithData = pulseWeeksRaw.findIndex(w => w.revenueCents > 0 || w.completedCount > 0);
+  const pulseWeeks = firstWeekWithData >= 0 ? pulseWeeksRaw.slice(firstWeekWithData) : pulseWeeksRaw.slice(-1);
+
   // Needs invoicing (computed early for use in recommendations)
   const needsInvoiceJobs = jobs.filter((j: any) => (j.status || "").toLowerCase() === "requires_invoicing");
   const needsInvoiceCount = needsInvoiceJobs.length;
@@ -1510,6 +1536,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
         <div className="panel animate-in delay-1" style={{ marginTop: 20, padding: "24px 28px", overflow: "visible" }}>
           <BusinessPulse
             months={pulseMonths}
+            weeks={pulseWeeks}
             currencyCode={currencyCode}
           />
         </div>
