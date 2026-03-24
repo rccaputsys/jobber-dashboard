@@ -192,6 +192,16 @@ export function CollectionChart({ periods, currencyCode, outstandingCents, draft
                       background: `linear-gradient(180deg, ${collectedColor}dd, ${collectedColor})`,
                       transition: "height 0.3s ease",
                     }} />
+                    {/* Over-collected accent — gold top portion when collected > invoiced */}
+                    {overCollected && collectedH > invoicedH && (
+                      <div style={{
+                        position: "absolute", bottom: invoicedH, left: 0, right: 0,
+                        height: collectedH - invoicedH,
+                        borderRadius: "6px 6px 0 0",
+                        background: "linear-gradient(180deg, rgba(250,204,21,0.5), rgba(250,204,21,0.2))",
+                        transition: "height 0.3s ease",
+                      }} />
+                    )}
                   </div>
 
                   {/* Period label */}
@@ -224,6 +234,10 @@ export function CollectionChart({ periods, currencyCode, outstandingCents, draft
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 12, height: 12, borderRadius: 3, background: collectedColor }} />
           <span style={{ fontSize: 12, fontWeight: 500, color: mutedColor }}>Collected</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 12, height: 12, borderRadius: 3, background: "linear-gradient(180deg, rgba(250,204,21,0.5), rgba(250,204,21,0.2))" }} />
+          <span style={{ fontSize: 12, fontWeight: 500, color: mutedColor }}>Over-collected</span>
         </div>
       </div>
 
