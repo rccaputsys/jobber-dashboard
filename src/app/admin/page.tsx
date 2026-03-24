@@ -1,6 +1,7 @@
 // src/app/admin/page.tsx
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { redirect } from "next/navigation";
+import { globalStyles } from "@/lib/dashboardHelpers";
 import { AdminTabs } from "./AdminTabs";
 import type { UserAnalyticsSummary, AggregateAnalytics } from "./AdminTabs";
 
@@ -255,214 +256,8 @@ function computeAnalytics(events: any[]): {
   };
 }
 
-const globalStyles = `
-  @keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-
-  .animate-in {
-    animation: fadeInUp 0.5s ease-out forwards;
-    opacity: 0;
-  }
-  .delay-1 { animation-delay: 0.1s; }
-  .delay-2 { animation-delay: 0.2s; }
-  .delay-3 { animation-delay: 0.3s; }
-  .delay-4 { animation-delay: 0.4s; }
-  .delay-5 { animation-delay: 0.5s; }
-
-  .hover-lift {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-  }
-  .hover-lift:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-  }
-
-  .admin-container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 16px;
-    padding-bottom: 60px;
-  }
-  @media (min-width: 640px) {
-    .admin-container { padding: 20px; padding-bottom: 60px; }
-  }
-  @media (min-width: 1024px) {
-    .admin-container { padding: 24px 32px 80px; }
-  }
-
-  .kpi-grid-primary {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  @media (min-width: 640px) {
-    .kpi-grid-primary { grid-template-columns: repeat(3, 1fr); gap: 16px; }
-  }
-
-  .kpi-grid-secondary {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-  @media (min-width: 640px) {
-    .kpi-grid-secondary { grid-template-columns: repeat(3, 1fr); gap: 12px; }
-  }
-  @media (min-width: 1024px) {
-    .kpi-grid-secondary { grid-template-columns: repeat(6, 1fr); gap: 14px; }
-  }
-
-  .kpi-primary {
-    position: relative;
-    overflow: hidden;
-    border-radius: 20px;
-    padding: 20px;
-    background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
-    border: 1px solid rgba(255,255,255,0.1);
-    box-shadow: 0 16px 48px rgba(0,0,0,0.25);
-  }
-  @media (min-width: 640px) {
-    .kpi-primary { padding: 24px; }
-  }
-  .kpi-primary::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    filter: blur(60px);
-    opacity: 0.3;
-    pointer-events: none;
-  }
-  .kpi-primary.gradient-purple::before {
-    background: linear-gradient(135deg, #7c5cff, #5aa6ff);
-  }
-  .kpi-primary.gradient-green::before {
-    background: #10b981;
-  }
-
-  .kpi-value-large {
-    font-size: 40px;
-    font-weight: 800;
-    letter-spacing: -2px;
-    line-height: 1;
-  }
-  @media (min-width: 640px) {
-    .kpi-value-large { font-size: 48px; }
-  }
-
-  .kpi-secondary {
-    padding: 14px;
-    border-radius: 14px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    transition: all 0.2s ease;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    min-height: 90px;
-  }
-  .kpi-secondary:hover {
-    background: rgba(255,255,255,0.06);
-    border-color: rgba(255,255,255,0.12);
-  }
-
-  .kpi-value-medium {
-    font-size: 28px;
-    font-weight: 800;
-    letter-spacing: -1px;
-  }
-  @media (min-width: 640px) {
-    .kpi-value-medium { font-size: 32px; }
-  }
-
-  .panel {
-    border-radius: 16px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
-    box-shadow: 0 16px 48px rgba(0,0,0,0.3);
-    overflow: hidden;
-  }
-  @media (min-width: 640px) {
-    .panel { border-radius: 20px; }
-  }
-
-  .chart-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  @media (min-width: 768px) {
-    .chart-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; }
-  }
-
-  .table-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .data-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-  }
-  @media (min-width: 640px) {
-    .data-table { font-size: 13px; }
-  }
-  .data-table th {
-    text-align: left;
-    padding: 10px 12px;
-    font-weight: 600;
-    font-size: 10px;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    white-space: nowrap;
-    color: rgba(234,241,255,0.5);
-  }
-  .data-table td {
-    padding: 12px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    vertical-align: middle;
-  }
-  .data-table tbody tr {
-    transition: background 0.15s ease;
-  }
-  .data-table tbody tr:hover {
-    background: rgba(255,255,255,0.03);
-  }
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    padding: 5px 10px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 11px;
-    text-decoration: none;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.05);
-    color: rgba(234,241,255,0.7);
-    cursor: pointer;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-  }
-  .btn:hover {
-    background: rgba(90,166,255,0.15);
-    border-color: rgba(90,166,255,0.3);
-    color: #5aa6ff;
-    transform: translateY(-1px);
-  }
-
+/* Admin-specific CSS addendum (trial grid, admin-specific overrides) */
+const adminStyles = `
   .trial-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -471,11 +266,6 @@ const globalStyles = `
   @media (min-width: 640px) {
     .trial-grid { grid-template-columns: repeat(5, 1fr); gap: 10px; }
   }
-
-  .chart-title { color: #EAF1FF; }
-  .chart-subtitle { color: rgba(234,241,255,0.5); }
-  .chart-label { color: rgba(234,241,255,0.4); }
-  .chart-axis-label { fill: rgba(234,241,255,0.4); }
 `;
 
 export default async function AdminPage() {
@@ -546,6 +336,10 @@ export default async function AdminPage() {
     const d = getTrialDaysLeft(c); return d !== null && d === 1;
   }).length;
 
+  const dateStr = new Date().toLocaleDateString(undefined, {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  });
+
   return (
     <main style={{
       minHeight: "100vh",
@@ -557,175 +351,74 @@ export default async function AdminPage() {
       color: "#EAF1FF",
     }}>
       <style>{globalStyles}</style>
+      <style>{adminStyles}</style>
 
-      <div className="admin-container">
-        {/* Header */}
-        <div className="animate-in" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-          <svg width="36" height="36" viewBox="0 0 50 50">
-            <defs>
-              <linearGradient id="admin-g" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#7c5cff" />
-                <stop offset="100%" stopColor="#5aa6ff" />
-              </linearGradient>
-            </defs>
-            <circle cx="25" cy="25" r="22" fill="none" stroke="url(#admin-g)" strokeWidth="3" />
-            <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#admin-g)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: "#EAF1FF", margin: 0 }}>Admin Dashboard</h1>
-            <p style={{ fontSize: 12, color: "rgba(234,241,255,0.5)", margin: 0, marginTop: 2 }}>
-              {new Date().toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-            </p>
-          </div>
+      <div className="dashboard-container" style={{ maxWidth: 1400, paddingBottom: 80 }}>
+        {/* Topbar — matching DashboardTopbar */}
+        <div className="dashboard-topbar animate-in">
+          <header className="dashboard-header">
+            <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+              <svg width="24" height="24" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+                <defs>
+                  <linearGradient id="adminLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#7c5cff" />
+                    <stop offset="100%" stopColor="#5aa6ff" />
+                  </linearGradient>
+                </defs>
+                <circle cx="25" cy="25" r="22" fill="none" stroke="url(#adminLogoGrad)" strokeWidth="3" />
+                <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#adminLogoGrad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <div style={{ minWidth: 0 }}>
+                <div style={{
+                  fontSize: 9, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase",
+                  background: "linear-gradient(135deg, #7c5cff, #5aa6ff)",
+                  WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                }}>
+                  AccuInsight
+                </div>
+                <div className="text-primary" style={{ fontSize: 13, fontWeight: 800, letterSpacing: -0.3, lineHeight: 1.1 }}>
+                  Admin
+                </div>
+              </div>
+            </div>
+
+            <div className="header-actions" style={{ gap: 6 }}>
+              <span className="text-muted" style={{ fontSize: 11, whiteSpace: "nowrap" }}>{dateStr}</span>
+              <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
+              <a href="/jobber/dashboard" className="btn" style={{ fontSize: 11, padding: "6px 12px" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+                Dashboard
+              </a>
+            </div>
+          </header>
         </div>
 
-        {/* Primary KPIs */}
-        <div className="kpi-grid-primary animate-in delay-1" style={{ marginBottom: 16 }}>
-          <div className="kpi-primary gradient-purple hover-lift">
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", color: "rgba(234,241,255,0.5)", marginBottom: 8 }}>
-              Total Users
-            </div>
-            <div className="kpi-value-large" style={{ color: "#EAF1FF" }}>
-              {totalUsers}
-            </div>
-          </div>
-          <div className="kpi-primary gradient-green hover-lift">
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", color: "rgba(234,241,255,0.5)", marginBottom: 8 }}>
-              Active Subscribers
-            </div>
-            <div className="kpi-value-large" style={{ color: "#10b981" }}>
-              {activeSubscribers}
-            </div>
-          </div>
-          <div className="kpi-primary gradient-green hover-lift">
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", color: "rgba(234,241,255,0.5)", marginBottom: 8 }}>
-              MRR
-            </div>
-            <div className="kpi-value-large" style={{ color: "#10b981" }}>
-              ${mrr}
-            </div>
-          </div>
-        </div>
-
-        {/* Secondary KPIs */}
-        <div className="kpi-grid-secondary animate-in delay-2" style={{ marginBottom: 20 }}>
-          <div className="kpi-secondary hover-lift">
-            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "rgba(234,241,255,0.5)", marginBottom: 4 }}>
-              Trial
-            </div>
-            <div className="kpi-value-medium" style={{ color: "#3b82f6" }}>
-              {trialing}
-            </div>
-          </div>
-          <div className="kpi-secondary hover-lift">
-            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "rgba(234,241,255,0.5)", marginBottom: 4 }}>
-              Expired
-            </div>
-            <div className="kpi-value-medium" style={{ color: "#f59e0b" }}>
-              {expiredTrials}
-            </div>
-          </div>
-          <div className="kpi-secondary hover-lift">
-            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "rgba(234,241,255,0.5)", marginBottom: 4 }}>
-              Churned
-            </div>
-            <div className="kpi-value-medium" style={{ color: "#ef4444" }}>
-              {churned}
-            </div>
-          </div>
-          <div className="kpi-secondary hover-lift">
-            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "rgba(234,241,255,0.5)", marginBottom: 4 }}>
-              DAU
-            </div>
-            <div className="kpi-value-medium" style={{ color: "#5aa6ff" }}>
-              {aggregate.dau}
-            </div>
-          </div>
-          <div className="kpi-secondary hover-lift">
-            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "rgba(234,241,255,0.5)", marginBottom: 4 }}>
-              WAU
-            </div>
-            <div className="kpi-value-medium" style={{ color: "#5aa6ff" }}>
-              {aggregate.wau}
-            </div>
-          </div>
-          <div className="kpi-secondary hover-lift">
-            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "rgba(234,241,255,0.5)", marginBottom: 4 }}>
-              Engagement
-            </div>
-            <div className="kpi-value-medium" style={{ color: engagementPct >= 50 ? "#10b981" : engagementPct >= 20 ? "#f59e0b" : "#ef4444" }}>
-              {engagementPct}%
-            </div>
-          </div>
-        </div>
-
-        {/* Trial Countdown */}
-        {trialing > 0 && (
-          <div className="panel animate-in delay-3" style={{ marginBottom: 20, padding: 16 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#EAF1FF", marginBottom: 12 }}>
-              Trial Countdown
-            </div>
-            <div className="trial-grid">
-              <div style={{
-                padding: "10px 6px",
-                borderRadius: 10,
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                textAlign: "center",
-              }}>
-                <div style={{ fontSize: 9, fontWeight: 600, color: "rgba(234,241,255,0.5)" }}>15-11d</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: "#EAF1FF" }}>{trial15to11}</div>
-              </div>
-              <div style={{
-                padding: "10px 6px",
-                borderRadius: 10,
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                textAlign: "center",
-              }}>
-                <div style={{ fontSize: 9, fontWeight: 600, color: "rgba(234,241,255,0.5)" }}>10-6d</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: "#EAF1FF" }}>{trial10to6}</div>
-              </div>
-              <div style={{
-                padding: "10px 6px",
-                borderRadius: 10,
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                textAlign: "center",
-              }}>
-                <div style={{ fontSize: 9, fontWeight: 600, color: "rgba(234,241,255,0.5)" }}>5-3d</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: "#EAF1FF" }}>{trial5to3}</div>
-              </div>
-              <div style={{
-                padding: "10px 6px",
-                borderRadius: 10,
-                background: trial2 > 0 ? "rgba(245,158,11,0.1)" : "rgba(255,255,255,0.04)",
-                border: `1px solid ${trial2 > 0 ? "rgba(245,158,11,0.3)" : "rgba(255,255,255,0.08)"}`,
-                textAlign: "center",
-              }}>
-                <div style={{ fontSize: 9, fontWeight: 600, color: trial2 > 0 ? "#f59e0b" : "rgba(234,241,255,0.5)" }}>2d</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: trial2 > 0 ? "#f59e0b" : "#EAF1FF" }}>{trial2}</div>
-              </div>
-              <div style={{
-                padding: "10px 6px",
-                borderRadius: 10,
-                background: trial1 > 0 ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.04)",
-                border: `1px solid ${trial1 > 0 ? "rgba(239,68,68,0.3)" : "rgba(255,255,255,0.08)"}`,
-                textAlign: "center",
-              }}>
-                <div style={{ fontSize: 9, fontWeight: 600, color: trial1 > 0 ? "#ef4444" : "rgba(234,241,255,0.5)" }}>1d</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: trial1 > 0 ? "#ef4444" : "#EAF1FF" }}>{trial1}</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tabs: Users | Analytics */}
-        <div className="animate-in delay-4">
+        {/* Tabs + Content */}
+        <div className="animate-in delay-1" style={{ marginTop: 4 }}>
           <AdminTabs
             connections={allConnections}
             userSummaries={userSummaries}
             aggregateAnalytics={aggregate}
+            overview={{
+              totalUsers,
+              activeSubscribers,
+              mrr,
+              trialing,
+              expiredTrials,
+              churned,
+              engagementPct,
+              trial15to11,
+              trial10to6,
+              trial5to3,
+              trial2,
+              trial1,
+              dau: aggregate.dau,
+              wau: aggregate.wau,
+              mau: aggregate.mau,
+              onboardingFunnel: aggregate.onboardingFunnel,
+            }}
           />
         </div>
       </div>
