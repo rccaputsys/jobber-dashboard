@@ -19,6 +19,7 @@ type LateVisit = {
   start_at: string | null;
   days_late: number;
   amount_cents: number;
+  jobber_url?: string;
 };
 
 type Bucket = {
@@ -203,7 +204,7 @@ export function CapacityActionList({
       job_number: v.job_number,
       job_title: v.title,
       total_amount_cents: v.amount_cents,
-      jobber_url: "",
+      jobber_url: v.jobber_url || "",
       status: "late",
       created_at: v.start_at,
     });
@@ -254,6 +255,19 @@ export function CapacityActionList({
                 "Jobber URL": j.jobber_url,
               }))}
               filename="unscheduled-jobs"
+              label="Export CSV"
+            />
+          )}
+          {activeTab === "late" && lateVisits.length > 0 && (
+            <ExportCSV
+              data={lateVisits.map(v => ({
+                "Job #": v.job_number,
+                "Title": v.title,
+                "Days Late": v.days_late,
+                "Scheduled": v.start_at ? new Date(v.start_at).toLocaleDateString() : "",
+                "Amount": (v.amount_cents / 100).toFixed(2),
+              }))}
+              filename="late-visits"
               label="Export CSV"
             />
           )}
@@ -325,9 +339,66 @@ export function CapacityActionList({
       <GroupedTable buckets={buckets} money={money} />
       </>)}
 
-      {activeTab === "late" && lateVisits.length > 0 && (
-        <GroupedTable buckets={lateBuckets} money={money} />
-      )}
+      {activeTab === "late" && lateVisits.length > 0 && (<>
+      {/* Distribution bar */}
+      <div style={{ marginBottom: 20 }}>
+        {(() => {
+          const lateTotalCents = lateBuckets.reduce((s, b) => s + b.totalCents, 0);
+          return (<>
+            <div style={{
+              display: "flex", height: 32, borderRadius: 8, overflow: "hidden",
+              background: isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+            }}>
+              {lateBuckets.map((bucket) => {
+                const widthPct = lateTotalCents > 0 ? (bucket.totalCents / lateTotalCents) * 100 : 0;
+                if (widthPct === 0) return null;
+                return (
+                  <div
+                    key={bucket.key}
+                    style={{
+                      width: `${widthPct}%`,
+                      minWidth: widthPct > 0 ? 2 : 0,
+                      background: bucket.color,
+                      opacity: 0.85,
+                      transition: "width 0.3s ease",
+                    }}
+                    title={`${bucket.label}: ${bucket.jobs.length} visits — ${money(bucket.totalCents)}`}
+                  />
+                );
+              })}
+            </div>
+
+            {/* Bucket legend */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginTop: 10 }}>
+              {lateBuckets.map((bucket) => {
+                const pctOfTotal = lateTotalCents > 0 ? Math.round((bucket.totalCents / lateTotalCents) * 100) : 0;
+                return (
+                  <div key={bucket.key} style={{
+                    padding: "8px 10px", borderRadius: 8,
+                    background: bucket.jobs.length > 0 ? bucket.bg : "transparent",
+                    borderLeft: `3px solid ${bucket.jobs.length > 0 ? bucket.color : "rgba(255,255,255,0.06)"}`,
+                    opacity: bucket.jobs.length > 0 ? 1 : 0.4,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: bucket.color }}>{bucket.label}</span>
+                      {bucket.jobs.length > 0 && <span className="text-muted" style={{ fontSize: 10 }}>{pctOfTotal}%</span>}
+                    </div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: bucket.jobs.length > 0 ? bucket.color : "rgba(255,255,255,0.2)" }}>
+                      {bucket.jobs.length > 0 ? money(bucket.totalCents) : "\u2014"}
+                    </div>
+                    <div className="text-muted" style={{ fontSize: 11, marginTop: 1 }}>
+                      {bucket.jobs.length} {bucket.jobs.length === 1 ? "visit" : "visits"}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>);
+        })()}
+      </div>
+
+      <GroupedTable buckets={lateBuckets} money={money} />
+      </>)}
 
       {activeTab === "late" && lateVisits.length === 0 && (
         <div className="text-muted" style={{ textAlign: "center", padding: 24, fontSize: 14 }}>

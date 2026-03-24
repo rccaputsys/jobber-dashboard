@@ -282,6 +282,7 @@ export function InvoiceTrendsSection({ events, agingBuckets, totalOutstandingCen
         <style>{`@media (min-width: 768px) { .invoice-trends-grid { grid-template-columns: minmax(0, 1fr) 280px !important; } }`}</style>
 
         {/* Left: Collection Chart */}
+        <div style={{ minWidth: 0, overflow: "hidden" }}>
         {events.length > 0 ? (
           <CollectionChart
             periods={periodData}
@@ -295,6 +296,7 @@ export function InvoiceTrendsSection({ events, agingBuckets, totalOutstandingCen
             <span className="text-muted">No invoice data yet</span>
           </div>
         )}
+        </div>
 
         {/* Right: Aging Donut */}
         <div style={{ minWidth: 280 }}>

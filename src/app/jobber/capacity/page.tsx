@@ -150,8 +150,10 @@ export default async function CapacityPage({
     const jid = v.jobber_job_id;
     if (jid) jobVisitCounts.set(jid, (jobVisitCounts.get(jid) || 0) + 1);
   }
+  const jobUrls = new Map<string, string>();
   for (const j of jobs) {
     jobTotals.set(j.jobber_job_id, Number(j.total_amount_cents ?? 0));
+    if (j.jobber_url) jobUrls.set(j.jobber_job_id, j.jobber_url);
   }
   // Build visit ID → job ID lookup (O(n) instead of O(n²) find)
   const visitToJobId = new Map<string, string>();
@@ -415,7 +417,7 @@ export default async function CapacityPage({
         job_number: v.job_number ?? 0,
         job_title: v.title || "",
         total_amount_cents: 0,
-        jobber_url: "",
+        jobber_url: jobUrls.get(v.jobber_job_id) || "",
         status: "unscheduled_visit",
         created_at: v.created_at_jobber || null,
       })),
@@ -613,6 +615,7 @@ export default async function CapacityPage({
                 start_at: v.start_at || null,
                 days_late: daysLate,
                 amount_cents: Math.round(jobTotal / vCount),
+                jobber_url: jobUrls.get(jid) || "",
               };
             })
             .sort((a: any, b: any) => b.days_late - a.days_late)
