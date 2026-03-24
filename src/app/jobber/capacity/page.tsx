@@ -573,18 +573,19 @@ export default async function CapacityPage({
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, justifyContent: "center" }}>
                   {items.map((item, i) => (
-                    <div key={i} className="kpi-secondary" style={{
+                    <div key={i} className="hover-lift" style={{
                       display: "flex", alignItems: "center", justifyContent: "space-between",
-                      padding: "12px 14px", borderRadius: 10,
+                      padding: "16px 18px", borderRadius: 12,
                       borderLeft: `3px solid ${item.color}`,
                       background: `${item.color}08`,
                       cursor: "default",
+                      transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease",
                     }}>
                       <div>
-                        <div className="text-primary" style={{ fontSize: 13, fontWeight: 600 }}>{item.label}</div>
-                        <div className="text-muted" style={{ fontSize: 11 }}>{item.detail}</div>
+                        <div className="text-primary" style={{ fontSize: 14, fontWeight: 700 }}>{item.label}</div>
+                        <div className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>{item.detail}</div>
                       </div>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: item.color }}>
+                      <div style={{ fontSize: 28, fontWeight: 800, color: item.color, letterSpacing: -0.5 }}>
                         {item.value}
                       </div>
                     </div>
