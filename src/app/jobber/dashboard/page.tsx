@@ -1673,7 +1673,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
         </footer>
       </div>
       {/* Onboarding overlay */}
-      {!isDemo && subscriptionActive === false && (
+      {!isDemo && (
         <OnboardingOverlay
           state={{
             hasData: jobs.length > 0 || invoices.length > 0,
