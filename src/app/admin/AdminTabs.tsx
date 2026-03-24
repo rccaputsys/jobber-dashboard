@@ -27,6 +27,12 @@ export type UserAnalyticsSummary = {
   connection_id: string;
   last_active: string | null;
   event_count_7d: number;
+  total_events: number;
+  pages_visited: string[];
+  tour_status: "not_started" | "started" | "completed" | "skipped";
+  has_synced: boolean;
+  has_exported: boolean;
+  page_views: number;
 };
 
 export type AggregateAnalytics = {
@@ -37,6 +43,11 @@ export type AggregateAnalytics = {
   dailyActiveUsers: { date: string; count: number }[];
   dailyPageViews: { date: string; count: number }[];
   dailySessions: { date: string; count: number }[];
+  onboardingFunnel: { tourStarted: number; tourCompleted: number; tourSkipped: number };
+  chartEngagement: { chartName: string; totalViewMs: number; viewCount: number }[];
+  rageClicks: number;
+  errors: number;
+  topPages: { page: string; count: number }[];
 };
 
 type Props = {
@@ -118,7 +129,7 @@ export function AdminTabs({ connections, userSummaries, aggregateAnalytics }: Pr
       {activeTab === "users" ? (
         <UserTable connections={connections} userSummaries={userSummaries} />
       ) : (
-        <AdminAnalytics analytics={aggregateAnalytics} />
+        <AdminAnalytics analytics={aggregateAnalytics} userSummaries={userSummaries} connections={connections} />
       )}
     </div>
   );

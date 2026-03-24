@@ -38,7 +38,7 @@ async function fetchAllAnalyticsEvents(since: string, pageSize = 100): Promise<a
   while (true) {
     const { data, error } = await supabaseAdmin
       .from("analytics_events")
-      .select("connection_id,event_name,created_at")
+      .select("connection_id,event,event_name,properties,created_at")
       .gte("created_at", since)
       .order("created_at", { ascending: true })
       .range(from, from + pageSize - 1);
@@ -64,43 +64,140 @@ function computeAnalytics(events: any[]): {
   const day30 = now - 30 * 86_400_000;
   const thirtyDaysAgo = new Date(day30);
 
-  // Per-user summaries
-  const userMap: Record<string, { lastActive: string | null; events7d: number }> = {};
+  // Helper: normalize event name (new column is `event`, old was `event_name`)
+  const getEventName = (e: any): string => e.event || e.event_name || "unknown";
+  const getProps = (e: any): Record<string, any> => e.properties || {};
+
+  // Per-user summaries (enriched)
+  const userMap: Record<string, {
+    lastActive: string | null;
+    events7d: number;
+    totalEvents: number;
+    pagesVisited: Set<string>;
+    tourStatus: "not_started" | "started" | "completed" | "skipped";
+    hasSynced: boolean;
+    hasExported: boolean;
+    pageViews: number;
+  }> = {};
+
   for (const e of events) {
     const cid = e.connection_id;
-    if (!userMap[cid]) userMap[cid] = { lastActive: null, events7d: 0 };
-    const ts = new Date(e.created_at).getTime();
-    if (!userMap[cid].lastActive || e.created_at > userMap[cid].lastActive!) {
-      userMap[cid].lastActive = e.created_at;
+    if (!cid) continue;
+    if (!userMap[cid]) {
+      userMap[cid] = {
+        lastActive: null, events7d: 0, totalEvents: 0,
+        pagesVisited: new Set(), tourStatus: "not_started",
+        hasSynced: false, hasExported: false, pageViews: 0,
+      };
     }
-    if (ts >= day7) userMap[cid].events7d++;
+    const u = userMap[cid];
+    const ts = new Date(e.created_at).getTime();
+    const eventName = getEventName(e);
+    const props = getProps(e);
+
+    u.totalEvents++;
+    if (!u.lastActive || e.created_at > u.lastActive!) u.lastActive = e.created_at;
+    if (ts >= day7) u.events7d++;
+
+    if (eventName === "page_view" || eventName === "page_viewed") {
+      u.pageViews++;
+      if (props.page_name) u.pagesVisited.add(props.page_name);
+    }
+    if (eventName === "tour_started" && u.tourStatus === "not_started") u.tourStatus = "started";
+    if (eventName === "tour_completed") u.tourStatus = "completed";
+    if (eventName === "tour_skipped") u.tourStatus = "skipped";
+    if (eventName === "sync_complete" || eventName === "sync_started") u.hasSynced = true;
+    if (eventName === "export" || eventName === "export_started" || eventName === "csv_export") u.hasExported = true;
   }
 
   const userSummaries: UserAnalyticsSummary[] = Object.entries(userMap).map(([cid, data]) => ({
     connection_id: cid,
     last_active: data.lastActive,
     event_count_7d: data.events7d,
+    total_events: data.totalEvents,
+    pages_visited: Array.from(data.pagesVisited),
+    tour_status: data.tourStatus,
+    has_synced: data.hasSynced,
+    has_exported: data.hasExported,
+    page_views: data.pageViews,
   }));
 
-  // DAU: distinct connection_ids with events in last 24h
+  // DAU / WAU / MAU
   const dauSet = new Set<string>();
   const wauSet = new Set<string>();
   const mauSet = new Set<string>();
   for (const e of events) {
     const ts = new Date(e.created_at).getTime();
-    mauSet.add(e.connection_id);
-    if (ts >= day7) wauSet.add(e.connection_id);
-    if (ts >= day1) dauSet.add(e.connection_id);
+    if (e.connection_id) {
+      mauSet.add(e.connection_id);
+      if (ts >= day7) wauSet.add(e.connection_id);
+      if (ts >= day1) dauSet.add(e.connection_id);
+    }
   }
 
   // Feature usage (exclude heartbeat)
   const featureMap: Record<string, number> = {};
   for (const e of events) {
-    if (e.event_name === "heartbeat") continue;
-    featureMap[e.event_name] = (featureMap[e.event_name] || 0) + 1;
+    const eventName = getEventName(e);
+    if (eventName === "heartbeat") continue;
+    featureMap[eventName] = (featureMap[eventName] || 0) + 1;
   }
   const featureUsage = Object.entries(featureMap)
     .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+
+  // Onboarding funnel
+  let tourStarted = 0, tourCompleted = 0, tourSkipped = 0;
+  for (const e of events) {
+    const en = getEventName(e);
+    if (en === "tour_started") tourStarted++;
+    if (en === "tour_completed") tourCompleted++;
+    if (en === "tour_skipped") tourSkipped++;
+  }
+
+  // Chart engagement
+  const chartMap: Record<string, { totalViewMs: number; viewCount: number }> = {};
+  for (const e of events) {
+    const en = getEventName(e);
+    if (en === "chart_visible" || en === "chart_viewed" || en === "chart_hidden") {
+      const props = getProps(e);
+      const chartName = props.chart_name || "unknown";
+      if (!chartMap[chartName]) chartMap[chartName] = { totalViewMs: 0, viewCount: 0 };
+      chartMap[chartName].viewCount++;
+      if (props.duration_ms) chartMap[chartName].totalViewMs += Number(props.duration_ms);
+      if (props.view_duration_ms) chartMap[chartName].totalViewMs += Number(props.view_duration_ms);
+    }
+  }
+  const chartEngagement = Object.entries(chartMap)
+    .map(([chartName, data]) => ({ chartName, ...data }))
+    .sort((a, b) => b.viewCount - a.viewCount);
+
+  // Rage clicks
+  let rageClicks = 0;
+  for (const e of events) {
+    const en = getEventName(e);
+    if (en === "rage_click" || en === "rapid_clicks") rageClicks++;
+  }
+
+  // Errors
+  let errors = 0;
+  for (const e of events) {
+    const en = getEventName(e);
+    if (en === "error" || en === "error_boundary_hit") errors++;
+  }
+
+  // Top pages
+  const pageMap: Record<string, number> = {};
+  for (const e of events) {
+    const en = getEventName(e);
+    if (en === "page_view" || en === "page_viewed") {
+      const props = getProps(e);
+      const pageName = props.page_name || "unknown";
+      pageMap[pageName] = (pageMap[pageName] || 0) + 1;
+    }
+  }
+  const topPages = Object.entries(pageMap)
+    .map(([page, count]) => ({ page, count }))
     .sort((a, b) => b.count - a.count);
 
   // Daily active users series (30 data points)
@@ -117,11 +214,13 @@ function computeAnalytics(events: any[]): {
 
   for (const e of events) {
     const key = e.created_at.slice(0, 10);
+    const eventName = getEventName(e);
     if (key in dailyAU) {
-      dailyAU[key].add(e.connection_id);
-      if (e.event_name === "page_view") dailyPV[key]++;
-      // Rough session count: each unique connection_id per day = at least 1 session
-      dailySessions[key].add(e.connection_id);
+      if (e.connection_id) {
+        dailyAU[key].add(e.connection_id);
+        dailySessions[key].add(e.connection_id);
+      }
+      if (eventName === "page_view" || eventName === "page_viewed") dailyPV[key]++;
     }
   }
 
@@ -147,6 +246,11 @@ function computeAnalytics(events: any[]): {
       dailyActiveUsers,
       dailyPageViews,
       dailySessions: dailySessionsArr,
+      onboardingFunnel: { tourStarted, tourCompleted, tourSkipped },
+      chartEngagement,
+      rageClicks,
+      errors,
+      topPages,
     },
   };
 }
