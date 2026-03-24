@@ -183,14 +183,10 @@ export function InvoiceTrendsSection({ events, agingBuckets, totalOutstandingCen
   const [range, setRangeRaw] = useState("8w");
   const [g, setGRaw] = useState<Granularity>("week");
 
-  // Auto-switch to monthly for long ranges (too many weekly bars)
   const setRange = (v: string) => {
     setRangeRaw(v);
-    if ((v === "t12m" || v === "ytd") && g === "week") setGRaw("month");
   };
   const setG = (v: Granularity) => {
-    // Prevent weekly on 12M/YTD
-    if (v === "week" && (range === "t12m" || range === "ytd")) return;
     setGRaw(v);
   };
   const [hovered, setHovered] = useState<string | null>(null);
