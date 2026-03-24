@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { SparkLine } from "@/app/jobber/dashboard/SparkLine";
 import type { AggregateAnalytics, UserAnalyticsSummary, ConnectionRow } from "./AdminTabs";
 
@@ -18,9 +19,7 @@ function relativeTime(dateStr: string | null): string {
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  const weeks = Math.floor(days / 7);
-  return `${weeks}w ago`;
+  return `${days}d ago`;
 }
 
 function getCompanyName(connectionId: string, connections: ConnectionRow[]): string {
@@ -29,505 +28,312 @@ function getCompanyName(connectionId: string, connections: ConnectionRow[]): str
   return conn.jobber_account_name || conn.company_name || conn.owner_name || connectionId.slice(0, 8) + "...";
 }
 
+function formatSeconds(s: number): string {
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return rem > 0 ? `${m}m ${rem}s` : `${m}m`;
+}
+
+function HBar({ value, max, color }: { value: number; max: number; color: string }) {
+  const pct = max > 0 ? (value / max) * 100 : 0;
+  return (
+    <div style={{ flex: 1, height: 20, borderRadius: 5, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
+      <div style={{ width: `${pct}%`, height: "100%", borderRadius: 5, background: color, minWidth: pct > 0 ? 4 : 0, transition: "width 0.4s ease" }} />
+    </div>
+  );
+}
+
+function StatCard({ label, value, color, sub }: { label: string; value: string | number; color: string; sub?: string }) {
+  return (
+    <div className="kpi-secondary hover-lift" style={{ borderLeft: `3px solid ${color}` }}>
+      <div className="text-muted" style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 800, color, letterSpacing: -0.5 }}>{value}</div>
+      {sub && <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>{sub}</div>}
+    </div>
+  );
+}
+
+function SectionHeader({ title, sub }: { title: string; sub?: string }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <h3 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{title}</h3>
+      {sub && <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>{sub}</div>}
+    </div>
+  );
+}
+
 export function AdminAnalytics({ analytics, userSummaries, connections }: Props) {
-  const { onboardingFunnel, chartEngagement, rageClicks, errors, topPages } = analytics;
+  const [userFilter, setUserFilter] = useState<"all" | "active" | "inactive">("all");
+  const a = analytics;
 
-  // Onboarding completion rate
-  const onboardingRate = onboardingFunnel.tourStarted > 0
-    ? Math.round((onboardingFunnel.tourCompleted / onboardingFunnel.tourStarted) * 100)
-    : 0;
+  const onboardingRate = a.onboardingFunnel.tourStarted > 0
+    ? Math.round((a.onboardingFunnel.tourCompleted / a.onboardingFunnel.tourStarted) * 100) : 0;
+  const upgradeCTR = a.upgradeNudgesSeen > 0
+    ? Math.round((a.upgradeCTAClicks / a.upgradeNudgesSeen) * 100) : 0;
 
-  // Max feature count for bar scaling
-  const maxFeature = analytics.featureUsage.length > 0
-    ? Math.max(...analytics.featureUsage.map((f) => f.count))
-    : 1;
+  const maxFeature = a.featureUsage.length > 0 ? Math.max(...a.featureUsage.map(f => f.count)) : 1;
+  const maxPage = a.topPages.length > 0 ? Math.max(...a.topPages.map(p => p.count)) : 1;
+  const maxHourly = Math.max(...a.hourlyActivity, 1);
 
-  // Max page count for bar scaling
-  const maxPage = topPages.length > 0
-    ? Math.max(...topPages.map((p) => p.count))
-    : 1;
+  const dauPoints = a.dailyActiveUsers.map(d => ({ xLabel: new Date(d.date).toLocaleDateString(undefined, { month: "short", day: "numeric" }), value: d.count, tooltip: `${d.count} users` }));
+  const pvPoints = a.dailyPageViews.map(d => ({ xLabel: new Date(d.date).toLocaleDateString(undefined, { month: "short", day: "numeric" }), value: d.count, tooltip: `${d.count} views` }));
+  const sessionPoints = a.dailySessions.map(d => ({ xLabel: new Date(d.date).toLocaleDateString(undefined, { month: "short", day: "numeric" }), value: d.count, tooltip: `${d.count} sessions` }));
 
-  // SparkLine data points
-  const dauPoints = analytics.dailyActiveUsers.map((d) => {
-    const date = new Date(d.date);
-    return {
-      xLabel: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-      value: d.count,
-      tooltip: `${d.count} active users`,
-    };
-  });
+  // Filter users
+  const filteredUsers = userSummaries.filter(u => {
+    if (userFilter === "active") return u.event_count_7d > 0;
+    if (userFilter === "inactive") return u.event_count_7d === 0;
+    return true;
+  }).sort((a, b) => (b.last_active || "").localeCompare(a.last_active || ""));
 
-  const pageViewPoints = analytics.dailyPageViews.map((d) => {
-    const date = new Date(d.date);
-    return {
-      xLabel: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-      value: d.count,
-      tooltip: `${d.count} page views`,
-    };
-  });
-
-  const sessionPoints = analytics.dailySessions.map((d) => {
-    const date = new Date(d.date);
-    return {
-      xLabel: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-      value: d.count,
-      tooltip: `${d.count} sessions`,
-    };
-  });
-
-  // Sort users by last_active descending
-  const sortedUsers = [...userSummaries].sort((a, b) => {
-    if (!a.last_active && !b.last_active) return 0;
-    if (!a.last_active) return 1;
-    if (!b.last_active) return -1;
-    return new Date(b.last_active).getTime() - new Date(a.last_active).getTime();
-  });
-
-  // Funnel step max for bar scaling
-  const funnelMax = Math.max(onboardingFunnel.tourStarted, onboardingFunnel.tourCompleted, onboardingFunnel.tourSkipped, 1);
-
-  // Chart engagement: compute avg seconds
-  const chartEngagementWithAvg = chartEngagement.map((c) => ({
-    ...c,
-    avgSeconds: c.viewCount > 0 ? Math.round(c.totalViewMs / c.viewCount / 1000 * 10) / 10 : 0,
-  })).sort((a, b) => b.viewCount - a.viewCount);
-
-  const tourStatusBadge = (status: UserAnalyticsSummary["tour_status"]) => {
-    const styles: Record<string, { bg: string; color: string; label: string }> = {
-      completed: { bg: "rgba(16,185,129,0.15)", color: "#10b981", label: "Completed" },
-      started: { bg: "rgba(245,158,11,0.15)", color: "#f59e0b", label: "Started" },
-      skipped: { bg: "rgba(239,68,68,0.15)", color: "#ef4444", label: "Skipped" },
-      not_started: { bg: "rgba(255,255,255,0.06)", color: "rgba(234,241,255,0.4)", label: "Not Started" },
-    };
-    const s = styles[status] || styles.not_started;
-    return (
-      <span style={{
-        display: "inline-block",
-        padding: "3px 8px",
-        borderRadius: 6,
-        fontSize: 10,
-        fontWeight: 600,
-        background: s.bg,
-        color: s.color,
-        whiteSpace: "nowrap",
-      }}>
-        {s.label}
-      </span>
-    );
+  const tourBadgeColor = (status: string) => {
+    if (status === "completed") return "#10b981";
+    if (status === "started") return "#f59e0b";
+    if (status === "skipped") return "#ef4444";
+    return "rgba(255,255,255,0.2)";
   };
 
-  const boolIcon = (val: boolean) => (
-    <span style={{ fontSize: 14, color: val ? "#10b981" : "rgba(234,241,255,0.2)" }}>
-      {val ? "\u2713" : "\u2014"}
-    </span>
-  );
-
   return (
-    <div>
-      {/* Row 1: KPI Cards */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(2, 1fr)",
-        gap: 12,
-        marginBottom: 20,
-      }}>
-        <div className="kpi-secondary hover-lift">
-          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "rgba(234,241,255,0.5)", marginBottom: 4 }}>
-            DAU / WAU / MAU
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+      {/* ===== ROW 1: Key Metrics ===== */}
+      <div className="kpi-grid-secondary animate-in">
+        <StatCard label="Daily Active" value={a.dau} color="#5aa6ff" sub={`${a.wau} weekly / ${a.mau} monthly`} />
+        <StatCard label="Avg Session" value={formatSeconds(a.avgSessionSeconds)} color="#7c5cff" sub={`${a.totalSessions} total sessions`} />
+        <StatCard label="Onboarding Rate" value={`${onboardingRate}%`} color={onboardingRate >= 60 ? "#10b981" : onboardingRate >= 30 ? "#f59e0b" : "#ef4444"} sub={`${a.onboardingFunnel.tourCompleted} of ${a.onboardingFunnel.tourStarted} completed`} />
+        <StatCard label="Upgrade CTR" value={upgradeCTR > 0 ? `${upgradeCTR}%` : "0%"} color="#7c5cff" sub={`${a.upgradeCTAClicks} clicks / ${a.upgradeNudgesSeen} seen`} />
+      </div>
+
+      {/* ===== ROW 2: Activity + Engagement ===== */}
+      <div className="kpi-grid-secondary animate-in delay-1">
+        <StatCard label="Syncs" value={a.totalSyncs} color="#06b6d4" sub="Manual sync triggers" />
+        <StatCard label="Exports" value={a.totalExports} color="#5aa6ff" sub="CSV downloads" />
+        <StatCard label="Rage Clicks" value={a.rageClicks} color={a.rageClicks > 10 ? "#ef4444" : a.rageClicks > 0 ? "#f59e0b" : "#10b981"} sub={a.rageClicks === 0 ? "No confusion signals" : "Users clicking rapidly"} />
+        <StatCard label="Errors" value={a.errors} color={a.errors > 0 ? "#ef4444" : "#10b981"} sub={a.errors === 0 ? "Clean" : `${a.errorDetails.length} unique errors`} />
+      </div>
+
+      {/* ===== ROW 3: Time Series Charts ===== */}
+      <div className="chart-grid animate-in delay-1">
+        <SparkLine title="Daily Active Users" subtitle="Unique users per day" points={dauPoints} formatType="number" chartType="line" color="#5aa6ff" />
+        <SparkLine title="Page Views" subtitle="Views per day" points={pvPoints} formatType="number" chartType="bar" color="#7c5cff" />
+        <SparkLine title="Sessions" subtitle="Sessions per day" points={sessionPoints} formatType="number" chartType="line" color="#10b981" />
+      </div>
+
+      {/* ===== ROW 4: Onboarding Funnel ===== */}
+      <div className="panel animate-in delay-2" style={{ padding: 20 }}>
+        <SectionHeader title="Onboarding Funnel" sub="Tour started, completed, and dropped" />
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          {[
+            { label: "Started", value: a.onboardingFunnel.tourStarted, color: "#5aa6ff" },
+            { label: "Completed", value: a.onboardingFunnel.tourCompleted, color: "#10b981" },
+            { label: "Skipped", value: a.onboardingFunnel.tourSkipped, color: "#ef4444" },
+          ].map(item => (
+            <div key={item.label} style={{ flex: 1, minWidth: 100, padding: "12px 16px", borderRadius: 10, background: `${item.color}08`, borderLeft: `3px solid ${item.color}` }}>
+              <div className="text-muted" style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>{item.label}</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: item.color, marginTop: 4 }}>{item.value}</div>
+            </div>
+          ))}
+        </div>
+        {a.onboardingFunnel.tourStarted > 0 && (
+          <div style={{ marginTop: 14, height: 12, borderRadius: 6, background: "rgba(255,255,255,0.04)", overflow: "hidden", display: "flex" }}>
+            <div style={{ width: `${(a.onboardingFunnel.tourCompleted / a.onboardingFunnel.tourStarted) * 100}%`, background: "#10b981", transition: "width 0.5s ease" }} />
+            <div style={{ width: `${(a.onboardingFunnel.tourSkipped / a.onboardingFunnel.tourStarted) * 100}%`, background: "#ef4444", transition: "width 0.5s ease" }} />
           </div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-            <span className="kpi-value-medium" style={{ color: "#5aa6ff" }}>{analytics.dau}</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "rgba(234,241,255,0.4)" }}>/</span>
-            <span style={{ fontSize: 20, fontWeight: 800, color: "#7c5cff" }}>{analytics.wau}</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "rgba(234,241,255,0.4)" }}>/</span>
-            <span style={{ fontSize: 20, fontWeight: 800, color: "rgba(234,241,255,0.6)" }}>{analytics.mau}</span>
+        )}
+      </div>
+
+      {/* ===== ROW 5: Side by side — Top Pages + Hourly Activity ===== */}
+      <div className="side-by-side animate-in delay-2">
+        {/* Top Pages */}
+        <div className="panel" style={{ padding: 20 }}>
+          <SectionHeader title="Top Pages" sub="Most visited pages (30d)" />
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {a.topPages.slice(0, 8).map(p => (
+              <div key={p.page} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div className="text-muted" style={{ width: 80, fontSize: 12, textAlign: "right", flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.page}</div>
+                <HBar value={p.count} max={maxPage} color="linear-gradient(90deg, #7c5cff, #5aa6ff)" />
+                <div className="text-primary" style={{ width: 40, fontSize: 13, fontWeight: 700, textAlign: "right", flexShrink: 0 }}>{p.count}</div>
+              </div>
+            ))}
+            {a.topPages.length === 0 && <div className="text-muted" style={{ fontSize: 12, textAlign: "center", padding: 20 }}>No page view data yet</div>}
           </div>
         </div>
-        <div className="kpi-secondary hover-lift">
-          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "rgba(234,241,255,0.5)", marginBottom: 4 }}>
-            Onboarding Rate
+
+        {/* Hourly Activity */}
+        <div className="panel" style={{ padding: 20 }}>
+          <SectionHeader title="Activity by Hour" sub="When your users are most active" />
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 120 }}>
+            {a.hourlyActivity.map((count, hour) => {
+              const h = maxHourly > 0 ? (count / maxHourly) * 100 : 0;
+              const isPeak = count === maxHourly && count > 0;
+              return (
+                <div key={hour} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <div style={{
+                    width: "80%", height: `${Math.max(h, 3)}%`, minHeight: 2,
+                    borderRadius: "3px 3px 0 0",
+                    background: isPeak ? "#7c5cff" : count > 0 ? "rgba(90,166,255,0.5)" : "rgba(255,255,255,0.06)",
+                    transition: "height 0.3s ease",
+                  }} title={`${hour}:00 — ${count} events`} />
+                </div>
+              );
+            })}
           </div>
-          <div className="kpi-value-medium" style={{ color: onboardingRate >= 50 ? "#10b981" : onboardingRate >= 25 ? "#f59e0b" : "#ef4444" }}>
-            {onboardingRate}%
-          </div>
-          <div style={{ fontSize: 10, color: "rgba(234,241,255,0.4)", marginTop: 2 }}>
-            {onboardingFunnel.tourCompleted} of {onboardingFunnel.tourStarted} completed
-          </div>
-        </div>
-        <div className="kpi-secondary hover-lift">
-          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "rgba(234,241,255,0.5)", marginBottom: 4 }}>
-            Rage Clicks
-          </div>
-          <div className="kpi-value-medium" style={{ color: rageClicks > 0 ? "#ef4444" : "#10b981" }}>
-            {rageClicks}
-          </div>
-          <div style={{ fontSize: 10, color: "rgba(234,241,255,0.4)", marginTop: 2 }}>
-            Last 30 days
-          </div>
-        </div>
-        <div className="kpi-secondary hover-lift">
-          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "rgba(234,241,255,0.5)", marginBottom: 4 }}>
-            Errors
-          </div>
-          <div className="kpi-value-medium" style={{ color: errors > 0 ? "#ef4444" : "#10b981" }}>
-            {errors}
-          </div>
-          <div style={{ fontSize: 10, color: "rgba(234,241,255,0.4)", marginTop: 2 }}>
-            Last 30 days
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+            <span className="text-muted" style={{ fontSize: 9 }}>12am</span>
+            <span className="text-muted" style={{ fontSize: 9 }}>6am</span>
+            <span className="text-muted" style={{ fontSize: 9 }}>12pm</span>
+            <span className="text-muted" style={{ fontSize: 9 }}>6pm</span>
+            <span className="text-muted" style={{ fontSize: 9 }}>12am</span>
           </div>
         </div>
       </div>
 
-      {/* Row 2: Onboarding Funnel */}
-      {(onboardingFunnel.tourStarted > 0 || onboardingFunnel.tourCompleted > 0 || onboardingFunnel.tourSkipped > 0) && (
-        <div className="panel animate-in" style={{ padding: 20, marginBottom: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#EAF1FF", marginBottom: 16 }}>
-            Onboarding Funnel
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {/* Tour Started */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 120, fontSize: 12, color: "rgba(234,241,255,0.6)", textAlign: "right", flexShrink: 0 }}>
-                Tour Started
-              </div>
-              <div style={{ flex: 1, height: 28, borderRadius: 8, background: "rgba(255,255,255,0.04)", overflow: "hidden", position: "relative" }}>
-                <div style={{
-                  width: `${(onboardingFunnel.tourStarted / funnelMax) * 100}%`,
-                  height: "100%",
-                  borderRadius: 8,
-                  background: "linear-gradient(90deg, #10b981, #34d399)",
-                  minWidth: onboardingFunnel.tourStarted > 0 ? 6 : 0,
-                  transition: "width 0.5s ease",
-                  display: "flex",
-                  alignItems: "center",
-                  paddingLeft: 8,
-                }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.3)" }}>
-                    {onboardingFunnel.tourStarted}
-                  </span>
-                </div>
-              </div>
+      {/* ===== ROW 6: Chart Engagement + Date Ranges ===== */}
+      <div className="side-by-side animate-in delay-2">
+        {/* Chart Engagement */}
+        <div className="panel" style={{ padding: 20 }}>
+          <SectionHeader title="Chart Engagement" sub="How long users look at each chart" />
+          {a.chartEngagement.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {a.chartEngagement.map(c => {
+                const avgSec = c.viewCount > 0 ? Math.round(c.totalViewMs / c.viewCount / 1000) : 0;
+                return (
+                  <div key={c.chartName} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)" }}>
+                    <span className="text-primary" style={{ fontSize: 13, fontWeight: 600 }}>{c.chartName.replace(/_/g, " ")}</span>
+                    <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                      <span className="text-muted" style={{ fontSize: 12 }}>{c.viewCount} views</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#5aa6ff" }}>{formatSeconds(avgSec)} avg</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            {/* Tour Completed */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 120, fontSize: 12, color: "rgba(234,241,255,0.6)", textAlign: "right", flexShrink: 0 }}>
-                Tour Completed
-              </div>
-              <div style={{ flex: 1, height: 28, borderRadius: 8, background: "rgba(255,255,255,0.04)", overflow: "hidden", position: "relative" }}>
-                <div style={{
-                  width: `${(onboardingFunnel.tourCompleted / funnelMax) * 100}%`,
-                  height: "100%",
-                  borderRadius: 8,
-                  background: "linear-gradient(90deg, #3b82f6, #60a5fa)",
-                  minWidth: onboardingFunnel.tourCompleted > 0 ? 6 : 0,
-                  transition: "width 0.5s ease",
-                  display: "flex",
-                  alignItems: "center",
-                  paddingLeft: 8,
-                }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.3)" }}>
-                    {onboardingFunnel.tourCompleted}
-                  </span>
-                </div>
-              </div>
-              <div style={{ width: 60, fontSize: 11, fontWeight: 600, color: "#10b981", textAlign: "right", flexShrink: 0 }}>
-                {onboardingFunnel.tourStarted > 0
-                  ? `${Math.round((onboardingFunnel.tourCompleted / onboardingFunnel.tourStarted) * 100)}%`
-                  : "0%"}
-              </div>
-            </div>
-            {/* Tour Skipped */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 120, fontSize: 12, color: "rgba(234,241,255,0.6)", textAlign: "right", flexShrink: 0 }}>
-                Tour Skipped
-              </div>
-              <div style={{ flex: 1, height: 28, borderRadius: 8, background: "rgba(255,255,255,0.04)", overflow: "hidden", position: "relative" }}>
-                <div style={{
-                  width: `${(onboardingFunnel.tourSkipped / funnelMax) * 100}%`,
-                  height: "100%",
-                  borderRadius: 8,
-                  background: "linear-gradient(90deg, #ef4444, #f87171)",
-                  minWidth: onboardingFunnel.tourSkipped > 0 ? 6 : 0,
-                  transition: "width 0.5s ease",
-                  display: "flex",
-                  alignItems: "center",
-                  paddingLeft: 8,
-                }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.3)" }}>
-                    {onboardingFunnel.tourSkipped}
-                  </span>
-                </div>
-              </div>
-              <div style={{ width: 60, fontSize: 11, fontWeight: 600, color: "#ef4444", textAlign: "right", flexShrink: 0 }}>
-                {onboardingFunnel.tourStarted > 0
-                  ? `${Math.round((onboardingFunnel.tourSkipped / onboardingFunnel.tourStarted) * 100)}%`
-                  : "0%"}
-              </div>
-            </div>
-          </div>
+          ) : (
+            <div className="text-muted" style={{ fontSize: 12, textAlign: "center", padding: 20 }}>No chart data yet</div>
+          )}
         </div>
-      )}
 
-      {/* Row 3: Charts */}
-      <div className="chart-grid animate-in delay-1" style={{ marginBottom: 20 }}>
-        <SparkLine
-          title="Daily Active Users"
-          subtitle="Unique users per day"
-          points={dauPoints}
-          formatType="number"
-          chartType="line"
-          color="#5aa6ff"
-        />
-        <SparkLine
-          title="Page Views"
-          subtitle="Views per day"
-          points={pageViewPoints}
-          formatType="number"
-          chartType="bar"
-          color="#7c5cff"
-        />
-        <SparkLine
-          title="Sessions"
-          subtitle="Sessions per day"
-          points={sessionPoints}
-          formatType="number"
-          chartType="line"
-          color="#10b981"
-        />
+        {/* Date Range Preferences */}
+        <div className="panel" style={{ padding: 20 }}>
+          <SectionHeader title="Date Range Preferences" sub="Which time periods users select most" />
+          {a.dateRangeUsage.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {a.dateRangeUsage.slice(0, 8).map(d => (
+                <div key={d.range} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 80, fontSize: 12, fontWeight: 600, color: "#7c5cff", textAlign: "right", flexShrink: 0 }}>{d.range}</div>
+                  <HBar value={d.count} max={a.dateRangeUsage[0]?.count || 1} color="linear-gradient(90deg, #7c5cff, #5aa6ff)" />
+                  <div className="text-primary" style={{ width: 40, fontSize: 13, fontWeight: 700, textAlign: "right", flexShrink: 0 }}>{d.count}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-muted" style={{ fontSize: 12, textAlign: "center", padding: 20 }}>No range data yet</div>
+          )}
+        </div>
       </div>
 
-      {/* Row 4: Top Pages + Chart Engagement side by side */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "1fr",
-        gap: 16,
-        marginBottom: 20,
-      }}>
-        <style>{`
-          @media (min-width: 768px) {
-            .admin-analytics-split { grid-template-columns: 1fr 1fr !important; }
-          }
-        `}</style>
-        <div className="admin-analytics-split" style={{
-          display: "grid",
-          gridTemplateColumns: "1fr",
-          gap: 16,
-        }}>
-          {/* Top Pages */}
-          {topPages.length > 0 && (
-            <div className="panel" style={{ padding: 20 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#EAF1FF", marginBottom: 16 }}>
-                Top Pages
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {topPages.slice(0, 10).map((p) => (
-                  <div key={p.page} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{
-                      width: 120,
-                      fontSize: 12,
-                      color: "rgba(234,241,255,0.6)",
-                      textAlign: "right",
-                      flexShrink: 0,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}>
-                      {p.page.replace(/_/g, " ")}
-                    </div>
-                    <div style={{
-                      flex: 1,
-                      height: 22,
-                      borderRadius: 6,
-                      background: "rgba(255,255,255,0.04)",
-                      overflow: "hidden",
-                    }}>
-                      <div style={{
-                        width: `${(p.count / maxPage) * 100}%`,
-                        height: "100%",
-                        borderRadius: 6,
-                        background: "linear-gradient(90deg, #7c5cff, #a78bfa)",
-                        minWidth: 6,
-                        transition: "width 0.5s ease",
-                      }} />
-                    </div>
-                    <div style={{
-                      width: 40,
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: "#EAF1FF",
-                      textAlign: "right",
-                      flexShrink: 0,
-                    }}>
-                      {p.count}
-                    </div>
+      {/* ===== ROW 7: Errors + Rage Clicks ===== */}
+      {(a.errors > 0 || a.rageClicks > 0) && (
+        <div className="side-by-side animate-in delay-2">
+          {a.errorDetails.length > 0 && (
+            <div className="panel" style={{ padding: 20, borderLeft: "3px solid #ef4444" }}>
+              <SectionHeader title="Error Log" sub={`${a.errors} total errors (${a.errorDetails.length} unique)`} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {a.errorDetails.slice(0, 10).map((e, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", borderRadius: 6, background: "rgba(239,68,68,0.06)" }}>
+                    <span className="text-muted" style={{ fontSize: 11, maxWidth: "80%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.message}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#ef4444", flexShrink: 0 }}>{e.count}x</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
-
-          {/* Chart Engagement */}
-          {chartEngagementWithAvg.length > 0 && (
-            <div className="panel" style={{ padding: 20 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#EAF1FF", marginBottom: 16 }}>
-                Chart Engagement
-              </div>
-              <div className="table-container">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Chart</th>
-                      <th style={{ textAlign: "right" }}>Views</th>
-                      <th style={{ textAlign: "right" }}>Avg Time</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {chartEngagementWithAvg.slice(0, 10).map((c) => (
-                      <tr key={c.chartName}>
-                        <td style={{ color: "rgba(234,241,255,0.8)", fontSize: 12 }}>
-                          {c.chartName.replace(/_/g, " ")}
-                        </td>
-                        <td style={{ textAlign: "right", fontWeight: 700, color: "#EAF1FF" }}>
-                          {c.viewCount}
-                        </td>
-                        <td style={{ textAlign: "right", color: "rgba(234,241,255,0.6)" }}>
-                          {c.avgSeconds}s
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          {a.rageClickTargets.length > 0 && (
+            <div className="panel" style={{ padding: 20, borderLeft: "3px solid #f59e0b" }}>
+              <SectionHeader title="Rage Click Hotspots" sub="Elements users clicked repeatedly in frustration" />
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {a.rageClickTargets.slice(0, 10).map((r, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", borderRadius: 6, background: "rgba(245,158,11,0.06)" }}>
+                    <span className="text-muted" style={{ fontSize: 11, fontFamily: "monospace" }}>{r.target}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#f59e0b", flexShrink: 0 }}>{r.count}x</span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
         </div>
+      )}
+
+      {/* ===== ROW 8: Feature Usage ===== */}
+      <div className="panel animate-in delay-2" style={{ padding: 20 }}>
+        <SectionHeader title="Feature Usage" sub="Event frequency across all users (30d)" />
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {a.featureUsage.slice(0, 20).map(f => (
+            <div key={f.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div className="text-muted" style={{ width: 140, fontSize: 11, textAlign: "right", flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {f.name.replace(/_/g, " ")}
+              </div>
+              <HBar value={f.count} max={maxFeature} color="linear-gradient(90deg, #7c5cff, #5aa6ff)" />
+              <div className="text-primary" style={{ width: 48, fontSize: 12, fontWeight: 700, textAlign: "right", flexShrink: 0 }}>{f.count}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Row 5: Feature Usage */}
-      {analytics.featureUsage.length > 0 && (
-        <div className="panel animate-in" style={{ padding: 20, marginBottom: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#EAF1FF", marginBottom: 4 }}>
-            Feature Usage
-          </div>
-          <div style={{ fontSize: 11, color: "rgba(234,241,255,0.4)", marginBottom: 16 }}>
-            All users, last 30 days
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {analytics.featureUsage.slice(0, 15).map((f) => (
-              <div key={f.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{
-                  width: 140,
-                  fontSize: 12,
-                  color: "rgba(234,241,255,0.6)",
-                  textAlign: "right",
-                  flexShrink: 0,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}>
-                  {f.name.replace(/_/g, " ")}
-                </div>
-                <div style={{
-                  flex: 1,
-                  height: 22,
-                  borderRadius: 6,
-                  background: "rgba(255,255,255,0.04)",
-                  overflow: "hidden",
-                }}>
-                  <div style={{
-                    width: `${(f.count / maxFeature) * 100}%`,
-                    height: "100%",
-                    borderRadius: 6,
-                    background: "linear-gradient(90deg, #7c5cff, #5aa6ff)",
-                    minWidth: 6,
-                    transition: "width 0.5s ease",
-                  }} />
-                </div>
-                <div style={{
-                  width: 48,
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: "#EAF1FF",
-                  textAlign: "right",
-                  flexShrink: 0,
-                }}>
-                  {f.count}
-                </div>
-              </div>
+      {/* ===== ROW 9: Individual User Table ===== */}
+      <div className="panel animate-in delay-3" style={{ padding: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
+          <SectionHeader title="User Activity" sub={`${filteredUsers.length} users`} />
+          <div style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: 3 }}>
+            {(["all", "active", "inactive"] as const).map(f => (
+              <button key={f} onClick={() => setUserFilter(f)} style={{
+                padding: "5px 12px", borderRadius: 6, border: "none", fontSize: 11, fontWeight: 600, cursor: "pointer",
+                background: userFilter === f ? "linear-gradient(135deg, #7c5cff, #5aa6ff)" : "transparent",
+                color: userFilter === f ? "#fff" : "rgba(255,255,255,0.6)",
+                boxShadow: userFilter === f ? "0 2px 8px rgba(124,92,255,0.3)" : "none",
+              }}>
+                {f === "all" ? "All" : f === "active" ? "Active (7d)" : "Inactive"}
+              </button>
             ))}
           </div>
         </div>
-      )}
 
-      {/* Row 6: Individual User Activity Table */}
-      <div className="panel animate-in delay-2" style={{ marginBottom: 20 }}>
-        <div style={{ padding: "16px 20px 0 20px" }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#EAF1FF", marginBottom: 4 }}>
-            Individual User Activity
-          </div>
-          <div style={{ fontSize: 11, color: "rgba(234,241,255,0.4)", marginBottom: 12 }}>
-            {sortedUsers.length} users tracked in last 30 days
-          </div>
-        </div>
-        <div className="table-container">
-          <table className="data-table">
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 700 }}>
             <thead>
-              <tr>
-                <th>Company</th>
-                <th style={{ textAlign: "right" }}>Last Active</th>
-                <th style={{ textAlign: "right" }}>Events (7d)</th>
-                <th style={{ textAlign: "right" }}>Total</th>
-                <th>Pages Visited</th>
-                <th>Tour</th>
-                <th style={{ textAlign: "center" }}>Synced</th>
-                <th style={{ textAlign: "center" }}>Exported</th>
-                <th>Action</th>
+              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5 }} className="text-muted">Company</th>
+                <th style={{ padding: "8px 10px", textAlign: "center" }} className="text-muted">Last Active</th>
+                <th style={{ padding: "8px 10px", textAlign: "center" }} className="text-muted">Events (7d)</th>
+                <th style={{ padding: "8px 10px", textAlign: "center" }} className="text-muted">Total</th>
+                <th style={{ padding: "8px 10px", textAlign: "center" }} className="text-muted">Pages</th>
+                <th style={{ padding: "8px 10px", textAlign: "center" }} className="text-muted">Tour</th>
+                <th style={{ padding: "8px 10px", textAlign: "center" }} className="text-muted">Synced</th>
+                <th style={{ padding: "8px 10px", textAlign: "center" }} className="text-muted">Exported</th>
+                <th style={{ padding: "8px 6px", textAlign: "center" }} className="text-muted"></th>
               </tr>
             </thead>
             <tbody>
-              {sortedUsers.map((u) => (
-                <tr key={u.connection_id}>
-                  <td style={{ fontWeight: 600, color: "#EAF1FF", fontSize: 12, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {getCompanyName(u.connection_id, connections)}
+              {filteredUsers.slice(0, 50).map(u => (
+                <tr key={u.connection_id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  <td style={{ padding: "10px 10px", fontWeight: 600 }} className="text-primary">{getCompanyName(u.connection_id, connections)}</td>
+                  <td style={{ padding: "10px 10px", textAlign: "center" }} className="text-muted">{relativeTime(u.last_active)}</td>
+                  <td style={{ padding: "10px 10px", textAlign: "center", fontWeight: 700 }} className="text-primary">{u.event_count_7d}</td>
+                  <td style={{ padding: "10px 10px", textAlign: "center" }} className="text-muted">{u.total_events}</td>
+                  <td style={{ padding: "10px 10px", textAlign: "center" }} className="text-muted">{u.page_views}</td>
+                  <td style={{ padding: "10px 10px", textAlign: "center" }}>
+                    <span style={{ padding: "2px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, background: `${tourBadgeColor(u.tour_status)}20`, color: tourBadgeColor(u.tour_status) }}>
+                      {u.tour_status === "not_started" ? "none" : u.tour_status}
+                    </span>
                   </td>
-                  <td style={{ textAlign: "right", color: "rgba(234,241,255,0.6)", fontSize: 12, whiteSpace: "nowrap" }}>
-                    {relativeTime(u.last_active)}
-                  </td>
-                  <td style={{ textAlign: "right", fontWeight: 700, color: "#EAF1FF" }}>
-                    {u.event_count_7d}
-                  </td>
-                  <td style={{ textAlign: "right", color: "rgba(234,241,255,0.6)" }}>
-                    {u.total_events}
-                  </td>
-                  <td style={{ fontSize: 11, color: "rgba(234,241,255,0.5)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {u.pages_visited.length > 0 ? u.pages_visited.join(", ") : "\u2014"}
-                  </td>
-                  <td>
-                    {tourStatusBadge(u.tour_status)}
-                  </td>
-                  <td style={{ textAlign: "center" }}>
-                    {boolIcon(u.has_synced)}
-                  </td>
-                  <td style={{ textAlign: "center" }}>
-                    {boolIcon(u.has_exported)}
-                  </td>
-                  <td>
-                    <a
-                      href={`/jobber/dashboard?admin_connection_id=${u.connection_id}`}
-                      className="btn"
-                    >
-                      View as
-                    </a>
+                  <td style={{ padding: "10px 10px", textAlign: "center", color: u.has_synced ? "#10b981" : "rgba(255,255,255,0.15)", fontSize: 14 }}>{u.has_synced ? "\u2713" : "\u2014"}</td>
+                  <td style={{ padding: "10px 10px", textAlign: "center", color: u.has_exported ? "#10b981" : "rgba(255,255,255,0.15)", fontSize: 14 }}>{u.has_exported ? "\u2713" : "\u2014"}</td>
+                  <td style={{ padding: "10px 6px", textAlign: "center" }}>
+                    <a href={`/jobber/dashboard?admin_connection_id=${u.connection_id}`} className="btn" style={{ padding: "4px 10px", fontSize: 10, textDecoration: "none" }}>View</a>
                   </td>
                 </tr>
               ))}
-              {sortedUsers.length === 0 && (
-                <tr>
-                  <td colSpan={9} style={{ textAlign: "center", padding: 24, color: "rgba(234,241,255,0.4)" }}>
-                    No analytics events recorded yet
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>

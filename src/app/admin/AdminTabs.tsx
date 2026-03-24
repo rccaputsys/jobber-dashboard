@@ -48,6 +48,16 @@ export type AggregateAnalytics = {
   rageClicks: number;
   errors: number;
   topPages: { page: string; count: number }[];
+  avgSessionSeconds: number;
+  totalSessions: number;
+  hourlyActivity: number[];
+  dateRangeUsage: { range: string; count: number }[];
+  upgradeNudgesSeen: number;
+  upgradeCTAClicks: number;
+  totalSyncs: number;
+  totalExports: number;
+  errorDetails: { message: string; count: number }[];
+  rageClickTargets: { target: string; count: number }[];
 };
 
 export type OverviewData = {

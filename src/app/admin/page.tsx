@@ -237,6 +237,93 @@ function computeAnalytics(events: any[]): {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, set]) => ({ date, count: set.size }));
 
+  // Avg session duration (from session_ended events)
+  const sessionDurations: number[] = [];
+  for (const e of events) {
+    const en = getEventName(e);
+    if (en === "session_ended") {
+      const props = getProps(e);
+      if (props.duration_seconds) sessionDurations.push(Number(props.duration_seconds));
+      if (props.duration_ms) sessionDurations.push(Number(props.duration_ms) / 1000);
+    }
+  }
+  const avgSessionSeconds = sessionDurations.length > 0
+    ? Math.round(sessionDurations.reduce((a, b) => a + b, 0) / sessionDurations.length)
+    : 0;
+  const totalSessions = sessionDurations.length || dailySessionsArr.reduce((s, d) => s + d.count, 0);
+
+  // Hourly activity distribution
+  const hourlyActivity: number[] = new Array(24).fill(0);
+  for (const e of events) {
+    const hour = new Date(e.created_at).getHours();
+    hourlyActivity[hour]++;
+  }
+
+  // Date range changes (which ranges are popular)
+  const rangeUsage: Record<string, number> = {};
+  for (const e of events) {
+    const en = getEventName(e);
+    if (en === "date_range_changed") {
+      const range = getProps(e).range || "unknown";
+      rangeUsage[range] = (rangeUsage[range] || 0) + 1;
+    }
+  }
+  const dateRangeUsage = Object.entries(rangeUsage)
+    .map(([range, count]) => ({ range, count }))
+    .sort((a, b) => b.count - a.count);
+
+  // Upgrade funnel
+  let upgradeNudgesSeen = 0, upgradeCTAClicks = 0;
+  for (const e of events) {
+    const en = getEventName(e);
+    if (en === "upgrade_nudge_seen") upgradeNudgesSeen++;
+    if (en === "upgrade_cta_clicked") upgradeCTAClicks++;
+  }
+
+  // Sync activity
+  let totalSyncs = 0;
+  for (const e of events) {
+    const en = getEventName(e);
+    if (en === "jobber_sync_triggered" || en === "sync_click") totalSyncs++;
+  }
+
+  // Export activity
+  let totalExports = 0;
+  for (const e of events) {
+    const en = getEventName(e);
+    if (en === "export_clicked" || en === "export" || en === "csv_export") totalExports++;
+  }
+
+  // Error details
+  const errorDetails: { message: string; count: number }[] = [];
+  const errorMap: Record<string, number> = {};
+  for (const e of events) {
+    const en = getEventName(e);
+    if (en === "error" || en === "error_boundary_hit" || en === "client_error") {
+      const msg = getProps(e).message || getProps(e).error_name || "Unknown error";
+      errorMap[msg] = (errorMap[msg] || 0) + 1;
+    }
+  }
+  for (const [message, count] of Object.entries(errorMap)) {
+    errorDetails.push({ message, count });
+  }
+  errorDetails.sort((a, b) => b.count - a.count);
+
+  // Rage click details
+  const rageClickTargets: { target: string; count: number }[] = [];
+  const rageMap: Record<string, number> = {};
+  for (const e of events) {
+    const en = getEventName(e);
+    if (en === "rage_click" || en === "rapid_clicks") {
+      const target = getProps(e).target_tag || getProps(e).element || "unknown";
+      rageMap[target] = (rageMap[target] || 0) + 1;
+    }
+  }
+  for (const [target, count] of Object.entries(rageMap)) {
+    rageClickTargets.push({ target, count });
+  }
+  rageClickTargets.sort((a, b) => b.count - a.count);
+
   return {
     userSummaries,
     aggregate: {
@@ -252,6 +339,16 @@ function computeAnalytics(events: any[]): {
       rageClicks,
       errors,
       topPages,
+      avgSessionSeconds,
+      totalSessions,
+      hourlyActivity,
+      dateRangeUsage,
+      upgradeNudgesSeen,
+      upgradeCTAClicks,
+      totalSyncs,
+      totalExports,
+      errorDetails,
+      rageClickTargets,
     },
   };
 }
