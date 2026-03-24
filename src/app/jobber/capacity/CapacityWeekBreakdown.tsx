@@ -38,18 +38,20 @@ function fmtDollars(n: number): string {
 }
 
 export function CapacityWeekBreakdown({
+  lastWeekDaily,
   thisWeekDaily,
   nextWeekDaily,
   weeklyCapacityCents,
   currencyCode,
 }: {
+  lastWeekDaily: DayData[];
   thisWeekDaily: DayData[];
   nextWeekDaily: DayData[];
   weeklyCapacityCents: number | null;
   currencyCode: string;
 }) {
   const isLight = useIsLight();
-  const [week, setWeek] = useState<"this" | "next">("this");
+  const [week, setWeek] = useState<"last" | "this" | "next">("this");
   const [hovered, setHovered] = useState<string | null>(null);
   const [dayConfig, setDayConfig] = useState<DayConfig>(DEFAULT_CONFIG);
   const [showDaySettings, setShowDaySettings] = useState(false);
@@ -68,7 +70,7 @@ export function CapacityWeekBreakdown({
     try { localStorage.setItem("accuinsight_capacity_days", JSON.stringify(config)); } catch {}
   }, []);
 
-  const days = week === "this" ? thisWeekDaily : nextWeekDaily;
+  const days = week === "last" ? lastWeekDaily : week === "this" ? thisWeekDaily : nextWeekDaily;
 
   const enabledDays = DAY_KEYS.filter(k => {
     const cfg = dayConfig[k];
@@ -136,6 +138,7 @@ export function CapacityWeekBreakdown({
           <span className="info-tooltip" style={{ width: 16, height: 16, fontSize: 10 }}>?<span className="tooltip-text">Revenue scheduled for each day. Bars colored vs daily target. Click a day below to toggle working days.</span></span>
         </div>
         <div style={pillGroup}>
+          <button onClick={() => setWeek("last")} onMouseEnter={() => setHovered("lw")} onMouseLeave={() => setHovered(null)} style={btnStyle(week === "last", hovered === "lw")}>Last Week</button>
           <button onClick={() => setWeek("this")} onMouseEnter={() => setHovered("tw")} onMouseLeave={() => setHovered(null)} style={btnStyle(week === "this", hovered === "tw")}>This Week</button>
           <button onClick={() => setWeek("next")} onMouseEnter={() => setHovered("nw")} onMouseLeave={() => setHovered(null)} style={btnStyle(week === "next", hovered === "nw")}>Next Week</button>
         </div>

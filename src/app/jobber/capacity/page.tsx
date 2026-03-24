@@ -368,6 +368,13 @@ export default async function CapacityPage({
 
   // Daily breakdown
   const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const lastWeekDaily = dayLabels.map((label, i) => {
+    const dayStart = addDaysUTC(lastWeekStart, i);
+    const dayEnd = addDaysUTC(dayStart, 1);
+    const dayItems = periodItems(dayStart, dayEnd);
+    const revenue = dayItems.reduce((s: number, item) => s + item.amountCents, 0);
+    return { label, revenue, jobCount: dayItems.length, date: dayStart.toISOString() };
+  });
   const thisWeekDaily = dayLabels.map((label, i) => {
     const dayStart = addDaysUTC(thisWeekStart, i);
     const dayEnd = addDaysUTC(dayStart, 1);
@@ -534,6 +541,7 @@ export default async function CapacityPage({
         <div className="side-by-side animate-in delay-1" style={{ marginTop: 16 }}>
           {/* Left: Daily Breakdown */}
           <CapacityWeekBreakdown
+            lastWeekDaily={lastWeekDaily}
             thisWeekDaily={thisWeekDaily}
             nextWeekDaily={nextWeekDaily}
             weeklyCapacityCents={weeklyCapacityCents}
