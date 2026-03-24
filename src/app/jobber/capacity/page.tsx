@@ -565,11 +565,12 @@ export default async function CapacityPage({
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, justifyContent: "center" }}>
                   {items.map((item, i) => (
-                    <div key={i} style={{
+                    <div key={i} className="kpi-secondary" style={{
                       display: "flex", alignItems: "center", justifyContent: "space-between",
                       padding: "12px 14px", borderRadius: 10,
                       borderLeft: `3px solid ${item.color}`,
                       background: `${item.color}08`,
+                      cursor: "default",
                     }}>
                       <div>
                         <div className="text-primary" style={{ fontSize: 13, fontWeight: 600 }}>{item.label}</div>

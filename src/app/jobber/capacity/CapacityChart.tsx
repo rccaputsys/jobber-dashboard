@@ -77,7 +77,7 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
     return isFuture ? base : `${base}90`;
   }
 
-  const hovered = hoveredIdx !== null ? weeks[hoveredIdx] : null;
+  const hovered = hoveredIdx !== null ? bars[hoveredIdx] : null;
   const hoveredFill = hovered && target > 0 ? Math.round((hovered.revenueCents / target) * 100) : 0;
 
   // Y-axis labels
@@ -110,26 +110,26 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
             </div>
           </div>
         )}
-        {target > 0 && (
+        {target > 0 && currentBar && (
           <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 24 }}>
             <div style={{
               fontSize: 22, fontWeight: 800, letterSpacing: -0.5, lineHeight: 1,
-              color: futureFill >= 0.7 ? "#10b981" : futureFill >= 0.3 ? "#f59e0b" : "#5aa6ff",
+              color: (currentBar.revenueCents / target) >= 0.7 ? "#10b981" : (currentBar.revenueCents / target) >= 0.3 ? "#f59e0b" : "#5aa6ff",
             }}>
-              {Math.round(futureFill * 100)}%
+              {Math.round((currentBar.revenueCents / target) * 100)}%
             </div>
             <div style={{ fontSize: 12, color: mutedColor, marginTop: 4, fontWeight: 500 }}>
-              Next {futureBars.length} {periodLabel} filled
+              Fill Rate
             </div>
           </div>
         )}
-        {target > 0 && futureTarget > futureRevenue && (
+        {target > 0 && currentBar && target > currentBar.revenueCents && (
           <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 24 }}>
             <div style={{ fontSize: 22, fontWeight: 800, color: "#f59e0b", letterSpacing: -0.5, lineHeight: 1 }}>
-              {money(futureTarget - futureRevenue)}
+              {money(target - currentBar.revenueCents)}
             </div>
             <div style={{ fontSize: 12, color: mutedColor, marginTop: 4, fontWeight: 500 }}>
-              Gap to Book
+              Left to Book {view === "monthly" ? "This Month" : "This Week"}
             </div>
           </div>
         )}
@@ -139,7 +139,7 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
               {money(target)}
             </div>
             <div style={{ fontSize: 12, color: mutedColor, marginTop: 4, fontWeight: 500 }}>
-              Weekly Target
+              {view === "monthly" ? "Monthly" : "Weekly"} Target
             </div>
           </div>
         )}
