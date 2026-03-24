@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useIsLight } from "@/lib/hooks";
+import { track } from "@/lib/analytics";
 
 type OnboardingState = {
   hasData: boolean;
@@ -332,9 +333,10 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
 
   const advanceTour = () => {
     if (tourStep !== null && tourStep < TOUR_STEPS.length - 1) {
+      track("tour_step_completed", { step: tourStep, title: TOUR_STEPS[tourStep]?.title });
       setTourStep(tourStep + 1);
     } else {
-      // Show completion screen instead of ending abruptly
+      track("tour_completed", { total_steps: TOUR_STEPS.length });
       setTourStep(null);
       markTourDone();
       setShowTourComplete(true);
@@ -343,7 +345,7 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
 
   const lastStepRef = useRef<number>(0);
   const endTour = () => {
-    // Minimize instead of fully dismissing — stays until 2nd login
+    track("tour_skipped", { at_step: tourStep, title: TOUR_STEPS[tourStep ?? 0]?.title });
     lastStepRef.current = tourStep ?? 0;
     setTourMinimized(true);
     setTourStep(null);
@@ -402,7 +404,7 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
             Your Jobber data is ready. Let's take a quick look at what's here so you know where everything is. Takes about 60 seconds.
           </div>
           <button
-            onClick={() => { setShowWelcome(false); setTourStep(0); }}
+            onClick={() => { track("tour_started"); setShowWelcome(false); setTourStep(0); }}
             className="btn"
             style={{
               padding: "14px 36px", fontSize: 15, fontWeight: 700,
@@ -910,7 +912,7 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
               : "Upgrade to keep your dashboard."
             }
           </div>
-          <form action="/api/billing/checkout" method="POST">
+          <form action="/api/billing/checkout" method="POST" onSubmit={() => track("upgrade_cta_clicked", { location: "onboarding_checklist" })}>
             <button
               type="submit"
               className="btn"
