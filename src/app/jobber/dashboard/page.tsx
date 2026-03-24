@@ -16,6 +16,7 @@ import { CommandStrip } from "./CommandStrip";
 import { WeekGlance } from "./WeekGlance";
 import { BusinessPulse } from "./BusinessPulse";
 import { DashboardTopbar } from "./DashboardTopbar";
+import { OnboardingOverlay } from "./OnboardingOverlay";
 import {
   safeDate as _safeDate,
   globalStyles,
@@ -1669,6 +1670,21 @@ const quoteWonPct = quotesInLast30Days.length > 0
           </p>
         </footer>
       </div>
+      {/* Onboarding overlay */}
+      {!isDemo && subscriptionActive === false && (
+        <OnboardingOverlay
+          state={{
+            hasData: jobs.length > 0 || invoices.length > 0,
+            ahaShown: false,
+            tourCompleted: false,
+            checklistRevenue: false,
+            checklistTarget: false,
+            weeklyTargetSet: !!(conn?.weekly_capacity_cents),
+            trialDaysLeft: trialEndsAt > Date.now() ? Math.ceil((trialEndsAt - Date.now()) / 86400000) : 0,
+          }}
+          connectionId={connectionId}
+        />
+      )}
     </main>
   );
 }
