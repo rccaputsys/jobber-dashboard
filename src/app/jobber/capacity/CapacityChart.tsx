@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useIsLight } from "@/lib/hooks";
 
 type WeekBar = {
@@ -34,26 +34,49 @@ function moneyFmt(cents: number, code: string): string {
   catch { return `$${Math.round(cents / 100).toLocaleString()}`; }
 }
 
-export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetCents, currencyCode, connectionId, adminConnectionId }: Props) {
+function usePersistedNumber(key: string, defaultVal: number): [number, (v: number) => void] {
+  const [value, setValue] = useState(defaultVal);
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(key);
+      if (stored) setValue(Number(stored));
+    } catch {}
+  }, [key]);
+  const set = useCallback((v: number) => {
+    setValue(v);
+    try { localStorage.setItem(key, String(v)); } catch {}
+  }, [key]);
+  return [value, set];
+}
+
+export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetCents, currencyCode }: Props) {
   const isLight = useIsLight();
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [view, setView] = useState<"weekly" | "monthly">("weekly");
+  const [metric, setMetric] = useState<"dollars" | "jobs">("dollars");
   const [btnHovered, setBtnHovered] = useState<string | null>(null);
+  const [weeklyJobTarget, setWeeklyJobTarget] = usePersistedNumber("accuinsight_weekly_job_target", 0);
+  const [monthlyJobTarget, setMonthlyJobTarget] = usePersistedNumber("accuinsight_monthly_job_target", 0);
+  const [editingJobTarget, setEditingJobTarget] = useState(false);
+  const [jobTargetInput, setJobTargetInput] = useState("");
+  const [monthlyJobTargetInput, setMonthlyJobTargetInput] = useState("");
 
   const money = useMemo(() => (c: number) => moneyFmt(c, currencyCode), [currencyCode]);
 
   const bars = view === "monthly" && months ? months : weeks;
-  const target = view === "monthly" ? (monthlyTargetCents || 0) : (weeklyTargetCents || 0);
-  const maxVal = Math.max(...bars.map(w => w.revenueCents), target, 1);
+  const dollarTarget = view === "monthly" ? (monthlyTargetCents || 0) : (weeklyTargetCents || 0);
+  const jobTarget = view === "monthly" ? monthlyJobTarget : weeklyJobTarget;
+  const target = metric === "jobs" ? jobTarget : dollarTarget;
+
+  const barValues = bars.map(w => metric === "jobs" ? w.count : w.revenueCents);
+  const maxVal = Math.max(...barValues, target, 1);
   const chartHeight = 200;
-  const periodLabel = view === "monthly" ? "months" : "weeks";
 
   // Summary stats
-  const futureBars = bars.filter(w => w.isFuture || w.isCurrent);
-  const futureRevenue = futureBars.reduce((s, w) => s + w.revenueCents, 0);
-  const futureTarget = target * futureBars.length;
-  const futureFill = futureTarget > 0 ? futureRevenue / futureTarget : 0;
   const currentBar = bars.find(w => w.isCurrent);
+  const currentValue = currentBar ? (metric === "jobs" ? currentBar.count : currentBar.revenueCents) : 0;
+  const fillRate = target > 0 ? currentValue / target : 0;
+  const gap = target > 0 ? target - currentValue : 0;
 
   const pillGroup: React.CSSProperties = { display: "flex", gap: 2, background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.05)", borderRadius: 8, padding: 2 };
   const pBtnStyle = (active: boolean, h: boolean): React.CSSProperties => ({
@@ -70,40 +93,60 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
   const gridLine = isLight ? "#f1f5f9" : "rgba(255,255,255,0.04)";
   const targetLineColor = isLight ? "#10b981" : "rgba(16,185,129,0.5)";
 
-  function barColor(rev: number, isFuture: boolean) {
+  function barColor(val: number, isFuture: boolean) {
     if (!target) return isFuture ? "#5aa6ff" : "#5aa6ff80";
-    const ratio = rev / target;
+    const ratio = val / target;
     const base = ratio >= 0.7 ? "#10b981" : ratio >= 0.3 ? "#f59e0b" : "#5aa6ff";
     return isFuture ? base : `${base}90`;
   }
 
   const hovered = hoveredIdx !== null ? bars[hoveredIdx] : null;
-  const hoveredFill = hovered && target > 0 ? Math.round((hovered.revenueCents / target) * 100) : 0;
+  const hoveredValue = hovered ? (metric === "jobs" ? hovered.count : hovered.revenueCents) : 0;
+  const hoveredFill = hovered && target > 0 ? Math.round((hoveredValue / target) * 100) : 0;
 
   // Y-axis labels
   const ySteps = 4;
   const yLabels = Array.from({ length: ySteps }, (_, i) => {
     const val = (maxVal / ySteps) * (ySteps - i);
+    if (metric === "jobs") return String(Math.round(val));
     const dollars = val / 100;
     if (dollars >= 1000) return `$${Math.round(dollars / 1000)}k`;
     return `$${Math.round(dollars)}`;
   });
 
+  function formatValue(val: number) {
+    if (metric === "jobs") return `${val} ${val === 1 ? "job" : "jobs"}`;
+    return money(val);
+  }
+
+  function saveJobTargets() {
+    const weekly = parseInt(jobTargetInput) || 0;
+    const monthly = parseInt(monthlyJobTargetInput) || 0;
+    setWeeklyJobTarget(weekly);
+    setMonthlyJobTarget(monthly);
+    setEditingJobTarget(false);
+  }
+
   return (
     <div>
       {/* Stats header */}
-      <div style={{ display: "flex", gap: 24, marginBottom: 20, flexWrap: "wrap", alignItems: "flex-end" }}>
+      <div style={{ display: "flex", gap: 16, marginBottom: 20, flexWrap: "wrap", alignItems: "flex-end" }}>
         {/* Period toggle */}
         <div style={pillGroup}>
           <button onClick={() => { setView("weekly"); setHoveredIdx(null); }} onMouseEnter={() => setBtnHovered("w")} onMouseLeave={() => setBtnHovered(null)} style={pBtnStyle(view === "weekly", btnHovered === "w")}>Weekly</button>
           <button onClick={() => { setView("monthly"); setHoveredIdx(null); }} onMouseEnter={() => setBtnHovered("m")} onMouseLeave={() => setBtnHovered(null)} style={pBtnStyle(view === "monthly", btnHovered === "m")}>Monthly</button>
+        </div>
+        {/* Metric toggle */}
+        <div style={pillGroup}>
+          <button onClick={() => { setMetric("dollars"); setHoveredIdx(null); }} onMouseEnter={() => setBtnHovered("$")} onMouseLeave={() => setBtnHovered(null)} style={pBtnStyle(metric === "dollars", btnHovered === "$")}>Dollars</button>
+          <button onClick={() => { setMetric("jobs"); setHoveredIdx(null); }} onMouseEnter={() => setBtnHovered("j")} onMouseLeave={() => setBtnHovered(null)} style={pBtnStyle(metric === "jobs", btnHovered === "j")}>Jobs</button>
         </div>
       </div>
       <div style={{ display: "flex", gap: 24, marginBottom: 20, flexWrap: "wrap", alignItems: "flex-end" }}>
         {currentBar && (
           <div>
             <div style={{ fontSize: 32, fontWeight: 800, color: primaryColor, letterSpacing: -1.5, lineHeight: 1 }}>
-              {money(currentBar.revenueCents)}
+              {formatValue(currentValue)}
             </div>
             <div style={{ fontSize: 12, color: mutedColor, marginTop: 4, fontWeight: 500 }}>
               {view === "monthly" ? "This Month" : "This Week"} &bull; {currentBar.count} booked
@@ -114,19 +157,19 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
           <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 24 }}>
             <div style={{
               fontSize: 22, fontWeight: 800, letterSpacing: -0.5, lineHeight: 1,
-              color: (currentBar.revenueCents / target) >= 0.7 ? "#10b981" : (currentBar.revenueCents / target) >= 0.3 ? "#f59e0b" : "#5aa6ff",
+              color: fillRate >= 0.7 ? "#10b981" : fillRate >= 0.3 ? "#f59e0b" : "#5aa6ff",
             }}>
-              {Math.round((currentBar.revenueCents / target) * 100)}%
+              {Math.round(fillRate * 100)}%
             </div>
             <div style={{ fontSize: 12, color: mutedColor, marginTop: 4, fontWeight: 500 }}>
               Fill Rate
             </div>
           </div>
         )}
-        {target > 0 && currentBar && target > currentBar.revenueCents && (
+        {target > 0 && gap > 0 && (
           <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 24 }}>
             <div style={{ fontSize: 22, fontWeight: 800, color: "#f59e0b", letterSpacing: -0.5, lineHeight: 1 }}>
-              {money(target - currentBar.revenueCents)}
+              {formatValue(gap)}
             </div>
             <div style={{ fontSize: 12, color: mutedColor, marginTop: 4, fontWeight: 500 }}>
               Left to Book {view === "monthly" ? "This Month" : "This Week"}
@@ -136,18 +179,57 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
         {target > 0 && (
           <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 24 }}>
             <div style={{ fontSize: 22, fontWeight: 800, color: mutedColor, letterSpacing: -0.5, lineHeight: 1 }}>
-              {money(target)}
+              {formatValue(target)}
             </div>
             <div style={{ fontSize: 12, color: mutedColor, marginTop: 4, fontWeight: 500 }}>
               {view === "monthly" ? "Monthly" : "Weekly"} Target
             </div>
           </div>
         )}
-        {!target && (
+        {!target && metric === "dollars" && (
           <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 24 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: "#5aa6ff" }}>
               Set a {view === "monthly" ? "monthly" : "weekly"} target above to see fill rate
             </span>
+          </div>
+        )}
+        {!target && metric === "jobs" && (
+          <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 24 }}>
+            {!editingJobTarget ? (
+              <button onClick={() => { setEditingJobTarget(true); setJobTargetInput(String(weeklyJobTarget || "")); setMonthlyJobTargetInput(String(monthlyJobTarget || "")); }} className="btn" style={{ padding: "6px 14px", fontSize: 12 }}>
+                Set Job Targets
+              </button>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div>
+                  <div className="text-muted" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Weekly</div>
+                  <input type="number" value={jobTargetInput} onChange={e => setJobTargetInput(e.target.value)} placeholder="e.g. 20" onKeyDown={e => { if (e.key === "Enter") saveJobTargets(); }} style={{
+                    width: 60, padding: "4px 8px", borderRadius: 6,
+                    border: `1px solid ${isLight ? "#cbd5e1" : "rgba(255,255,255,0.2)"}`,
+                    background: isLight ? "#fff" : "rgba(255,255,255,0.06)",
+                    color: isLight ? "#1e293b" : "#fff", fontSize: 13, fontWeight: 700, outline: "none",
+                  }} />
+                </div>
+                <div>
+                  <div className="text-muted" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Monthly</div>
+                  <input type="number" value={monthlyJobTargetInput} onChange={e => setMonthlyJobTargetInput(e.target.value)} placeholder="e.g. 80" onKeyDown={e => { if (e.key === "Enter") saveJobTargets(); }} style={{
+                    width: 60, padding: "4px 8px", borderRadius: 6,
+                    border: `1px solid ${isLight ? "#cbd5e1" : "rgba(255,255,255,0.2)"}`,
+                    background: isLight ? "#fff" : "rgba(255,255,255,0.06)",
+                    color: isLight ? "#1e293b" : "#fff", fontSize: 13, fontWeight: 700, outline: "none",
+                  }} />
+                </div>
+                <button onClick={saveJobTargets} className="btn" style={{ padding: "4px 12px", fontSize: 11, background: "rgba(16,185,129,0.15)", borderColor: "rgba(16,185,129,0.4)" }}>Save</button>
+                <button onClick={() => setEditingJobTarget(false)} className="btn" style={{ padding: "4px 10px", fontSize: 11 }}>Cancel</button>
+              </div>
+            )}
+          </div>
+        )}
+        {target > 0 && metric === "jobs" && (
+          <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 24 }}>
+            <button onClick={() => { setEditingJobTarget(true); setJobTargetInput(String(weeklyJobTarget || "")); setMonthlyJobTargetInput(String(monthlyJobTarget || "")); }} className="btn" style={{ padding: "4px 10px", fontSize: 11 }}>
+              Edit
+            </button>
           </div>
         )}
       </div>
@@ -162,9 +244,9 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
             fontSize: 12,
           }}>
             <span className="text-primary" style={{ fontWeight: 700 }}>
-              {hovered.label} {hovered.isCurrent ? "(This Week)" : hovered.isFuture ? "(Upcoming)" : "(Past)"}
+              {hovered.label} {hovered.isCurrent ? "(Current)" : hovered.isFuture ? "(Upcoming)" : "(Past)"}
             </span>
-            <span style={{ color: mutedColor }}>{money(hovered.revenueCents)}</span>
+            <span style={{ color: mutedColor }}>{formatValue(hoveredValue)}</span>
             <span style={{ color: mutedColor }}>{hovered.count} booked</span>
             {target > 0 && (
               <span style={{
@@ -227,9 +309,10 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
             position: "relative", zIndex: 1,
           }}>
             {bars.map((w, i) => {
-              const barH = maxVal > 0 ? (w.revenueCents / maxVal) * (chartHeight - 16) : 0;
+              const val = metric === "jobs" ? w.count : w.revenueCents;
+              const barH = maxVal > 0 ? (val / maxVal) * (chartHeight - 16) : 0;
               const isHov = hoveredIdx === i;
-              const color = barColor(w.revenueCents, w.isFuture || w.isCurrent);
+              const color = barColor(val, w.isFuture || w.isCurrent);
 
               return (
                 <div
