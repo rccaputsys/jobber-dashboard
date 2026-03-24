@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useIsLight } from "@/lib/hooks";
+import { observeChart } from "@/lib/analytics";
 
 type WeekBar = {
   label: string;
@@ -51,6 +52,7 @@ function usePersistedNumber(key: string, defaultVal: number): [number, (v: numbe
 
 export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetCents, currencyCode }: Props) {
   const isLight = useIsLight();
+  const chartRef = useRef<HTMLDivElement>(null);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [view, setView] = useState<"weekly" | "monthly">("weekly");
   const [metric, setMetric] = useState<"dollars" | "jobs">("dollars");
@@ -60,6 +62,8 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
   const [editingJobTarget, setEditingJobTarget] = useState(false);
   const [jobTargetInput, setJobTargetInput] = useState("");
   const [monthlyJobTargetInput, setMonthlyJobTargetInput] = useState("");
+
+  useEffect(() => { if (chartRef.current) return observeChart(chartRef.current, "capacity_chart"); }, []);
 
   const money = useMemo(() => (c: number) => moneyFmt(c, currencyCode), [currencyCode]);
 
@@ -128,7 +132,7 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
   }
 
   return (
-    <div>
+    <div ref={chartRef}>
       {/* Stats header */}
       <div style={{ display: "flex", gap: 16, marginBottom: 20, flexWrap: "wrap", alignItems: "flex-end" }}>
         {/* Period toggle */}

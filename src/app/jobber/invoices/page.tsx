@@ -7,6 +7,7 @@ import { OnboardingOverlay } from "../dashboard/OnboardingOverlay";
 import { InvoiceKpiCards } from "./InvoiceKpiCards";
 import { InvoiceTrendsSection } from "./InvoiceTrendsSection";
 import { OutstandingInvoices } from "./OutstandingInvoices";
+import { ErrorBoundary } from "../dashboard/ErrorBoundary";
 import {
   safeDate,
   startOfDayUTC,
@@ -281,6 +282,7 @@ export default async function InvoicesPage({
     }}>
       <style>{globalStyles}</style>
 
+      <ErrorBoundary>
       <div className="dashboard-container">
         <DashboardTopbar
           companyName={companyName}
@@ -342,6 +344,7 @@ export default async function InvoicesPage({
         connectionId={connectionId}
         adminConnectionId={adminConnectionId}
       />
+      </ErrorBoundary>
     </main>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useIsLight } from "@/lib/hooks";
+import { track } from "@/lib/analytics";
 
 type PeriodMetrics = {
   winRate: number;
@@ -66,7 +67,7 @@ export function SalesKpiCards({
           {options.map((o) => (
             <button
               key={o.key}
-              onClick={() => setPeriod(o.key)}
+              onClick={() => { track("date_range_changed", { range: o.key, page: "sales" }); setPeriod(o.key); }}
               onMouseEnter={() => setHovered(o.key)}
               onMouseLeave={() => setHovered(null)}
               style={btnStyle(period === o.key, hovered === o.key)}

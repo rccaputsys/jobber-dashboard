@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useIsLight } from "@/lib/hooks";
+import { track } from "@/lib/analytics";
 
 type WeekData = {
   jobCount: number;
@@ -141,7 +142,7 @@ export function WeekGlance({ lastWeek, thisWeek, nextWeek, thisMonth, lastMonth,
           {periodOptions.map((o) => (
             <button
               key={o.key}
-              onClick={() => setPeriod(o.key)}
+              onClick={() => { track("date_range_changed", { range: o.key, page: "overview" }); setPeriod(o.key); }}
               onMouseEnter={() => setBtnHovered(o.key)}
               onMouseLeave={() => setBtnHovered(null)}
               style={pBtnStyle(period === o.key, btnHovered === o.key)}

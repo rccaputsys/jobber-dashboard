@@ -11,6 +11,7 @@ import { SalesTrendsSection } from "./SalesTrendsSection";
 import { SalesKpiCards } from "./SalesKpiCards";
 import { QuoteFollowUpTable } from "./QuoteFollowUpTable";
 import { SalesActionTabs } from "./SalesActionTabs";
+import { ErrorBoundary } from "../dashboard/ErrorBoundary";
 import {
   safeDate,
   startOfDayUTC,
@@ -362,6 +363,7 @@ export default async function SalesPage({
     }}>
       <style>{globalStyles}</style>
 
+      <ErrorBoundary>
       <div className="dashboard-container">
         <DashboardTopbar
           companyName={companyName}
@@ -516,6 +518,7 @@ export default async function SalesPage({
         connectionId={connectionId}
         adminConnectionId={adminConnectionId}
       />
+      </ErrorBoundary>
     </main>
   );
 }

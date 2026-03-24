@@ -9,6 +9,7 @@ import { CapacityChart } from "./CapacityChart";
 import { CapacityWeekBreakdown } from "./CapacityWeekBreakdown";
 import { CapacityKpiCards } from "./CapacityKpiCards";
 import { CapacityActionList } from "./CapacityActionList";
+import { ErrorBoundary } from "../dashboard/ErrorBoundary";
 import {
   safeDate,
   startOfDayUTC,
@@ -444,6 +445,7 @@ export default async function CapacityPage({
     }}>
       <style>{globalStyles}</style>
 
+      <ErrorBoundary>
       <div className="dashboard-container">
         <DashboardTopbar
           companyName={companyName}
@@ -631,6 +633,7 @@ export default async function CapacityPage({
         connectionId={connectionId}
         adminConnectionId={adminConnectionId}
       />
+      </ErrorBoundary>
     </main>
   );
 }

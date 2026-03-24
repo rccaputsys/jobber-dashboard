@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { trackEvent } from "./analytics";
+import { track } from "@/lib/analytics";
 
 type ExportCSVProps = {
   data: Record<string, unknown>[];
@@ -12,6 +13,7 @@ export function ExportCSV({ data, filename, label = "Export CSV ↗" }: ExportCS
   const [isHovered, setIsHovered] = useState(false);
 
   function handleExport() {
+    track("export_clicked", { format: "csv" });
     trackEvent("csv_export", { filename, row_count: data.length });
     if (!data.length) return;
     const headers = Object.keys(data[0]);

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useIsLight } from "@/lib/hooks";
+import { observeChart } from "@/lib/analytics";
 
 type PeriodData = {
   label: string;
@@ -24,6 +25,7 @@ function moneyFmt(cents: number, code: string): string {
 
 export function CollectionChart({ periods, currencyCode, outstandingCents, draftCount, draftCents }: Props) {
   const isLight = useIsLight();
+  const chartRef = useRef<HTMLDivElement>(null);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   const money = (c: number) => moneyFmt(c, currencyCode);
@@ -42,6 +44,8 @@ export function CollectionChart({ periods, currencyCode, outstandingCents, draft
   const gridLine = isLight ? "#f1f5f9" : "rgba(255,255,255,0.04)";
   const tooltipBg = isLight ? "#1e293b" : "rgba(10,15,30,0.95)";
 
+  useEffect(() => { if (chartRef.current) return observeChart(chartRef.current, "collection_chart"); }, []);
+
   const hovered = hoveredIdx !== null ? periods[hoveredIdx] : null;
   const hoveredRate = hovered && hovered.invoiced > 0 ? Math.round((hovered.collected / hovered.invoiced) * 100) : 0;
 
@@ -56,7 +60,7 @@ export function CollectionChart({ periods, currencyCode, outstandingCents, draft
   });
 
   return (
-    <div style={{ minWidth: 0, overflow: "hidden", position: "relative", zIndex: 2 }}>
+    <div ref={chartRef} style={{ minWidth: 0, overflow: "hidden", position: "relative", zIndex: 2 }}>
       {/* Header row: 3 stats */}
       <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
         <div>

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useIsLight } from "@/lib/hooks";
+import { observeChart } from "@/lib/analytics";
 
 type MonthData = {
   label: string;
@@ -23,10 +24,13 @@ function moneyFmt(cents: number, code: string): string {
 
 export function BusinessPulse({ months, weeks, currencyCode }: Props) {
   const isLight = useIsLight();
+  const chartRef = useRef<HTMLDivElement>(null);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [chartType, setChartType] = useState<"bar" | "line">("bar");
   const [period, setPeriod] = useState<"monthly" | "weekly">("monthly");
   const [btnHovered, setBtnHovered] = useState<string | null>(null);
+
+  useEffect(() => { if (chartRef.current) return observeChart(chartRef.current, "business_pulse"); }, []);
 
   const data = period === "weekly" && weeks ? weeks : months;
 
@@ -79,7 +83,7 @@ export function BusinessPulse({ months, weeks, currencyCode }: Props) {
   }
 
   return (
-    <div>
+    <div ref={chartRef}>
       {/* Top row: title + toggle */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <div style={{ fontSize: 11, color: mutedColor, fontWeight: 500 }}>

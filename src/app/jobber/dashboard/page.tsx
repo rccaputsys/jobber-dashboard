@@ -17,6 +17,7 @@ import { WeekGlance } from "./WeekGlance";
 import { BusinessPulse } from "./BusinessPulse";
 import { DashboardTopbar } from "./DashboardTopbar";
 import { OnboardingOverlay } from "./OnboardingOverlay";
+import { ErrorBoundary } from "./ErrorBoundary";
 import {
   safeDate as _safeDate,
   globalStyles,
@@ -1461,6 +1462,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
       <style>{globalStyles}</style>
       {!adminConnectionId && <AnalyticsProvider connectionId={connectionId} />}
 
+      <ErrorBoundary>
       <div className="dashboard-container">
         <DashboardTopbar
           companyName={companyName}
@@ -1682,6 +1684,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
           adminConnectionId={adminConnectionId}
         />
       )}
+      </ErrorBoundary>
     </main>
   );
 }

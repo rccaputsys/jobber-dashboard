@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { trackEvent } from "./analytics";
+import { track } from "@/lib/analytics";
 
 type SyncStatus = "idle" | "syncing" | "complete" | "failed";
 
@@ -40,6 +41,7 @@ export function SyncButton({ connectionId, autoSync = false }: { connectionId: s
   };
 
   const handleSync = async () => {
+    track("jobber_sync_triggered");
     trackEvent("sync_click");
     setSyncing(true);
     setStatusText("Syncing jobs...");

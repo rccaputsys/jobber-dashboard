@@ -5,6 +5,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useIsLight, useIsMobile } from "@/lib/hooks";
 import { SparkLine } from "../dashboard/SparkLine";
 import { trackEvent } from "../dashboard/analytics";
+import { observeChart } from "@/lib/analytics";
 import {
   type Granularity, type ChartType,
   startOfDayUTC, addDaysUTC, startOfWeekUTC, startOfMonthUTC,
@@ -254,6 +255,7 @@ function InlineControls({
 
 /* ---- Main Component ---- */
 export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, sentOpenEvents = [], currencyCode }: Props) {
+  const chartRef = useRef<HTMLDivElement>(null);
   const [weekOffset, setWeekOffsetRaw] = useState<number | null>(null);
   const [range, setRangeRaw] = useState("8w");
   const [g, setGRaw] = useState<Granularity>("week");
@@ -268,6 +270,8 @@ export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, sentOpenE
   const setRange = useCallback((v: string) => { setRangeRaw(v); trackEvent("sales_control", { control: "range", value: v }); }, []);
   const setG = useCallback((v: Granularity) => { setGRaw(v); trackEvent("sales_control", { control: "granularity", value: v }); }, []);
   const setChart = useCallback((v: ChartType) => { setChartRaw(v); trackEvent("sales_control", { control: "chart_type", value: v }); }, []);
+
+  useEffect(() => { if (chartRef.current) return observeChart(chartRef.current, "sales_trends"); }, []);
 
   const money = useMemo(() => moneyFactory(currencyCode), [currencyCode]);
 
@@ -400,7 +404,7 @@ export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, sentOpenE
   const revTargetCents = activeRevTarget > 0 ? activeRevTarget * 100 : 0;
 
   return (
-    <div className="panel animate-in delay-2" style={{ padding: 0, marginTop: 16, overflow: "visible", position: "relative", zIndex: 10 }}>
+    <div ref={chartRef} className="panel animate-in delay-2" style={{ padding: 0, marginTop: 16, overflow: "visible", position: "relative", zIndex: 10 }}>
       <div style={{ padding: "12px 16px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
