@@ -193,17 +193,13 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
             </span>
           </div>
         )}
-        {!target && metric === "jobs" && (
+        {metric === "jobs" && (
           <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 16 }}>
-            {!editingJobTarget ? (
-              <button onClick={() => { setEditingJobTarget(true); setJobTargetInput(String(weeklyJobTarget || "")); setMonthlyJobTargetInput(String(monthlyJobTarget || "")); }} className="btn" style={{ padding: "6px 14px", fontSize: 12 }}>
-                Set Job Targets
-              </button>
-            ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {editingJobTarget ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <div>
                   <div className="text-muted" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Weekly</div>
-                  <input type="number" value={jobTargetInput} onChange={e => setJobTargetInput(e.target.value)} placeholder="e.g. 20" onKeyDown={e => { if (e.key === "Enter") saveJobTargets(); }} style={{
+                  <input type="number" value={jobTargetInput} onChange={e => setJobTargetInput(e.target.value)} placeholder="e.g. 20" onKeyDown={e => { if (e.key === "Enter") saveJobTargets(); }} autoFocus style={{
                     width: 60, padding: "4px 8px", borderRadius: 6,
                     border: `1px solid ${isLight ? "#cbd5e1" : "rgba(255,255,255,0.2)"}`,
                     background: isLight ? "#fff" : "rgba(255,255,255,0.06)",
@@ -222,14 +218,11 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
                 <button onClick={saveJobTargets} className="btn" style={{ padding: "4px 12px", fontSize: 11, background: "rgba(16,185,129,0.15)", borderColor: "rgba(16,185,129,0.4)" }}>Save</button>
                 <button onClick={() => setEditingJobTarget(false)} className="btn" style={{ padding: "4px 10px", fontSize: 11 }}>Cancel</button>
               </div>
+            ) : (
+              <button onClick={() => { setEditingJobTarget(true); setJobTargetInput(String(weeklyJobTarget || "")); setMonthlyJobTargetInput(String(monthlyJobTarget || "")); }} className="btn" style={{ padding: "6px 14px", fontSize: 12 }}>
+                {target > 0 ? "Edit Job Targets" : "Set Job Targets"}
+              </button>
             )}
-          </div>
-        )}
-        {target > 0 && metric === "jobs" && (
-          <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 16 }}>
-            <button onClick={() => { setEditingJobTarget(true); setJobTargetInput(String(weeklyJobTarget || "")); setMonthlyJobTargetInput(String(monthlyJobTarget || "")); }} className="btn" style={{ padding: "4px 10px", fontSize: 11 }}>
-              Edit
-            </button>
           </div>
         )}
       </div>

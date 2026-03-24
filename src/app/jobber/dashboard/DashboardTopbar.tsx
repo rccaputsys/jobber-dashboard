@@ -1,7 +1,7 @@
 import { SyncButton } from "./SyncButton";
 import { ThemeToggle } from "./ThemeToggle";
 import { NavTabs } from "./NavTabs";
-import { SubscriptionStatus, LogoutButton } from "./HeaderButtons";
+import { SubscriptionStatus, LogoutButton, TrialBanner } from "./HeaderButtons";
 
 type Props = {
   companyName: string;

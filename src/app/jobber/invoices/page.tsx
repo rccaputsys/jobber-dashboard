@@ -3,6 +3,7 @@ import { supabaseAdmin, fetchAllRows } from "@/lib/supabaseAdmin";
 import { getUser } from "@/lib/supabaseAuth";
 import { redirect } from "next/navigation";
 import { DashboardTopbar } from "../dashboard/DashboardTopbar";
+import { OnboardingOverlay } from "../dashboard/OnboardingOverlay";
 import { InvoiceKpiCards } from "./InvoiceKpiCards";
 import { InvoiceTrendsSection } from "./InvoiceTrendsSection";
 import { OutstandingInvoices } from "./OutstandingInvoices";
@@ -309,6 +310,7 @@ export default async function InvoicesPage({
         </div>
 
         {/* Trends */}
+        <div data-tour="invoice-chart">
         <InvoiceTrendsSection
           events={invoiceEvents}
           agingBuckets={agingBuckets}
@@ -317,6 +319,7 @@ export default async function InvoicesPage({
           draftCount={draftCount}
           draftCents={draftCents}
         />
+        </div>
 
         {/* Outstanding Invoices */}
         <OutstandingInvoices
@@ -334,6 +337,11 @@ export default async function InvoicesPage({
 
         <div style={{ height: 40 }} />
       </div>
+      <OnboardingOverlay
+        state={{ hasData: invoices.length > 0, weeklyTargetSet: false, trialDaysLeft: trialEndsAt > Date.now() ? Math.ceil((trialEndsAt - Date.now()) / 86400000) : 0 }}
+        connectionId={connectionId}
+        adminConnectionId={adminConnectionId}
+      />
     </main>
   );
 }

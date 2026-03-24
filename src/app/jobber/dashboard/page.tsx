@@ -1571,7 +1571,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
         )}
 
         {/* ===== Week at a Glance — top KPI cards ===== */}
-        <div className="animate-in delay-1" style={{ marginTop: 20 }}>
+        <div data-tour="week-glance" className="animate-in delay-1" style={{ marginTop: 20 }}>
           <WeekGlance
             lastWeek={lastWeekSnap}
             thisWeek={thisWeekSnap}
@@ -1590,7 +1590,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
         </div>
 
         {/* ===== Business Pulse — revenue chart ===== */}
-        <div className="panel animate-in delay-1" style={{ marginTop: 16, padding: "24px 28px", overflow: "visible" }}>
+        <div data-tour="revenue-chart" className="panel animate-in delay-1" style={{ marginTop: 16, padding: "24px 28px", overflow: "visible" }}>
           <BusinessPulse
             months={pulseMonths}
             weeks={pulseWeeks}
@@ -1599,7 +1599,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
         </div>
 
         {/* ===== This Week's Focus + Money Flow ===== */}
-        <div className="side-by-side animate-in delay-2" style={{ marginTop: 16 }}>
+        <div data-tour="recommendations" className="side-by-side animate-in delay-2" style={{ marginTop: 16 }}>
           {/* Left: Recommendations */}
           <div className="panel" style={{ padding: "18px 20px", overflow: "visible", display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
@@ -1675,14 +1675,11 @@ const quoteWonPct = quotesInLast30Days.length > 0
         <OnboardingOverlay
           state={{
             hasData: jobs.length > 0 || invoices.length > 0,
-            ahaShown: false,
-            tourCompleted: false,
-            checklistRevenue: false,
-            checklistTarget: false,
             weeklyTargetSet: !!(conn?.weekly_capacity_cents),
             trialDaysLeft: trialEndsAt > Date.now() ? Math.ceil((trialEndsAt - Date.now()) / 86400000) : 0,
           }}
           connectionId={connectionId}
+          adminConnectionId={adminConnectionId}
         />
       )}
     </main>

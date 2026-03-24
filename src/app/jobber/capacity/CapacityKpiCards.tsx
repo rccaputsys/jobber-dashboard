@@ -154,6 +154,8 @@ function TargetInput({ label, field, currentCents, currencyCode, isLight, adminC
         body: JSON.stringify({ [field]: Math.round(val * 100), ...(adminConnectionId ? { connection_id: adminConnectionId } : {}) }),
       });
       setEditing(false);
+      // Notify onboarding checklist that a target was saved
+      try { window.dispatchEvent(new CustomEvent("accuinsight:target-saved")); } catch {}
       router.refresh();
     } finally { setSaving(false); }
   }
@@ -328,7 +330,7 @@ export function CapacityKpiCards({
   // Targets-only mode: just render the target inputs inline
   if (targetsOnly) {
     return (
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <div data-tour="capacity-target" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "4px 8px", borderRadius: 8 }}>
         <TargetInput label="Weekly Target" field="weekly_capacity_cents" currentCents={currentWeeklyCents} currencyCode={currencyCode} isLight={isLight} adminConnectionId={adminConnectionId} />
         <div style={{ width: 1, height: 20, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)" }} />
         <TargetInput label="Monthly Target" field="monthly_capacity_cents" currentCents={currentMonthlyCents} currencyCode={currencyCode} isLight={isLight} adminConnectionId={adminConnectionId} />
@@ -345,7 +347,7 @@ export function CapacityKpiCards({
         flexWrap: "wrap", gap: 10,
         borderBottom: `1px solid ${isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"}`,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <div data-tour="capacity-target" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "4px 8px", borderRadius: 8 }}>
           <TargetInput label="Weekly Target" field="weekly_capacity_cents" currentCents={currentWeeklyCents} currencyCode={currencyCode} isLight={isLight} adminConnectionId={adminConnectionId} />
           <div style={{ width: 1, height: 20, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)" }} />
           <TargetInput label="Monthly Target" field="monthly_capacity_cents" currentCents={currentMonthlyCents} currencyCode={currencyCode} isLight={isLight} adminConnectionId={adminConnectionId} />

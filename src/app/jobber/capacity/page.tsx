@@ -3,6 +3,7 @@ import { supabaseAdmin, fetchAllRows } from "@/lib/supabaseAdmin";
 import { getUser } from "@/lib/supabaseAuth";
 import { redirect } from "next/navigation";
 import { DashboardTopbar } from "../dashboard/DashboardTopbar";
+import { OnboardingOverlay } from "../dashboard/OnboardingOverlay";
 import { CapacityTrendsSection } from "./CapacityTrendsSection";
 import { CapacityChart } from "./CapacityChart";
 import { CapacityWeekBreakdown } from "./CapacityWeekBreakdown";
@@ -527,7 +528,7 @@ export default async function CapacityPage({
               targetsOnly
             />
           </div>
-          <div style={{ padding: "20px 24px" }}>
+          <div data-tour="capacity-chart" style={{ padding: "20px 24px" }}>
             <CapacityChart
               weeks={capacityWeeks}
               months={capacityMonths}
@@ -625,6 +626,11 @@ export default async function CapacityPage({
 
         <div style={{ height: 40 }} />
       </div>
+      <OnboardingOverlay
+        state={{ hasData: jobs.length > 0, weeklyTargetSet: !!(weeklyCapacityCents), trialDaysLeft: trialEndsAt > Date.now() ? Math.ceil((trialEndsAt - Date.now()) / 86400000) : 0 }}
+        connectionId={connectionId}
+        adminConnectionId={adminConnectionId}
+      />
     </main>
   );
 }

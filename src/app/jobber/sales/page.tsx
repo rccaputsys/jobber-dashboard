@@ -5,6 +5,7 @@ import { getUser } from "@/lib/supabaseAuth";
 import { redirect } from "next/navigation";
 import { ExportCSV } from "../dashboard/ExportCSV";
 import { DashboardTopbar } from "../dashboard/DashboardTopbar";
+import { OnboardingOverlay } from "../dashboard/OnboardingOverlay";
 import { QuotePipeline } from "./QuotePipeline";
 import { SalesTrendsSection } from "./SalesTrendsSection";
 import { SalesKpiCards } from "./SalesKpiCards";
@@ -391,11 +392,13 @@ export default async function SalesPage({
             </h2>
             <span className="info-tooltip">?<span className="tooltip-text">Shows all your quotes grouped by status stage, from draft to won. Track how quotes flow through your sales process and where they get stuck.</span></span>
           </div>
-          <QuotePipeline
-            stages={pipelineStages}
-            lostCount={lostQuotes.length}
-            lostValue={money(sumCents(lostQuotes))}
-          />
+          <div data-tour="sales-pipeline">
+            <QuotePipeline
+              stages={pipelineStages}
+              lostCount={lostQuotes.length}
+              lostValue={money(sumCents(lostQuotes))}
+            />
+          </div>
         </div>
 
         {/* Sales Trends */}
@@ -407,7 +410,7 @@ export default async function SalesPage({
         />
 
         {/* ===== Section D: Quote Follow-Up + Requests ===== */}
-        <div className="panel animate-in delay-2" style={{ marginTop: 20, padding: 20 }}>
+        <div data-tour="sales-actions" className="panel animate-in delay-2" style={{ marginTop: 20, padding: 20 }}>
           <SalesActionTabs requestCount={requestsList.length} requests={requestsList} quoteExportData={followUpExportData} changesRequested={changesRequestedList}>
 
           {followUpQuotes.length === 0 ? (
@@ -508,6 +511,11 @@ export default async function SalesPage({
         {/* Bottom spacer */}
         <div style={{ height: 40 }} />
       </div>
+      <OnboardingOverlay
+        state={{ hasData: quotes.length > 0, weeklyTargetSet: false, trialDaysLeft: trialEndsAt > Date.now() ? Math.ceil((trialEndsAt - Date.now()) / 86400000) : 0 }}
+        connectionId={connectionId}
+        adminConnectionId={adminConnectionId}
+      />
     </main>
   );
 }
