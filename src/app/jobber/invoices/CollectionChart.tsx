@@ -192,18 +192,6 @@ export function CollectionChart({ periods, currencyCode, outstandingCents, draft
                       background: `linear-gradient(180deg, ${collectedColor}dd, ${collectedColor})`,
                       transition: "height 0.3s ease",
                     }} />
-                    {/* Invoiced marker line — shows where "sent" sits within the bar */}
-                    {overCollected && invoicedH > 0 && (
-                      <div style={{
-                        position: "absolute",
-                        bottom: invoicedH,
-                        left: -3, right: -3,
-                        height: 0,
-                        borderTop: `2px dashed ${isLight ? "#334155" : "#EAF1FF"}`,
-                        opacity: 0.7,
-                        zIndex: 2,
-                      }} />
-                    )}
                   </div>
 
                   {/* Period label */}
@@ -236,10 +224,6 @@ export function CollectionChart({ periods, currencyCode, outstandingCents, draft
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 12, height: 12, borderRadius: 3, background: collectedColor }} />
           <span style={{ fontSize: 12, fontWeight: 500, color: mutedColor }}>Collected</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ width: 14, height: 0, borderTop: `2px dashed ${isLight ? "#334155" : "#EAF1FF"}`, opacity: 0.7 }} />
-          <span style={{ fontSize: 12, fontWeight: 500, color: mutedColor }}>Sent</span>
         </div>
       </div>
 
