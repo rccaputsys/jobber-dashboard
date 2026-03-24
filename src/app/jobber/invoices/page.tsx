@@ -153,13 +153,13 @@ export default async function InvoicesPage({
     const sentInPeriod = invoices.filter((i: any) => inPeriod(safeDate(i.created_at_jobber)));
     const sentValue = sentInPeriod.reduce((s: number, i: any) => s + Number(i.total_amount_cents ?? 0), 0);
 
-    // Avg days to pay for paid invoices in period
-    const paidWithDates = paidInPeriod.filter((i: any) => safeDate(i.created_at_jobber) && safeDate(i.paid_at));
+    // Avg days to pay: due date → paid date
+    const paidWithDates = paidInPeriod.filter((i: any) => safeDate(i.due_at) && safeDate(i.paid_at));
     const avgDaysToPay = paidWithDates.length > 0
       ? Math.round(paidWithDates.reduce((s: number, i: any) => {
-          const created = safeDate(i.created_at_jobber)!.getTime();
+          const due = safeDate(i.due_at)!.getTime();
           const paid = safeDate(i.paid_at)!.getTime();
-          return s + Math.max(0, (paid - created) / 86400000);
+          return s + (paid - due) / 86400000;
         }, 0) / paidWithDates.length)
       : 0;
 
