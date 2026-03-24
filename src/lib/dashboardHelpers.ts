@@ -237,6 +237,8 @@ export const globalStyles = `
     max-width: 1280px;
     margin: 0 auto;
     padding: 16px;
+    width: 100%;
+    overflow-x: hidden;
   }
 
   @media (min-width: 640px) {
@@ -837,11 +839,11 @@ export const globalStyles = `
     border: 1px solid rgba(255,255,255,0.08);
     background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
     box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-    overflow: visible;
+    overflow: hidden;
     margin-bottom: 4px;
   }
   .dashboard-topbar .dashboard-header {
-    padding: 16px 20px 12px;
+    padding: 12px 14px 10px;
     flex-direction: row;
     align-items: center;
   }
@@ -1244,9 +1246,10 @@ export const globalStyles = `
 
   /* ===== MOBILE OPTIMIZATION (<480px) ===== */
   @media (max-width: 480px) {
-    .dashboard-container { padding: 0 8px 16px !important; }
-    .dashboard-header { padding: 10px 12px !important; gap: 6px !important; }
-    .dashboard-topbar { border-radius: 10px !important; }
+    .dashboard-container { padding: 0 6px 16px !important; width: 100% !important; max-width: 100vw !important; }
+    .dashboard-topbar { border-radius: 10px !important; overflow: hidden !important; }
+    .dashboard-header { padding: 8px 10px !important; gap: 4px !important; }
+    .header-actions { gap: 3px !important; flex-wrap: nowrap !important; }
 
     .kpi-value-large { font-size: 24px !important; letter-spacing: -0.5px !important; }
     .kpi-value-medium { font-size: 18px !important; letter-spacing: -0.3px !important; }

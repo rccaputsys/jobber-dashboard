@@ -278,8 +278,8 @@ export function InvoiceTrendsSection({ events, agingBuckets, totalOutstandingCen
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16, padding: "0 16px 20px" }} className="invoice-trends-grid">
-        <style>{`@media (min-width: 768px) { .invoice-trends-grid { grid-template-columns: minmax(0, 1fr) 280px !important; } }`}</style>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16, padding: "0 12px 16px" }} className="invoice-trends-grid">
+        <style>{`@media (min-width: 768px) { .invoice-trends-grid { grid-template-columns: minmax(0, 1fr) 260px !important; padding: 0 16px 20px !important; } }`}</style>
 
         {/* Left: Collection Chart */}
         <div style={{ minWidth: 0, overflow: "hidden" }}>
@@ -299,7 +299,7 @@ export function InvoiceTrendsSection({ events, agingBuckets, totalOutstandingCen
         </div>
 
         {/* Right: Aging Donut */}
-        <div style={{ minWidth: 280 }}>
+        <div style={{ minWidth: 0 }}>
           <AgingDonutPanel
             buckets={agingBuckets}
             totalCents={totalOutstandingCents}

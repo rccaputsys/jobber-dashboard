@@ -444,7 +444,7 @@ export function CapacityKpiCards({
         <div style={{ display: "flex", alignItems: "stretch", gap: 20, flexWrap: "wrap" }}>
 
           {/* KPI stat cards — neutral values, color only on change indicators */}
-          <div style={{ flex: 1, display: "grid", gridTemplateColumns: hasTarget ? "1fr 1fr" : "1fr", gap: 12, minWidth: 200, alignItems: "center" }}>
+          <div style={{ flex: 1, display: "grid", gridTemplateColumns: hasTarget ? "1fr 1fr" : "1fr", gap: 12, minWidth: 0, alignItems: "center" }}>
             {/* Gap to Target */}
             {hasTarget && (
               <div className="kpi-secondary" data-accent={gapOver ? (metrics.fillRate > 1.15 ? "amber" : "green") : "amber"} style={{

@@ -224,7 +224,7 @@ export function CollectionChart({ periods, currencyCode, outstandingCents, draft
       </div>
 
       {/* Legend */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, marginTop: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 12, height: 12, borderRadius: 3, background: invoicedBg, border: `1px solid ${isLight ? "#94a3b8" : "rgba(255,255,255,0.2)"}` }} />
           <span style={{ fontSize: 12, fontWeight: 500, color: mutedColor }}>Invoiced</span>
