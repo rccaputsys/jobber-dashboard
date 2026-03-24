@@ -37,12 +37,19 @@ export async function GET(req: Request) {
 
   for (const conn of expiredConnections) {
     try {
+      // Delete Jobber data but preserve the connection row for billing/account history
+      await supabaseAdmin.from("fact_visits").delete().eq("connection_id", conn.id);
       await supabaseAdmin.from("fact_invoices").delete().eq("connection_id", conn.id);
       await supabaseAdmin.from("fact_jobs").delete().eq("connection_id", conn.id);
       await supabaseAdmin.from("fact_quotes").delete().eq("connection_id", conn.id);
+      await supabaseAdmin.from("fact_requests").delete().eq("connection_id", conn.id);
       await supabaseAdmin.from("jobber_tokens").delete().eq("connection_id", conn.id);
-      await supabaseAdmin.from("jobber_connections").delete().eq("id", conn.id);
-      
+
+      // Mark as cleaned up but don't delete the row
+      await supabaseAdmin.from("jobber_connections")
+        .update({ sync_status: "cleaned_up", last_sync_at: null })
+        .eq("id", conn.id);
+
       deletedCount++;
       console.log("Cleaned up expired connection:", conn.id);
     } catch (err) {

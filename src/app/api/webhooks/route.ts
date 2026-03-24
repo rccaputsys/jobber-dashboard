@@ -51,15 +51,26 @@ export async function POST(request: NextRequest) {
             .maybeSingle();
 
           if (connection) {
+            // Delete Jobber data and tokens, but KEEP the connection row
+            // so Stripe billing, user account, and trial info are preserved
             await supabase.from("fact_visits").delete().eq("connection_id", connection.id);
             await supabase.from("fact_invoices").delete().eq("connection_id", connection.id);
             await supabase.from("fact_jobs").delete().eq("connection_id", connection.id);
             await supabase.from("fact_quotes").delete().eq("connection_id", connection.id);
             await supabase.from("fact_requests").delete().eq("connection_id", connection.id);
             await supabase.from("jobber_tokens").delete().eq("connection_id", connection.id);
-            await supabase.from("jobber_connections").delete().eq("id", connection.id);
 
-            console.log('APP_DISCONNECT: cleaned up connection', connection.id);
+            // Mark as disconnected instead of deleting
+            await supabase.from("jobber_connections")
+              .update({
+                jobber_account_id: null,
+                last_sync_at: null,
+                sync_status: "disconnected",
+                disconnected_at: new Date().toISOString(),
+              })
+              .eq("id", connection.id);
+
+            console.log('APP_DISCONNECT: data cleared, connection preserved', connection.id);
           }
         }
         break;

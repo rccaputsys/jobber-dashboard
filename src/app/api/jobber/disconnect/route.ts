@@ -53,12 +53,24 @@ export async function POST() {
     }
   }
 
-  // Delete local data
+  // Delete Jobber data and tokens, but KEEP the connection row
+  // so Stripe billing, user account, and trial info are preserved
+  await supabaseAdmin.from("fact_visits").delete().eq("connection_id", connection.id);
   await supabaseAdmin.from("fact_invoices").delete().eq("connection_id", connection.id);
   await supabaseAdmin.from("fact_jobs").delete().eq("connection_id", connection.id);
   await supabaseAdmin.from("fact_quotes").delete().eq("connection_id", connection.id);
+  await supabaseAdmin.from("fact_requests").delete().eq("connection_id", connection.id);
   await supabaseAdmin.from("jobber_tokens").delete().eq("connection_id", connection.id);
-  await supabaseAdmin.from("jobber_connections").delete().eq("id", connection.id);
+
+  // Mark as disconnected instead of deleting
+  await supabaseAdmin.from("jobber_connections")
+    .update({
+      jobber_account_id: null,
+      last_sync_at: null,
+      sync_status: "disconnected",
+      disconnected_at: new Date().toISOString(),
+    })
+    .eq("id", connection.id);
 
   return NextResponse.json({ success: true });
 }
