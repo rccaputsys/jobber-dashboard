@@ -62,7 +62,7 @@ export function MoneyFlowFunnel({ stages }: Props) {
                 }}>
                   {stage.label}
                 </div>
-                <div className="text-primary" style={{ fontSize: 26, fontWeight: 800, letterSpacing: -1 }}>
+                <div className="text-primary" style={{ fontSize: 20, fontWeight: 800, letterSpacing: -1 }}>
                   {empty ? "\u2014" : stage.count}
                 </div>
                 {!empty && stage.value && (

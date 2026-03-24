@@ -45,10 +45,10 @@ export function QuotePipeline({
                 <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, color: sc.color }}>
                   {stage.label}
                 </div>
-                <div className="text-primary" style={{ fontSize: 28, fontWeight: 800, letterSpacing: -1 }}>
+                <div className="text-primary" style={{ fontSize: 22, fontWeight: 800, letterSpacing: -1 }}>
                   {stage.count}
                 </div>
-                <div style={{ fontSize: 13, marginTop: 4, color: sc.color, fontWeight: 600 }}>
+                <div style={{ fontSize: 11, marginTop: 4, color: sc.color, fontWeight: 600 }}>
                   {stage.value}
                 </div>
               </div>

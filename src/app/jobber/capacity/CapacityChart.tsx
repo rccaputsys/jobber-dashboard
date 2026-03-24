@@ -142,10 +142,10 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
           <button onClick={() => { setMetric("jobs"); setHoveredIdx(null); }} onMouseEnter={() => setBtnHovered("j")} onMouseLeave={() => setBtnHovered(null)} style={pBtnStyle(metric === "jobs", btnHovered === "j")}>Jobs</button>
         </div>
       </div>
-      <div style={{ display: "flex", gap: 24, marginBottom: 20, flexWrap: "wrap", alignItems: "flex-end" }}>
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap", alignItems: "flex-end" }}>
         {currentBar && (
           <div>
-            <div style={{ fontSize: 32, fontWeight: 800, color: primaryColor, letterSpacing: -1.5, lineHeight: 1 }}>
+            <div style={{ fontSize: 26, fontWeight: 800, color: primaryColor, letterSpacing: -1.5, lineHeight: 1 }}>
               {formatValue(currentValue)}
             </div>
             <div style={{ fontSize: 12, color: mutedColor, marginTop: 4, fontWeight: 500 }}>
@@ -156,7 +156,7 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
         {target > 0 && currentBar && (
           <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 24 }}>
             <div style={{
-              fontSize: 22, fontWeight: 800, letterSpacing: -0.5, lineHeight: 1,
+              fontSize: 18, fontWeight: 800, letterSpacing: -0.5, lineHeight: 1,
               color: fillRate >= 0.7 ? "#10b981" : fillRate >= 0.3 ? "#f59e0b" : "#5aa6ff",
             }}>
               {Math.round(fillRate * 100)}%
@@ -168,7 +168,7 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
         )}
         {target > 0 && gap > 0 && (
           <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 24 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#f59e0b", letterSpacing: -0.5, lineHeight: 1 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#f59e0b", letterSpacing: -0.5, lineHeight: 1 }}>
               {formatValue(gap)}
             </div>
             <div style={{ fontSize: 12, color: mutedColor, marginTop: 4, fontWeight: 500 }}>
@@ -178,7 +178,7 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
         )}
         {target > 0 && (
           <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 24 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: mutedColor, letterSpacing: -0.5, lineHeight: 1 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: mutedColor, letterSpacing: -0.5, lineHeight: 1 }}>
               {formatValue(target)}
             </div>
             <div style={{ fontSize: 12, color: mutedColor, marginTop: 4, fontWeight: 500 }}>

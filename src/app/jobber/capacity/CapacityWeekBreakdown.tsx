@@ -154,7 +154,8 @@ export function CapacityWeekBreakdown({
         </div>
 
         {/* Bars */}
-        <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
+        <div style={{ flex: 1, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, minWidth: 420 }}>
           {days.map((day, i) => {
             const dayKey = DAY_KEYS[i];
             const enabled = isDayEnabled(dayKey);
@@ -178,7 +179,7 @@ export function CapacityWeekBreakdown({
                   {day.label}
                 </div>
 
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center", position: "relative", minHeight: BAR_HEIGHT }}>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center", position: "relative", minHeight: 140 }}>
                   {target > 0 && targetHeight > 0 && (
                     <div style={{
                       position: "absolute", bottom: targetHeight, left: "5%", right: "5%",
@@ -201,6 +202,7 @@ export function CapacityWeekBreakdown({
               </div>
             );
           })}
+        </div>
         </div>
       </div>
 
@@ -229,7 +231,8 @@ export function CapacityWeekBreakdown({
           </button>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, minWidth: 420 }}>
           {DAY_KEYS.map((day, i) => {
             const enabled = dayConfig[day]?.enabled ?? !["sat", "sun"].includes(day);
             const targetVal = dayConfig[day]?.target ?? 0;
@@ -281,6 +284,7 @@ export function CapacityWeekBreakdown({
               </div>
             );
           })}
+        </div>
         </div>
         {showDaySettings && (
           <div className="text-muted" style={{ fontSize: 10, marginTop: 8 }}>

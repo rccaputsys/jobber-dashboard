@@ -396,7 +396,7 @@ export function OutstandingInvoices({
               );
             })}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${activeBuckets.length}, 1fr)`, gap: 8, marginTop: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, marginTop: 10 }}>
             {activeBuckets.map((bucket) => {
               const pct = activeTotal > 0 ? Math.round((bucket.totalCents / activeTotal) * 100) : 0;
               return (

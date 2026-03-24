@@ -233,7 +233,7 @@ function TargetInput({ label, field, currentCents, currencyCode, isLight, adminC
           autoFocus
           placeholder="0"
           style={{
-            width: 80, padding: "5px 6px 5px 3px", border: "none",
+            width: 70, padding: "5px 6px 5px 3px", border: "none",
             background: "transparent", color: isLight ? "#1e293b" : "#fff",
             fontSize: 12, fontWeight: 700, outline: "none",
           }}
@@ -328,7 +328,7 @@ export function CapacityKpiCards({
   // Targets-only mode: just render the target inputs inline
   if (targetsOnly) {
     return (
-      <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <TargetInput label="Weekly Target" field="weekly_capacity_cents" currentCents={currentWeeklyCents} currencyCode={currencyCode} isLight={isLight} adminConnectionId={adminConnectionId} />
         <div style={{ width: 1, height: 20, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)" }} />
         <TargetInput label="Monthly Target" field="monthly_capacity_cents" currentCents={currentMonthlyCents} currencyCode={currencyCode} isLight={isLight} adminConnectionId={adminConnectionId} />
@@ -345,7 +345,7 @@ export function CapacityKpiCards({
         flexWrap: "wrap", gap: 10,
         borderBottom: `1px solid ${isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"}`,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <TargetInput label="Weekly Target" field="weekly_capacity_cents" currentCents={currentWeeklyCents} currencyCode={currencyCode} isLight={isLight} adminConnectionId={adminConnectionId} />
           <div style={{ width: 1, height: 20, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)" }} />
           <TargetInput label="Monthly Target" field="monthly_capacity_cents" currentCents={currentMonthlyCents} currencyCode={currencyCode} isLight={isLight} adminConnectionId={adminConnectionId} />
@@ -368,7 +368,7 @@ export function CapacityKpiCards({
       {/* Row 2: Hero stats + capacity fill bar */}
       <div style={{ padding: "24px 24px 20px" }}>
         {/* Stats header row — like the collection chart */}
-        <div style={{ display: "flex", gap: 24, marginBottom: 20, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
           <div>
             <div style={{ fontSize: 32, fontWeight: 800, color: revenueColor, letterSpacing: -1.5, lineHeight: 1 }}>
               {metrics.scheduledRevenue}

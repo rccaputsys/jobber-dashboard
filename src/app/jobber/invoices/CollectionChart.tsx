@@ -58,9 +58,9 @@ export function CollectionChart({ periods, currencyCode, outstandingCents, draft
   return (
     <div style={{ minWidth: 0, overflow: "hidden", position: "relative", zIndex: 2 }}>
       {/* Header row: 3 stats */}
-      <div style={{ display: "flex", gap: 24, marginBottom: 20, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
         <div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: rateColor, letterSpacing: -1.5, lineHeight: 1 }}>
+          <div style={{ fontSize: 26, fontWeight: 800, color: rateColor, letterSpacing: -1.5, lineHeight: 1 }}>
             {overallRate}%
           </div>
           <div style={{ fontSize: 12, color: mutedColor, marginTop: 4, fontWeight: 500 }}>

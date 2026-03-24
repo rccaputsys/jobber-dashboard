@@ -1237,4 +1237,43 @@ export const globalStyles = `
   html[data-theme="light"] .money-flow-row:hover {
     background: #f8fafc !important;
   }
+
+  /* ===== MOBILE OPTIMIZATION (<480px) ===== */
+  @media (max-width: 480px) {
+    .dashboard-container { padding: 0 10px 20px !important; }
+    .dashboard-header { padding: 12px 14px !important; gap: 8px !important; }
+
+    .kpi-value-large { font-size: 28px !important; letter-spacing: -1px !important; }
+    .kpi-value-medium { font-size: 20px !important; letter-spacing: -0.5px !important; }
+
+    .kpi-grid-primary { gap: 8px !important; }
+    .kpi-grid-secondary { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+    .kpi-secondary { padding: 12px !important; min-height: 90px !important; border-radius: 10px !important; }
+
+    .nav-tabs { padding: 0 10px !important; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .nav-tab { padding: 10px 12px !important; font-size: 12px !important; }
+
+    .panel { padding: 14px !important; border-radius: 12px !important; }
+    .side-by-side { gap: 12px !important; }
+    .command-strip { gap: 8px !important; }
+
+    .chart-grid { gap: 8px !important; }
+
+    h2 { font-size: 14px !important; }
+
+    .info-tooltip .tooltip-text {
+      max-width: 200px !important;
+      font-size: 11px !important;
+      left: auto !important;
+      right: 0 !important;
+      transform: none !important;
+    }
+  }
+
+  /* ===== MOBILE OPTIMIZATION (481-640px) ===== */
+  @media (max-width: 640px) {
+    .header-actions { gap: 4px !important; }
+    .header-subtitle { display: none !important; }
+    .kpi-grid-secondary { grid-template-columns: repeat(2, 1fr) !important; }
+  }
 `;

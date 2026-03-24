@@ -53,7 +53,7 @@ export function DashboardTopbar({
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", background: "linear-gradient(135deg, #7c5cff, #5aa6ff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
               AccuInsight
             </div>
-            <div className="text-primary" style={{ fontSize: 15, fontWeight: 800, letterSpacing: -0.3, lineHeight: 1.1 }}>
+            <div className="text-primary" style={{ fontSize: 14, fontWeight: 800, letterSpacing: -0.3, lineHeight: 1.1 }}>
               {companyName}
             </div>
           </div>
