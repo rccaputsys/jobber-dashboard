@@ -202,19 +202,7 @@ export function CollectionChart({ periods, currencyCode, outstandingCents, draft
                         borderTop: `2px dashed ${isLight ? "#334155" : "#EAF1FF"}`,
                         opacity: 0.7,
                         zIndex: 2,
-                      }}>
-                        {/* Small label */}
-                        {isHov && periods.length <= 12 && (
-                          <div style={{
-                            position: "absolute", right: -4, top: -14,
-                            fontSize: 8, fontWeight: 700,
-                            color: isLight ? "#475569" : "rgba(255,255,255,0.6)",
-                            whiteSpace: "nowrap",
-                          }}>
-                            sent
-                          </div>
-                        )}
-                      </div>
+                      }} />
                     )}
                   </div>
 
@@ -248,6 +236,10 @@ export function CollectionChart({ periods, currencyCode, outstandingCents, draft
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 12, height: 12, borderRadius: 3, background: collectedColor }} />
           <span style={{ fontSize: 12, fontWeight: 500, color: mutedColor }}>Collected</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 14, height: 0, borderTop: `2px dashed ${isLight ? "#334155" : "#EAF1FF"}`, opacity: 0.7 }} />
+          <span style={{ fontSize: 12, fontWeight: 500, color: mutedColor }}>Sent</span>
         </div>
       </div>
 
