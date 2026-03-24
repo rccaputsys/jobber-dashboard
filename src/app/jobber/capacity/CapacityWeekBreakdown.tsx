@@ -155,7 +155,7 @@ export function CapacityWeekBreakdown({
 
         {/* Bars */}
         <div style={{ flex: 1, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, minWidth: 420 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, minWidth: 350 }}>
           {days.map((day, i) => {
             const dayKey = DAY_KEYS[i];
             const enabled = isDayEnabled(dayKey);
@@ -232,7 +232,7 @@ export function CapacityWeekBreakdown({
         </div>
 
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, minWidth: 420 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, minWidth: 350 }}>
           {DAY_KEYS.map((day, i) => {
             const enabled = dayConfig[day]?.enabled ?? !["sat", "sun"].includes(day);
             const targetVal = dayConfig[day]?.target ?? 0;

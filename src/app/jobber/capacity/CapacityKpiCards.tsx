@@ -340,7 +340,7 @@ export function CapacityKpiCards({
     <div className="panel" style={{ padding: 0, overflow: "visible" }}>
       {/* Row 1: Target input + period toggle */}
       <div style={{
-        padding: "14px 20px",
+        padding: "12px 14px",
         display: "flex", alignItems: "center", justifyContent: "space-between",
         flexWrap: "wrap", gap: 10,
         borderBottom: `1px solid ${isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"}`,
@@ -366,7 +366,7 @@ export function CapacityKpiCards({
       </div>
 
       {/* Row 2: Hero stats + capacity fill bar */}
-      <div style={{ padding: "24px 24px 20px" }}>
+      <div style={{ padding: "16px 16px 14px" }}>
         {/* Stats header row — like the collection chart */}
         <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
           <div>

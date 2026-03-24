@@ -190,7 +190,8 @@ export function CapacitySettings({
           </button>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
+        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, minWidth: 350 }}>
           {DAY_KEYS.map((day, i) => {
             const enabled = dayConfig[day].enabled;
             const target = dailyTarget(day);
@@ -241,6 +242,7 @@ export function CapacitySettings({
               </div>
             );
           })}
+        </div>
         </div>
 
         {showDaily && (

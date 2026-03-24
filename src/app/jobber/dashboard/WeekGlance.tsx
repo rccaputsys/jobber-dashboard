@@ -137,7 +137,7 @@ export function WeekGlance({ lastWeek, thisWeek, nextWeek, thisMonth, lastMonth,
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
-        <div style={pillGroup}>
+        <div style={{ ...pillGroup, flexWrap: "wrap", overflowX: "auto" }}>
           {periodOptions.map((o) => (
             <button
               key={o.key}

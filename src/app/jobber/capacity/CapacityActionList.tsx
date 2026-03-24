@@ -309,7 +309,7 @@ export function CapacityActionList({
         </div>
 
         {/* Bucket legend */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: 8, marginTop: 10 }}>
           {buckets.map((bucket) => {
             const pctOfTotal = totalCents > 0 ? Math.round((bucket.totalCents / totalCents) * 100) : 0;
             return (
@@ -369,7 +369,7 @@ export function CapacityActionList({
             </div>
 
             {/* Bucket legend */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginTop: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, marginTop: 10 }}>
               {lateBuckets.map((bucket) => {
                 const pctOfTotal = lateTotalCents > 0 ? Math.round((bucket.totalCents / lateTotalCents) * 100) : 0;
                 return (

@@ -1238,69 +1238,63 @@ export const globalStyles = `
     background: #f8fafc !important;
   }
 
+  /* ===== GLOBAL OVERFLOW PREVENTION ===== */
+  * { box-sizing: border-box; }
+  html, body { overflow-x: hidden; max-width: 100vw; }
+
   /* ===== MOBILE OPTIMIZATION (<480px) ===== */
   @media (max-width: 480px) {
-    .dashboard-container { padding: 0 10px 20px !important; }
-    .dashboard-header { padding: 12px 14px !important; gap: 8px !important; }
+    .dashboard-container { padding: 0 8px 16px !important; }
+    .dashboard-header { padding: 10px 12px !important; gap: 6px !important; }
+    .dashboard-topbar { border-radius: 10px !important; }
 
-    .kpi-value-large { font-size: 28px !important; letter-spacing: -1px !important; }
-    .kpi-value-medium { font-size: 20px !important; letter-spacing: -0.5px !important; }
+    .kpi-value-large { font-size: 24px !important; letter-spacing: -0.5px !important; }
+    .kpi-value-medium { font-size: 18px !important; letter-spacing: -0.3px !important; }
 
-    .kpi-grid-primary { gap: 8px !important; }
-    .kpi-grid-secondary { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
-    .kpi-secondary { padding: 12px !important; min-height: 90px !important; border-radius: 10px !important; }
+    .kpi-grid-primary { gap: 6px !important; grid-template-columns: 1fr !important; }
+    .kpi-grid-secondary { grid-template-columns: 1fr 1fr !important; gap: 6px !important; }
+    .kpi-secondary { padding: 10px 12px !important; min-height: 80px !important; border-radius: 10px !important; }
 
-    .nav-tabs { padding: 0 10px !important; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .nav-tab { padding: 10px 12px !important; font-size: 12px !important; }
+    .nav-tabs { padding: 0 8px !important; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+    .nav-tab { padding: 8px 10px !important; font-size: 11px !important; flex-shrink: 0; }
 
-    .panel { padding: 14px !important; border-radius: 12px !important; }
-    .side-by-side { gap: 12px !important; }
-    .command-strip { gap: 8px !important; }
+    .panel { padding: 12px !important; border-radius: 10px !important; overflow: hidden !important; }
+    .side-by-side { gap: 10px !important; }
+    .command-strip { gap: 6px !important; grid-template-columns: 1fr !important; }
 
-    .chart-grid { gap: 8px !important; }
+    .chart-grid { gap: 6px !important; }
 
-    h2 { font-size: 14px !important; }
+    h2 { font-size: 13px !important; }
 
     .info-tooltip .tooltip-text {
-      max-width: 200px !important;
-      font-size: 11px !important;
+      max-width: 180px !important;
+      font-size: 10px !important;
       left: auto !important;
-      right: 0 !important;
+      right: -8px !important;
       transform: none !important;
     }
 
-    /* Action list tables: hide less important columns on mobile */
-    .data-table th:nth-child(3),
-    .data-table td:nth-child(3),
-    .data-table th:nth-child(4),
-    .data-table td:nth-child(4) {
-      display: none !important;
-    }
-    .data-table th, .data-table td {
-      padding: 8px 6px !important;
-      font-size: 12px !important;
-    }
-    .data-table th:first-child,
-    .data-table td:first-child {
-      width: 55px !important;
-    }
+    /* Tables: remove min-width, hide columns 3+4 */
+    .data-table { min-width: 0 !important; font-size: 11px !important; }
+    .data-table th:nth-child(3), .data-table td:nth-child(3),
+    .data-table th:nth-child(4), .data-table td:nth-child(4) { display: none !important; }
+    .data-table th, .data-table td { padding: 6px 4px !important; }
+    .data-table th:first-child, .data-table td:first-child { width: 50px !important; }
+    .table-container { overflow-x: hidden !important; }
 
     /* Quote pipeline: stack vertically */
-    .quote-pipeline-bar {
-      flex-direction: column !important;
-      height: auto !important;
-    }
+    .quote-pipeline-bar { flex-direction: column !important; height: auto !important; gap: 6px !important; }
+    .quote-pipeline-bar > div { min-width: 0 !important; }
+    .funnel-stage { padding: 10px !important; }
   }
 
-  /* ===== MOBILE OPTIMIZATION (481-640px) ===== */
+  /* ===== TABLET OPTIMIZATION (481-640px) ===== */
   @media (max-width: 640px) {
     .header-actions { gap: 4px !important; }
     .header-subtitle { display: none !important; }
     .kpi-grid-secondary { grid-template-columns: repeat(2, 1fr) !important; }
-
-    .data-table th:nth-child(4),
-    .data-table td:nth-child(4) {
-      display: none !important;
-    }
+    .data-table th:nth-child(4), .data-table td:nth-child(4) { display: none !important; }
+    .command-strip { grid-template-columns: 1fr 1fr !important; }
   }
 `;

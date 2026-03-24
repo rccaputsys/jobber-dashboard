@@ -55,7 +55,7 @@ export function AccuScore({ score, breakdown }: Props) {
   return (
     <div>
       {/* Top row: gauge + title */}
-      <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 18 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
         <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
           <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
             <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={track}

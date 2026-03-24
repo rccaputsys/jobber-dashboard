@@ -62,7 +62,7 @@ export function SalesKpiCards({
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
-        <div style={pillGroup}>
+        <div style={{ ...pillGroup, overflowX: "auto", WebkitOverflowScrolling: "touch", flexWrap: "nowrap" }}>
           {options.map((o) => (
             <button
               key={o.key}

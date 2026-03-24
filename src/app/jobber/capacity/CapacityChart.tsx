@@ -154,7 +154,7 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
           </div>
         )}
         {target > 0 && currentBar && (
-          <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 24 }}>
+          <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 16 }}>
             <div style={{
               fontSize: 18, fontWeight: 800, letterSpacing: -0.5, lineHeight: 1,
               color: fillRate >= 0.7 ? "#10b981" : fillRate >= 0.3 ? "#f59e0b" : "#5aa6ff",
@@ -167,7 +167,7 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
           </div>
         )}
         {target > 0 && gap > 0 && (
-          <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 24 }}>
+          <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 16 }}>
             <div style={{ fontSize: 18, fontWeight: 800, color: "#f59e0b", letterSpacing: -0.5, lineHeight: 1 }}>
               {formatValue(gap)}
             </div>
@@ -177,7 +177,7 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
           </div>
         )}
         {target > 0 && (
-          <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 24 }}>
+          <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 16 }}>
             <div style={{ fontSize: 18, fontWeight: 800, color: mutedColor, letterSpacing: -0.5, lineHeight: 1 }}>
               {formatValue(target)}
             </div>
@@ -187,14 +187,14 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
           </div>
         )}
         {!target && metric === "dollars" && (
-          <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 24 }}>
+          <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 16 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: "#5aa6ff" }}>
               Set a {view === "monthly" ? "monthly" : "weekly"} target above to see fill rate
             </span>
           </div>
         )}
         {!target && metric === "jobs" && (
-          <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 24 }}>
+          <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 16 }}>
             {!editingJobTarget ? (
               <button onClick={() => { setEditingJobTarget(true); setJobTargetInput(String(weeklyJobTarget || "")); setMonthlyJobTargetInput(String(monthlyJobTarget || "")); }} className="btn" style={{ padding: "6px 14px", fontSize: 12 }}>
                 Set Job Targets
@@ -226,7 +226,7 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
           </div>
         )}
         {target > 0 && metric === "jobs" && (
-          <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 24 }}>
+          <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 16 }}>
             <button onClick={() => { setEditingJobTarget(true); setJobTargetInput(String(weeklyJobTarget || "")); setMonthlyJobTargetInput(String(monthlyJobTarget || "")); }} className="btn" style={{ padding: "4px 10px", fontSize: 11 }}>
               Edit
             </button>
@@ -358,7 +358,7 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
       </div>
 
       {/* Legend */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, marginTop: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginTop: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <span style={{ width: 12, height: 12, borderRadius: 3, background: "#5aa6ff80" }} />
           <span style={{ fontSize: 11, color: mutedColor }}>Past</span>
