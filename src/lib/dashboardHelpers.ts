@@ -1268,6 +1268,28 @@ export const globalStyles = `
       right: 0 !important;
       transform: none !important;
     }
+
+    /* Action list tables: hide less important columns on mobile */
+    .data-table th:nth-child(3),
+    .data-table td:nth-child(3),
+    .data-table th:nth-child(4),
+    .data-table td:nth-child(4) {
+      display: none !important;
+    }
+    .data-table th, .data-table td {
+      padding: 8px 6px !important;
+      font-size: 12px !important;
+    }
+    .data-table th:first-child,
+    .data-table td:first-child {
+      width: 55px !important;
+    }
+
+    /* Quote pipeline: stack vertically */
+    .quote-pipeline-bar {
+      flex-direction: column !important;
+      height: auto !important;
+    }
   }
 
   /* ===== MOBILE OPTIMIZATION (481-640px) ===== */
@@ -1275,5 +1297,10 @@ export const globalStyles = `
     .header-actions { gap: 4px !important; }
     .header-subtitle { display: none !important; }
     .kpi-grid-secondary { grid-template-columns: repeat(2, 1fr) !important; }
+
+    .data-table th:nth-child(4),
+    .data-table td:nth-child(4) {
+      display: none !important;
+    }
   }
 `;

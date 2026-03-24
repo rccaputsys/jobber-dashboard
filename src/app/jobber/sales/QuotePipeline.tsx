@@ -26,7 +26,7 @@ export function QuotePipeline({
 }) {
   return (
     <div style={{ width: "100%" }}>
-      <div style={{ display: "flex", alignItems: "stretch", width: "100%", overflowX: "auto", paddingBottom: 8 }}>
+      <div className="quote-pipeline-bar" style={{ display: "flex", alignItems: "stretch", width: "100%", overflowX: "auto", paddingBottom: 8, gap: 4 }}>
         {stages.map((stage, i) => {
           const sc = stageColors[stage.label] || { color: "#5aa6ff", bg: "rgba(90,166,255,0.08)", border: "rgba(90,166,255,0.2)" };
           return (
