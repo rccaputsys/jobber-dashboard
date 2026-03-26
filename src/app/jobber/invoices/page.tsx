@@ -8,6 +8,7 @@ import { InvoiceKpiCards } from "./InvoiceKpiCards";
 import { InvoiceTrendsSection } from "./InvoiceTrendsSection";
 import { OutstandingInvoices } from "./OutstandingInvoices";
 import { ErrorBoundary } from "../dashboard/ErrorBoundary";
+import { DashboardLayout } from "../dashboard/DashboardLayout";
 import {
   safeDate,
   startOfDayUTC,
@@ -280,6 +281,7 @@ export default async function InvoicesPage({
         linear-gradient(180deg, #060811 0%, #0a1020 100%)
       `,
     }}>
+      <DashboardLayout adminConnectionId={adminConnectionId}>
       <style>{globalStyles}</style>
 
       <ErrorBoundary>
@@ -345,6 +347,7 @@ export default async function InvoicesPage({
         adminConnectionId={adminConnectionId}
       />
       </ErrorBoundary>
+      </DashboardLayout>
     </main>
   );
 }

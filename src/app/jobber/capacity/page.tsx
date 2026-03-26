@@ -9,6 +9,7 @@ import { CapacityWeekBreakdown } from "./CapacityWeekBreakdown";
 import { CapacityKpiCards } from "./CapacityKpiCards";
 import { CapacityActionList } from "./CapacityActionList";
 import { ErrorBoundary } from "../dashboard/ErrorBoundary";
+import { DashboardLayout } from "../dashboard/DashboardLayout";
 import {
   safeDate,
   startOfDayUTC,
@@ -448,6 +449,7 @@ export default async function CapacityPage({
         linear-gradient(180deg, #060811 0%, #0a1020 100%)
       `,
     }}>
+      <DashboardLayout adminConnectionId={adminConnectionId}>
       <style>{globalStyles}</style>
 
       <ErrorBoundary>
@@ -629,6 +631,7 @@ export default async function CapacityPage({
         adminConnectionId={adminConnectionId}
       />
       </ErrorBoundary>
+      </DashboardLayout>
     </main>
   );
 }

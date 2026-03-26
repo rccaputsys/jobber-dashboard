@@ -22,6 +22,7 @@ import { CapacityTargetDisplay } from "./CapacityTargetDisplay";
 import { DashboardTopbar } from "./DashboardTopbar";
 import { OnboardingOverlay } from "./OnboardingOverlay";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { DashboardLayout } from "./DashboardLayout";
 import {
   safeDate as _safeDate,
   globalStyles,
@@ -1539,6 +1540,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
         linear-gradient(180deg, #060811 0%, #0a1020 100%)
       `,
     }}>
+      <DashboardLayout adminConnectionId={adminConnectionId}>
       <style>{globalStyles}</style>
       {!adminConnectionId && <AnalyticsProvider connectionId={connectionId} />}
 
@@ -1925,6 +1927,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
         />
       )}
       </ErrorBoundary>
+      </DashboardLayout>
     </main>
   );
 }

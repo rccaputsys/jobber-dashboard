@@ -1,7 +1,6 @@
 import { SyncButton } from "./SyncButton";
 import { ThemeToggle } from "./ThemeToggle";
-import { NavTabs } from "./NavTabs";
-import { SubscriptionStatus, LogoutButton, TrialBanner } from "./HeaderButtons";
+import { SubscriptionStatus, LogoutButton } from "./HeaderButtons";
 
 type Props = {
   companyName: string;
@@ -39,23 +38,8 @@ export function DashboardTopbar({
       )}
       <header className="dashboard-header">
         <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-          <svg width="24" height="24" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
-            <defs>
-              <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#7c5cff" />
-                <stop offset="100%" stopColor="#5aa6ff" />
-              </linearGradient>
-            </defs>
-            <circle cx="25" cy="25" r="22" fill="none" stroke="url(#logoGrad)" strokeWidth="3" />
-            <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#logoGrad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", background: "linear-gradient(135deg, #7c5cff, #5aa6ff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-              AccuInsight
-            </div>
-            <div className="text-primary" style={{ fontSize: 13, fontWeight: 800, letterSpacing: -0.3, lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {companyName}
-            </div>
+          <div className="text-primary" style={{ fontSize: 14, fontWeight: 800, letterSpacing: -0.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {companyName}
           </div>
         </div>
 
@@ -68,8 +52,6 @@ export function DashboardTopbar({
           <LogoutButton />
         </div>
       </header>
-
-      <NavTabs adminConnectionId={adminConnectionId} />
     </div>
   );
 }

@@ -832,18 +832,77 @@ export const globalStyles = `
     background-size: 200% 100%;
   }
 
-  /* Nav tabs */
-  /* Dashboard top bar — frames header + tabs as one unit */
+  /* Sidebar layout */
+  .app-layout {
+    display: flex;
+    min-height: 100vh;
+  }
+  .sidebar-nav {
+    width: 200px;
+    flex-shrink: 0;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.02);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .app-main {
+    flex: 1;
+    min-width: 0;
+  }
+  html[data-theme="light"] .sidebar-nav {
+    background: #f8fafc !important;
+    border-right-color: #e2e8f0 !important;
+  }
+
+  @media (max-width: 768px) {
+    .app-layout { flex-direction: column; }
+    .sidebar-nav {
+      width: 100%;
+      height: auto;
+      position: relative;
+      border-right: none;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      padding: 0;
+      overflow-x: auto;
+    }
+    .sidebar-nav > div:first-child { display: none; } /* hide logo on mobile */
+    .sidebar-nav > div:last-child {
+      display: flex;
+      flex-direction: row;
+      gap: 0;
+      padding: 4px 8px;
+      width: 100%;
+    }
+    .sidebar-nav > div:last-child a {
+      flex: 1;
+      justify-content: center;
+      padding: 8px 4px !important;
+      border-left: none !important;
+      border-bottom: 3px solid transparent;
+      border-radius: 0 !important;
+      font-size: 11px !important;
+      gap: 4px !important;
+    }
+    .sidebar-nav > div:last-child a svg { width: 14px; height: 14px; }
+  }
+
+  /* Nav tabs (legacy — kept for compatibility) */
+  /* Dashboard top bar — slim header strip (nav moved to sidebar) */
   .dashboard-topbar {
-    border-radius: 16px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: transparent;
+    box-shadow: none;
     overflow: hidden;
     margin-bottom: 4px;
   }
   .dashboard-topbar .dashboard-header {
-    padding: 12px 14px 10px;
+    padding: 10px 20px;
     flex-direction: row;
     align-items: center;
   }
@@ -853,9 +912,9 @@ export const globalStyles = `
     }
   }
   html[data-theme="light"] .dashboard-topbar {
-    background: #ffffff !important;
-    border-color: #e2e8f0 !important;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.06) !important;
+    background: transparent !important;
+    border-bottom-color: #e2e8f0 !important;
+    box-shadow: none !important;
   }
 
   /* Nav tabs — underline style inside topbar */

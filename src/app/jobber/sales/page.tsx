@@ -12,6 +12,7 @@ import { SalesKpiCards } from "./SalesKpiCards";
 import { QuoteFollowUpTable } from "./QuoteFollowUpTable";
 import { SalesActionTabs } from "./SalesActionTabs";
 import { ErrorBoundary } from "../dashboard/ErrorBoundary";
+import { DashboardLayout } from "../dashboard/DashboardLayout";
 import {
   safeDate,
   startOfDayUTC,
@@ -361,6 +362,7 @@ export default async function SalesPage({
         linear-gradient(180deg, #060811 0%, #0a1020 100%)
       `,
     }}>
+      <DashboardLayout adminConnectionId={adminConnectionId}>
       <style>{globalStyles}</style>
 
       <ErrorBoundary>
@@ -519,6 +521,7 @@ export default async function SalesPage({
         adminConnectionId={adminConnectionId}
       />
       </ErrorBoundary>
+      </DashboardLayout>
     </main>
   );
 }
