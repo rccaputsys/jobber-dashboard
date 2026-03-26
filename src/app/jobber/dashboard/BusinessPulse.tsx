@@ -22,6 +22,12 @@ function moneyFmt(cents: number, code: string): string {
   catch { return `$${Math.round(cents / 100).toLocaleString()}`; }
 }
 
+function moneyShort(cents: number): string {
+  const dollars = cents / 100;
+  if (dollars >= 1000) return `$${Math.round(dollars / 1000)}k`;
+  return `$${Math.round(dollars)}`;
+}
+
 export function BusinessPulse({ months, weeks, currencyCode }: Props) {
   const isLight = useIsLight();
   const chartRef = useRef<HTMLDivElement>(null);
@@ -259,7 +265,20 @@ export function BusinessPulse({ months, weeks, currencyCode }: Props) {
                   onMouseEnter={() => setHoveredIdx(i)}
                   onMouseLeave={() => setHoveredIdx(null)}
                 >
-                  {chartType === "bar" && (
+                  {chartType === "bar" && (<>
+                    {/* Data label above bar */}
+                    {m.revenueCents > 0 && (barH > 20 || isHov) && (
+                      <div style={{
+                        fontSize: data.length > 8 ? 8 : 10,
+                        fontWeight: 700,
+                        color: isHov ? (isLight ? "#1e293b" : "#EAF1FF") : (isLight ? "#64748b" : "rgba(255,255,255,0.45)"),
+                        marginBottom: 3,
+                        whiteSpace: "nowrap",
+                        transition: "color 0.15s ease",
+                      }}>
+                        {moneyShort(m.revenueCents)}
+                      </div>
+                    )}
                     <div style={{
                       width: "75%", maxWidth: data.length > 8 ? 44 : 60, position: "relative",
                       height: Math.max(barH, 3),
@@ -269,18 +288,8 @@ export function BusinessPulse({ months, weeks, currencyCode }: Props) {
                       opacity: hoveredIdx !== null && !isHov ? 0.3 : m.isCurrent ? 1 : 0.65,
                       transform: isHov ? "scaleX(1.08)" : "scaleX(1)",
                       boxShadow: isHov ? `0 6px 20px ${barColor}40` : "none",
-                    }}>
-                      {m.completedCount > 0 && barH > 30 && data.length <= 8 && (
-                        <div style={{
-                          position: "absolute", bottom: 8, left: 0, right: 0,
-                          textAlign: "center", fontSize: 10, fontWeight: 700,
-                          color: "rgba(255,255,255,0.85)",
-                        }}>
-                          {m.completedCount}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                    }} />
+                  </>)}
                 </div>
               );
             })}

@@ -40,43 +40,44 @@ type TourStep = {
   scrollTo?: "top" | "center" | "bottom"; // Where to scroll the element — default "center"
   onEnter?: () => void;    // Called when step becomes active
   onLeave?: () => void;    // Called when leaving this step
+  autoAdvanceOnEvent?: string; // If set, auto-advance when this DOM event fires
 };
 
 const TOUR_STEPS: TourStep[] = [
   {
     selector: "[data-tour='revenue-chart']",
     tab: "/jobber/dashboard",
-    title: "Your revenue, month by month",
-    body: "This is the last 12 months of completed work pulled straight from Jobber. Toggle weekly if you want a tighter view.",
+    title: "Here's your money coming in",
+    body: "This shows how much work you completed each month. You can switch to a weekly view if you want to zoom in.",
     position: "bottom",
   },
   {
     selector: "[data-tour='week-glance']",
     tab: "/jobber/dashboard",
-    title: "This week at a glance",
-    body: "Scheduled, earned, collected, and quotes won. Try clicking the period buttons above the cards to compare different time frames.",
+    title: "Your week in four numbers",
+    body: "What's booked, what's done, what got paid, and quotes you won. Try clicking the buttons to see last week or last month.",
     position: "bottom",
     interactive: true,
   },
   {
     selector: "[data-tour='recommendations']",
     tab: "/jobber/dashboard",
-    title: "What needs your attention",
-    body: "Overdue invoices, stale quotes, unscheduled work. Sorted by dollar amount so you handle the big stuff first.",
+    title: "Things that need your attention",
+    body: "Unpaid invoices, quotes going cold, work that still needs to be scheduled. The biggest dollar items show up first.",
     position: "top",
   },
   {
     selector: "[data-tour='sales-pipeline']",
     tab: "/jobber/sales",
-    title: "Your quote pipeline",
-    body: "See every quote from lead to won. Find out where deals are stalling and which ones need a follow-up.",
+    title: "Where your quotes stand",
+    body: "Every quote you've sent, from first contact to closed. You can see right away where things are getting stuck.",
     position: "bottom",
   },
   {
     selector: "[data-tour='sales-actions']",
     tab: "/jobber/sales",
-    title: "Action lists keep things moving",
-    body: "The colored bar shows where your quotes sit by age. Switch between Awaiting Response, Changes Requested, Follow-Ups, and Requests using the tabs at the top. Click any group header to collapse it. Sort by any column. Hit Export CSV to pull the list into Excel.",
+    title: "Your to-do list for quotes",
+    body: "Use the tabs to see what's waiting on a response, what needs changes, and what you should follow up on. You can collapse groups, sort columns, and export to Excel.",
     position: "bottom",
     scrollTo: "top",
     interactive: true,
@@ -84,15 +85,15 @@ const TOUR_STEPS: TourStep[] = [
   {
     selector: "[data-tour='capacity-target']",
     tab: "/jobber/capacity",
-    title: "Set your revenue target",
-    body: "Click the Weekly Target button highlighted above to edit it. Type how much revenue you want booked each week. Once you save it, the chart will show green when you're on track, amber when you need more work, and flag when you're over capacity.",
+    title: "How much work do you want each week?",
+    body: "Click the Weekly Target button, type a dollar amount, and hit Save. This tells AccuInsight how full your schedule should be. Once you save it, the chart will show whether you need more work or if you're good.",
     position: "bottom",
     interactive: true,
+    autoAdvanceOnEvent: "accuinsight:target-saved",
     onEnter: () => {
-      // Pulse the target button to draw attention
       const el = document.querySelector("[data-tour='capacity-target'] button");
       if (el) {
-        (el as HTMLElement).style.outline = "2px solid #7c5cff";
+        (el as HTMLElement).style.outline = "2px solid #5aa6ff";
         (el as HTMLElement).style.outlineOffset = "2px";
         (el as HTMLElement).style.animation = "tour-pulse 1.5s ease-in-out infinite";
       }
@@ -107,19 +108,20 @@ const TOUR_STEPS: TourStep[] = [
     },
   },
   {
-    selector: "[data-tour='capacity-chart']",
-    tab: "/jobber/capacity",
-    title: "Your schedule at a glance",
-    body: "Each bar is a week of scheduled work. Green means you're on track for your target. Amber means you need to book more.",
+    selector: "[data-tour='revenue-chart']",
+    tab: "/jobber/dashboard",
+    title: "Is your schedule full enough?",
+    body: "Each bar is one week of booked work. Green means you're on track. Yellow means you could use more. The dotted line is your target.",
     position: "bottom",
     interactive: true,
   },
   {
     selector: "[data-tour='invoice-chart']",
     tab: "/jobber/invoices",
-    title: "Invoiced vs collected",
-    body: "Grey is what you sent out, green is what actually came in. If there's a gap, you know who to follow up with.",
+    title: "Are you getting paid?",
+    body: "Grey bars are what you billed. Green is what came in. If the green is shorter than the grey, someone owes you money. Use the buttons to switch time ranges.",
     position: "bottom",
+    interactive: true,
   },
 ];
 
@@ -259,6 +261,11 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
             setSpotlightRect(rect);
             // Fire onEnter lifecycle
             if (step.onEnter) step.onEnter();
+            // Auto-advance on custom event (e.g. target saved)
+            if (step.autoAdvanceOnEvent) {
+              const autoHandler = () => { setTimeout(() => advanceTour(), 500); };
+              window.addEventListener(step.autoAdvanceOnEvent, autoHandler, { once: true });
+            }
             return;
           }
         } else {
@@ -388,11 +395,11 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
         }}>
           <div style={{
             width: 56, height: 56, borderRadius: 14, margin: "0 auto 20px",
-            background: "linear-gradient(135deg, rgba(124,92,255,0.15), rgba(90,166,255,0.15))",
+            background: "linear-gradient(135deg, rgba(90,166,255,0.15), rgba(90,166,255,0.15))",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <svg width="28" height="28" viewBox="0 0 50 50">
-              <defs><linearGradient id="wg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#7c5cff" /><stop offset="100%" stopColor="#5aa6ff" /></linearGradient></defs>
+              <defs><linearGradient id="wg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#5aa6ff" /><stop offset="100%" stopColor="#5aa6ff" /></linearGradient></defs>
               <circle cx="25" cy="25" r="22" fill="none" stroke="url(#wg)" strokeWidth="3" />
               <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#wg)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -408,9 +415,9 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
             className="btn"
             style={{
               padding: "14px 36px", fontSize: 15, fontWeight: 700,
-              background: "linear-gradient(135deg, #7c5cff, #5aa6ff)",
+              background: "linear-gradient(135deg, #5aa6ff, #38bdf8)",
               color: "#fff", border: "none", borderRadius: 12,
-              cursor: "pointer", boxShadow: "0 4px 16px rgba(124,92,255,0.3)",
+              cursor: "pointer", boxShadow: "0 4px 16px rgba(90,166,255,0.3)",
               width: "100%",
             }}
           >
@@ -458,8 +465,8 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
           {/* Founder note */}
           <div style={{
             padding: "18px 20px", borderRadius: 12, marginBottom: 24,
-            background: isLight ? "rgba(124,92,255,0.04)" : "rgba(124,92,255,0.08)",
-            border: `1px solid ${isLight ? "rgba(124,92,255,0.12)" : "rgba(124,92,255,0.15)"}`,
+            background: isLight ? "rgba(90,166,255,0.04)" : "rgba(90,166,255,0.08)",
+            border: `1px solid ${isLight ? "rgba(90,166,255,0.12)" : "rgba(90,166,255,0.15)"}`,
             textAlign: "left",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
@@ -481,7 +488,7 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
             </div>
             <a href="mailto:ryan@ownerview.io" style={{
               display: "inline-block", marginTop: 12,
-              fontSize: 14, fontWeight: 700, color: "#7c5cff", textDecoration: "none",
+              fontSize: 14, fontWeight: 700, color: "#5aa6ff", textDecoration: "none",
             }}>
               ryan@ownerview.io
             </a>
@@ -497,9 +504,9 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
             className="btn"
             style={{
               padding: "14px 36px", fontSize: 15, fontWeight: 700,
-              background: "linear-gradient(135deg, #7c5cff, #5aa6ff)",
+              background: "linear-gradient(135deg, #5aa6ff, #38bdf8)",
               color: "#fff", border: "none", borderRadius: 12,
-              cursor: "pointer", boxShadow: "0 4px 16px rgba(124,92,255,0.3)",
+              cursor: "pointer", boxShadow: "0 4px 16px rgba(90,166,255,0.3)",
               width: "100%",
             }}
           >
@@ -532,12 +539,12 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
         >
           <div style={{
             width: 48, height: 48, borderRadius: 12, margin: "0 auto 16px",
-            background: "linear-gradient(135deg, rgba(124,92,255,0.15), rgba(90,166,255,0.15))",
+            background: "linear-gradient(135deg, rgba(90,166,255,0.15), rgba(90,166,255,0.15))",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: 24,
           }}>
             <svg width="24" height="24" viewBox="0 0 50 50">
-              <defs><linearGradient id="og" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#7c5cff" /><stop offset="100%" stopColor="#5aa6ff" /></linearGradient></defs>
+              <defs><linearGradient id="og" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#5aa6ff" /><stop offset="100%" stopColor="#5aa6ff" /></linearGradient></defs>
               <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#og)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
@@ -552,9 +559,9 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
             className="btn"
             style={{
               padding: "12px 32px", fontSize: 15, fontWeight: 700,
-              background: "linear-gradient(135deg, #7c5cff, #5aa6ff)",
+              background: "linear-gradient(135deg, #5aa6ff, #38bdf8)",
               color: "#fff", border: "none", borderRadius: 10,
-              cursor: "pointer", boxShadow: "0 4px 12px rgba(124,92,255,0.3)",
+              cursor: "pointer", boxShadow: "0 4px 12px rgba(90,166,255,0.3)",
             }}
           >
             Got it
@@ -604,7 +611,7 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
                 )}
               </mask>
             </defs>
-            <rect width="100%" height="100%" fill="rgba(0,0,0,0.6)" mask="url(#spotlight-mask)" />
+            <rect width="100%" height="100%" fill={step.interactive ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0.6)"} mask="url(#spotlight-mask)" />
           </svg>
 
           {/* Spotlight border glow */}
@@ -616,8 +623,8 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
               width: spotlightRect.width + pad * 2,
               height: spotlightRect.height + pad * 2,
               borderRadius: 12,
-              border: "2px solid rgba(124,92,255,0.4)",
-              boxShadow: "0 0 16px rgba(124,92,255,0.15)",
+              border: "2px solid rgba(90,166,255,0.4)",
+              boxShadow: "0 0 16px rgba(90,166,255,0.15)",
               pointerEvents: "none",
               transition: "top 0.3s ease, left 0.3s ease, width 0.3s ease, height 0.3s ease",
               willChange: "top, left, width, height",
@@ -662,10 +669,10 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
                 width: 24, height: 24, borderRadius: "50%", flexShrink: 0,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 11, fontWeight: 800,
-                background: i < tourStep ? "#10b981" : i === tourStep ? "linear-gradient(135deg, #7c5cff, #5aa6ff)" : (isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)"),
+                background: i < tourStep ? "#10b981" : i === tourStep ? "linear-gradient(135deg, #5aa6ff, #38bdf8)" : (isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)"),
                 color: i <= tourStep ? "#fff" : muted,
                 transition: "all 0.3s ease",
-                boxShadow: i === tourStep ? "0 2px 8px rgba(124,92,255,0.3)" : "none",
+                boxShadow: i === tourStep ? "0 2px 8px rgba(90,166,255,0.3)" : "none",
               }}>
                 {i < tourStep ? "\u2713" : i + 1}
               </div>
@@ -702,9 +709,9 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
               className="btn"
               style={{
                 padding: "10px 24px", fontSize: 14, fontWeight: 700,
-                background: "linear-gradient(135deg, #7c5cff, #5aa6ff)",
+                background: "linear-gradient(135deg, #5aa6ff, #38bdf8)",
                 color: "#fff", border: "none", borderRadius: 10,
-                cursor: "pointer", boxShadow: "0 4px 12px rgba(124,92,255,0.3)",
+                cursor: "pointer", boxShadow: "0 4px 12px rgba(90,166,255,0.3)",
               }}
             >
               {tourStep < TOUR_STEPS.length - 1 ? "Next" : "Finish"}
@@ -723,9 +730,9 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
         style={{
           position: "fixed", bottom: 20, right: 20, zIndex: 900,
           padding: "12px 20px", borderRadius: 12,
-          background: "linear-gradient(135deg, #7c5cff, #5aa6ff)",
+          background: "linear-gradient(135deg, #5aa6ff, #38bdf8)",
           color: "#fff", border: "none", fontSize: 13, fontWeight: 700,
-          boxShadow: "0 4px 16px rgba(124,92,255,0.4)",
+          boxShadow: "0 4px 16px rgba(90,166,255,0.4)",
           cursor: "pointer",
           display: "flex", alignItems: "center", gap: 8,
         }}
@@ -759,9 +766,9 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
         style={{
           position: "fixed", bottom: 20, right: 20, zIndex: 900,
           padding: "10px 16px", borderRadius: 12,
-          background: "linear-gradient(135deg, #7c5cff, #5aa6ff)",
+          background: "linear-gradient(135deg, #5aa6ff, #38bdf8)",
           color: "#fff", border: "none", fontSize: 12, fontWeight: 700,
-          boxShadow: "0 4px 16px rgba(124,92,255,0.4)",
+          boxShadow: "0 4px 16px rgba(90,166,255,0.4)",
           cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
         }}
       >
@@ -812,7 +819,7 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
         }}>
           <div style={{
             height: "100%", borderRadius: 3,
-            background: "linear-gradient(90deg, #7c5cff, #5aa6ff)",
+            background: "linear-gradient(90deg, #5aa6ff, #5aa6ff)",
             width: `${(doneCount / items.length) * 100}%`,
             transition: "width 0.5s ease",
           }} />
@@ -876,19 +883,19 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
               width: "100%",
               padding: "12px 16px",
               borderRadius: 10,
-              background: "linear-gradient(135deg, rgba(124,92,255,0.12), rgba(90,166,255,0.12))",
-              border: "1px solid rgba(124,92,255,0.25)",
-              color: "#7c5cff",
+              background: "linear-gradient(135deg, rgba(90,166,255,0.12), rgba(90,166,255,0.12))",
+              border: "1px solid rgba(90,166,255,0.25)",
+              color: "#5aa6ff",
               fontSize: 13, fontWeight: 700, cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               transition: "all 0.15s ease",
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(124,92,255,0.2), rgba(90,166,255,0.2))"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(124,92,255,0.12), rgba(90,166,255,0.12))"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(90,166,255,0.2), rgba(90,166,255,0.2))"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(90,166,255,0.12), rgba(90,166,255,0.12))"; }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="8" cy="8" r="7" stroke="#7c5cff" strokeWidth="1.5" />
-              <polygon points="6.5,5 11,8 6.5,11" fill="#7c5cff" />
+              <circle cx="8" cy="8" r="7" stroke="#5aa6ff" strokeWidth="1.5" />
+              <polygon points="6.5,5 11,8 6.5,11" fill="#5aa6ff" />
             </svg>
             Take a quick tour
           </button>
@@ -918,9 +925,9 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
               className="btn"
               style={{
                 padding: "10px 20px", fontSize: 13, fontWeight: 700,
-                background: "linear-gradient(135deg, #7c5cff, #5aa6ff)",
+                background: "linear-gradient(135deg, #5aa6ff, #38bdf8)",
                 color: "#fff", border: "none", borderRadius: 8,
-                cursor: "pointer", boxShadow: "0 2px 8px rgba(124,92,255,0.3)",
+                cursor: "pointer", boxShadow: "0 2px 8px rgba(90,166,255,0.3)",
                 width: "100%",
               }}
             >
@@ -942,8 +949,8 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
       )}
       <style>{`
         @keyframes tour-pulse {
-          0%, 100% { outline-color: rgba(124,92,255,0.8); }
-          50% { outline-color: rgba(124,92,255,0.3); }
+          0%, 100% { outline-color: rgba(90,166,255,0.8); }
+          50% { outline-color: rgba(90,166,255,0.3); }
         }
       `}</style>
     </div>

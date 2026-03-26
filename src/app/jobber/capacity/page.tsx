@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { DashboardTopbar } from "../dashboard/DashboardTopbar";
 import { OnboardingOverlay } from "../dashboard/OnboardingOverlay";
 import { CapacityTrendsSection } from "./CapacityTrendsSection";
-import { CapacityChart } from "./CapacityChart";
 import { CapacityWeekBreakdown } from "./CapacityWeekBreakdown";
 import { CapacityKpiCards } from "./CapacityKpiCards";
 import { CapacityActionList } from "./CapacityActionList";
@@ -316,6 +315,12 @@ export default async function CapacityPage({
   const kpiNextMonth = computePeriodMetrics(nextMonthStart, nextMonthEnd, weeklyCapacityCents, "Next Month", monthlyCapacityCents);
   const kpiAllTime = computePeriodMetrics(new Date(0), new Date(Date.now() + 86400000), weeklyCapacityCents, "All Time");
 
+  // Fixed 7-day revenue average (always last 7 days, weekdays only)
+  const sevenDaysAgo = addDaysUTC(todayUTC, -7);
+  const last7dItems = periodItems(sevenDaysAgo, addDaysUTC(todayUTC, 1));
+  const last7dRevenue = last7dItems.reduce((s: number, item) => s + item.amountCents, 0);
+  const avgRevenuePerDay7d = Math.round(last7dRevenue / 5); // 5 weekdays
+
   // 8-week capacity chart data: 4 weeks back + current + 3 forward
   const capacityWeeks: { label: string; revenueCents: number; count: number; isCurrent: boolean; isFuture: boolean }[] = [];
   for (let w = -4; w <= 3; w++) {
@@ -460,10 +465,10 @@ export default async function CapacityPage({
         {/* Quick Stats */}
         <div className="kpi-grid-secondary animate-in delay-1" style={{ marginTop: 12 }}>
           <div className="kpi-secondary">
-            <div className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 6 }}>Revenue / Weekday</div>
-            <div className="kpi-value-medium text-primary">{money(kpiThisWeek.avgRevenuePerDayCents)}</div>
+            <div className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 6 }}>Avg Revenue / Day (7d)</div>
+            <div className="kpi-value-medium text-primary">{money(avgRevenuePerDay7d)}</div>
             <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>
-              Mon\u2013Fri avg
+              Last 7 days, weekdays only
             </div>
           </div>
           <div className="kpi-secondary">
@@ -528,16 +533,6 @@ export default async function CapacityPage({
               adminConnectionId={adminConnectionId}
               projectionSummary={projectionSummary}
               targetsOnly
-            />
-          </div>
-          <div data-tour="capacity-chart" style={{ padding: "20px 24px" }}>
-            <CapacityChart
-              weeks={capacityWeeks}
-              months={capacityMonths}
-              weeklyTargetCents={weeklyCapacityCents}
-              monthlyTargetCents={monthlyCapacityCents}
-              currencyCode={currencyCode}
-              adminConnectionId={adminConnectionId}
             />
           </div>
         </div>

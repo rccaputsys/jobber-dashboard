@@ -14,7 +14,11 @@ import { MoneyFlowFunnel } from "./MoneyFlowFunnel";
 import { MoneyFlowList } from "./MoneyFlowList";
 import { CommandStrip } from "./CommandStrip";
 import { WeekGlance } from "./WeekGlance";
-import { BusinessPulse } from "./BusinessPulse";
+import { CapacityChart } from "../capacity/CapacityChart";
+import { type AgingBucket } from "../invoices/InvoiceTrendsSection";
+import { AgingDonutWrapper } from "./AgingDonutWrapper";
+import { CapacityTargetSetup } from "./CapacityTargetSetup";
+import { CapacityTargetDisplay } from "./CapacityTargetDisplay";
 import { DashboardTopbar } from "./DashboardTopbar";
 import { OnboardingOverlay } from "./OnboardingOverlay";
 import { ErrorBoundary } from "./ErrorBoundary";
@@ -273,7 +277,7 @@ export default async function DashboardPage({
       { label: "Invoices", score: 60, detail: "25% of overdue amount is 15+ days old \u2022 target: under 10%", action: "Send payment reminders", href: "/jobber/invoices" },
     ];
     const demoFunnel = [
-      { label: "Leads", count: 3, value: null, icon: "\uD83D\uDCE5", href: "/jobber/sales", color: "#8b5cf6", unitLabel: "requests" },
+      { label: "Leads", count: 3, value: null, icon: "\uD83D\uDCE5", href: "/jobber/sales", color: "#5aa6ff", unitLabel: "requests" },
       { label: "Quoting", count: 8, value: money(1234000), icon: "\uD83D\uDCDD", href: "/jobber/sales", color: "#5aa6ff", unitLabel: "quotes" },
       { label: "Won", count: 3, value: money(475000), icon: "\uD83C\uDFC6", href: "/jobber/sales", color: "#10b981", unitLabel: "quotes" },
       { label: "Scheduled", count: 14, value: money(890000), icon: "\uD83D\uDCC5", href: "/jobber/capacity", color: "#06b6d4", unitLabel: "jobs" },
@@ -500,7 +504,7 @@ export default async function DashboardPage({
   // Connection summary (including billing info)
   const { data: conn } = await supabaseAdmin
     .from("jobber_connections")
-    .select("last_sync_at,trial_started_at,trial_ends_at,billing_status,currency_code,company_name,jobber_account_name,weekly_capacity_cents")
+    .select("last_sync_at,trial_started_at,trial_ends_at,billing_status,currency_code,company_name,jobber_account_name,weekly_capacity_cents,monthly_capacity_cents,capacity_daily_targets,capacity_work_days,capacity_targets_set")
     .eq("id", connectionId)
     .maybeSingle();
 
@@ -644,7 +648,8 @@ export default async function DashboardPage({
   // AR buckets - only unpaid invoices
   const nowMs = Date.now();
   let b0_7 = 0, b8_14 = 0, b15p = 0, totalAR = 0;
-  let totalPastDueCount = 0, b15pCount = 0;
+  let totalPastDueCount = 0, b0_7Count = 0, b8_14Count = 0, b15pCount = 0;
+  let currentCents = 0, currentCount = 0;
 
   // Filter to only unpaid invoices (awaiting_payment, overdue, etc.)
   const unpaidInvoices = invoices.filter((inv: any) => {
@@ -660,13 +665,17 @@ export default async function DashboardPage({
     if (!due) continue;
     const days = (nowMs - due.getTime()) / 86400000;
 
-    // Only count invoices that are actually past due
     if (days > 0) {
+      // Past due
       totalAR += amt;
       totalPastDueCount += 1;
-      if (days <= 7) b0_7 += amt;
-      else if (days <= 14) b8_14 += amt;
-      else { b15p += amt; b15pCount += 1; }
+      if (days <= 7) { b0_7 += amt; b0_7Count++; }
+      else if (days <= 14) { b8_14 += amt; b8_14Count++; }
+      else { b15p += amt; b15pCount++; }
+    } else {
+      // Current — not yet due
+      currentCents += amt;
+      currentCount++;
     }
   }
   const riskPct = totalAR > 0 ? b15p / totalAR : 0;
@@ -888,6 +897,50 @@ const quoteWonPct = quotesInLast30Days.length > 0
     jobTotalMap.set((j as any).jobber_job_id, Number((j as any).total_amount_cents ?? 0));
   }
   const jobIdsWithVisits = new Set(visits.map((v: any) => v.jobber_job_id).filter(Boolean));
+  const monthlyCapacityCents: number | null = (conn as any)?.monthly_capacity_cents ?? null;
+
+  // Capacity chart: compute scheduled revenue per week/month
+  function capacityPeriodRevenue(start: Date, end: Date) {
+    const startMs = start.getTime(), endMs = end.getTime();
+    let rev = 0, count = 0;
+    for (const v of visits) {
+      const s = safeDate(v.start_at);
+      if (s && s.getTime() >= startMs && s.getTime() < endMs) {
+        const jid = v.jobber_job_id;
+        const total = jobTotalMap.get(jid) || 0;
+        const vc = jobVisitCountMap.get(jid) || 1;
+        rev += Math.round(total / vc);
+        count++;
+      }
+    }
+    for (const j of jobs) {
+      if (jobIdsWithVisits.has((j as any).jobber_job_id)) continue;
+      const s = safeDate((j as any).scheduled_start_at);
+      if (s && s.getTime() >= startMs && s.getTime() < endMs) {
+        rev += Number((j as any).total_amount_cents ?? 0);
+        count++;
+      }
+    }
+    return { rev, count };
+  }
+
+  const capacityWeeks: { label: string; revenueCents: number; count: number; isCurrent: boolean; isFuture: boolean }[] = [];
+  for (let w = -4; w <= 3; w++) {
+    const wStart = addDaysUTC(thisWeekStart, w * 7);
+    const wEnd = addDaysUTC(wStart, 7);
+    const { rev, count } = capacityPeriodRevenue(wStart, wEnd);
+    const month = wStart.toLocaleString(undefined, { month: "short", timeZone: "UTC" });
+    const day = wStart.getUTCDate();
+    capacityWeeks.push({ label: `${month} ${day}`, revenueCents: rev, count, isCurrent: w === 0, isFuture: w > 0 });
+  }
+
+  const capacityMonths: typeof capacityWeeks = [];
+  for (let m = -3; m <= 2; m++) {
+    const mStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() + m, 1));
+    const mEnd = new Date(Date.UTC(mStart.getUTCFullYear(), mStart.getUTCMonth() + 1, 1));
+    const { rev, count } = capacityPeriodRevenue(mStart, mEnd);
+    capacityMonths.push({ label: mStart.toLocaleString(undefined, { month: "short", timeZone: "UTC" }), revenueCents: rev, count, isCurrent: m === 0, isFuture: m > 0 });
+  }
 
   function weekSnapshot(wStart: Date, wEnd: Date) {
     const wStartMs = wStart.getTime();
@@ -984,10 +1037,11 @@ const quoteWonPct = quotesInLast30Days.length > 0
       return statusLooksLost(String(q.quote_status ?? ""));
     });
     const quotesWonCents = quotesWon.reduce((s: number, q: any) => s + Number(q.quote_total_cents ?? 0), 0);
-    // Sent-but-still-open quotes sent in this period
+    // Sent-but-still-open: quotes sent in period that are NOT yet won or lost
+    const wonIds = new Set(quotesWon.map((q: any) => q.jobber_quote_id));
+    const lostIds = new Set(quotesLost.map((q: any) => q.jobber_quote_id));
     const sentStillOpen = quotesSent.filter((q: any) => {
-      const st = String(q.quote_status ?? "").toLowerCase();
-      return !statusLooksWon(st) && !statusLooksLost(st);
+      return !wonIds.has(q.jobber_quote_id) && !lostIds.has(q.jobber_quote_id);
     });
     const winDenom = quotesWon.length + quotesLost.length + sentStillOpen.length;
     const winRate = winDenom > 0 ? Math.round((quotesWon.length / winDenom) * 100) : 0;
@@ -1168,37 +1222,49 @@ const quoteWonPct = quotesInLast30Days.length > 0
 
   // Generate recommendations
   const adminQs = adminConnectionId ? `?admin_connection_id=${adminConnectionId}` : "";
-  type Recommendation = { headline: string; detail: string; priority: "high" | "medium"; href: string };
+  type Recommendation = { headline: string; detail: string; priority: "high" | "medium"; href: string; amount?: number; icon: string; color: string; tab: string };
   const recommendations: Recommendation[] = [];
 
-  // Overdue invoices — only high if large amount or many invoices
+  // Overdue invoices
   if (b15p > 0 && totalAR > 0) {
     const agedCount = agedARInvoices.length;
     recommendations.push({
-      headline: `Collect ${money(b15p)}`,
-      detail: `${agedCount} invoice${agedCount !== 1 ? "s" : ""} overdue 15+ days. Call your oldest accounts today.`,
+      headline: `${agedCount} overdue invoice${agedCount !== 1 ? "s" : ""}`,
+      detail: `Past due 15+ days. Call your oldest accounts first.`,
       priority: agedCount >= 5 || b15p > 500000 ? "high" : "medium",
       href: `/jobber/invoices${adminQs}`,
+      amount: b15p,
+      icon: "collect",
+      color: "#ef4444",
+      tab: "Invoices",
     });
   }
 
   // Needs invoicing
   if (needsInvoiceCount > 0) {
     recommendations.push({
-      headline: `Bill ${money(needsInvoiceCents)}`,
-      detail: `${needsInvoiceCount} completed job${needsInvoiceCount > 1 ? "s aren't" : " isn't"} invoiced yet. Send invoices today.`,
+      headline: `${needsInvoiceCount} job${needsInvoiceCount > 1 ? "s" : ""} need invoicing`,
+      detail: `Work is done but you haven't billed for it yet.`,
       priority: needsInvoiceCount >= 5 ? "high" : "medium",
       href: `/jobber/invoices${adminQs}`,
+      amount: needsInvoiceCents,
+      icon: "bill",
+      color: "#f59e0b",
+      tab: "Invoices",
     });
   }
 
   // Changes requested
   if (changesRequestedCount > 0) {
     recommendations.push({
-      headline: `Close ${money(changesRequestedCents)} faster`,
-      detail: `${changesRequestedCount} quote${changesRequestedCount > 1 ? "s need" : " needs"} your revisions. These clients are ready to buy.`,
+      headline: `${changesRequestedCount} quote${changesRequestedCount > 1 ? "s" : ""} need revisions`,
+      detail: `These clients asked for changes. They're ready to buy once you update.`,
       priority: changesRequestedCount >= 3 ? "high" : "medium",
       href: `/jobber/sales${adminQs}`,
+      amount: changesRequestedCents,
+      icon: "revise",
+      color: "#f59e0b",
+      tab: "Sales",
     });
   }
 
@@ -1206,10 +1272,14 @@ const quoteWonPct = quotesInLast30Days.length > 0
   if (unscheduledOlderThan7Days.length > 0) {
     const unschedOldCents = unscheduledOlderThan7Days.reduce((s: number, j: any) => s + Number(j.total_amount_cents ?? 0), 0);
     recommendations.push({
-      headline: unschedOldCents > 0 ? `Schedule ${money(unschedOldCents)}` : `Schedule ${unscheduledOlderThan7Days.length} jobs`,
-      detail: `${unscheduledOlderThan7Days.length} job${unscheduledOlderThan7Days.length > 1 ? "s" : ""} unscheduled 7+ days. Customers are waiting.`,
+      headline: `${unscheduledOlderThan7Days.length} job${unscheduledOlderThan7Days.length > 1 ? "s" : ""} not scheduled`,
+      detail: `Sitting unbooked for 7+ days. Customers are waiting on you.`,
       priority: unscheduledOlderThan7Days.length > 5 ? "high" : "medium",
       href: `/jobber/capacity${adminQs}`,
+      amount: unschedOldCents,
+      icon: "schedule",
+      color: "#5aa6ff",
+      tab: "Capacity",
     });
   }
 
@@ -1217,21 +1287,28 @@ const quoteWonPct = quotesInLast30Days.length > 0
   if (invoicesHitting7DaysThisWeek.length > 0) {
     const hittingCents = invoicesHitting7DaysThisWeek.reduce((s: number, inv: any) => s + Number(inv.balance_cents ?? inv.total_amount_cents ?? 0), 0);
     recommendations.push({
-      headline: `Protect ${money(hittingCents)}`,
-      detail: `${invoicesHitting7DaysThisWeek.length} invoice${invoicesHitting7DaysThisWeek.length > 1 ? "s" : ""} hitting 7 days overdue this week. Send reminders now.`,
+      headline: `${invoicesHitting7DaysThisWeek.length} invoice${invoicesHitting7DaysThisWeek.length > 1 ? "s" : ""} aging this week`,
+      detail: `About to hit 7 days overdue. Send a reminder before they go stale.`,
       priority: "medium",
       href: `/jobber/invoices${adminQs}`,
+      amount: hittingCents,
+      icon: "aging",
+      color: "#f59e0b",
+      tab: "Invoices",
     });
   }
 
   // Quote follow-up
   if (leakCount > 3) {
-    const potentialWin = Math.round(leakDollars * 0.25);
     recommendations.push({
-      headline: `Win back ${money(potentialWin)}`,
-      detail: `${leakCount} quotes worth ${money(leakDollars)} going cold. Follow up on the largest ones today.`,
+      headline: `${leakCount} quotes going cold`,
+      detail: `These have been sitting with no response. Follow up on the big ones today.`,
       priority: "medium",
       href: `/jobber/sales${adminQs}`,
+      amount: leakDollars,
+      icon: "followup",
+      color: "#5aa6ff",
+      tab: "Sales",
     });
   }
 
@@ -1241,9 +1318,12 @@ const quoteWonPct = quotesInLast30Days.length > 0
     if (marginPct < 0.20) {
       recommendations.push({
         headline: `Margins at ${pct(marginPct)}`,
-        detail: `You're leaving money on the table. Review pricing or cut material costs to hit 25%+.`,
+        detail: `Below 25%. Review your pricing or material costs.`,
         priority: "medium",
         href: `/jobber/capacity${adminQs}`,
+        icon: "margin",
+        color: "#ef4444",
+        tab: "Capacity",
       });
     }
   }
@@ -1441,11 +1521,11 @@ const quoteWonPct = quotesInLast30Days.length > 0
   const scheduledActiveCents = scheduledActiveJobs.reduce((s: number, j: any) => s + Number(j.total_amount_cents ?? 0), 0);
 
   const funnelStages = [
-    { label: "Leads", count: openRequestsCount, value: null, icon: "\uD83D\uDCE5", href: `/jobber/sales${adminQs}`, color: "#8b5cf6", unitLabel: "requests" },
+    { label: "Leads", count: openRequestsCount, value: null, icon: "\uD83D\uDCE5", href: `/jobber/sales${adminQs}`, color: "#5aa6ff", unitLabel: "requests" },
     { label: "Quoting", count: pipelineQuotes.length, value: pipelineValue > 0 ? money(pipelineValue) : null, icon: "\uD83D\uDCDD", href: `/jobber/sales${adminQs}`, color: "#5aa6ff", unitLabel: "quotes" },
     { label: "Won", count: approvedNoJobCount, value: approvedNoJobCents > 0 ? money(approvedNoJobCents) : null, icon: "\uD83C\uDFC6", href: `/jobber/sales${adminQs}`, color: "#10b981", unitLabel: "quotes" },
     { label: "Scheduled", count: scheduledActiveJobs.length, value: scheduledActiveCents > 0 ? money(scheduledActiveCents) : null, icon: "\uD83D\uDCC5", href: `/jobber/capacity${adminQs}`, color: "#06b6d4", unitLabel: "jobs" },
-    { label: "Needs Invoice", count: needsInvoiceCount, value: needsInvoiceCents > 0 ? money(needsInvoiceCents) : null, icon: "\uD83D\uDCC4", href: `/jobber/invoices${adminQs}`, color: "#8b5cf6", unitLabel: "jobs" },
+    { label: "Needs Invoice", count: needsInvoiceCount, value: needsInvoiceCents > 0 ? money(needsInvoiceCents) : null, icon: "\uD83D\uDCC4", href: `/jobber/invoices${adminQs}`, color: "#5aa6ff", unitLabel: "jobs" },
     { label: "Outstanding", count: totalPastDueCount, value: totalAR > 0 ? money(totalAR) : null, icon: "\uD83D\uDCB0", href: `/jobber/invoices${adminQs}`, color: "#f59e0b", unitLabel: "invoices" },
   ];
 
@@ -1572,80 +1652,240 @@ const quoteWonPct = quotesInLast30Days.length > 0
           </div>
         )}
 
-        {/* ===== Week at a Glance — top KPI cards ===== */}
-        <div data-tour="week-glance" className="animate-in delay-1" style={{ marginTop: 20 }}>
-          <WeekGlance
-            lastWeek={lastWeekSnap}
-            thisWeek={thisWeekSnap}
-            nextWeek={nextWeekSnap}
-            thisMonth={thisMonthSnap}
-            lastMonth={lastMonthSnap}
-            allTime={allTimeSnap}
-            currencyCode={currencyCode}
-            sparklines={{
-              revenue: revenueSparkline,
-              pipeline: pipelineSparkline,
-              collections: collectionsSparkline,
-              unscheduled: unschedSparkline,
-            }}
-          />
-        </div>
+        {/* ============================================================ */}
+        {/* NEW OVERVIEW LAYOUT — matches reference design               */}
+        {/* ============================================================ */}
+        {/* Status banner removed — info now shown in capacity display */}
 
-        {/* ===== Business Pulse — revenue chart ===== */}
-        <div data-tour="revenue-chart" className="panel animate-in delay-1" style={{ marginTop: 16, padding: "24px 28px", overflow: "visible" }}>
-          <BusinessPulse
-            months={pulseMonths}
-            weeks={pulseWeeks}
-            currencyCode={currencyCode}
-          />
-        </div>
+        {/* ============================================================ */}
+        {/* THIS WEEK — capacity setup or daily view                      */}
+        {/* ============================================================ */}
+        {(() => {
+          const targetsSet = (conn as any)?.capacity_targets_set === true;
+          const dailyTargets: Record<string, number> = (conn as any)?.capacity_daily_targets || {};
+          const workDaysList: string[] = (conn as any)?.capacity_work_days || ["Mon", "Tue", "Wed", "Thu", "Fri"];
+          const today = new Date();
+          const todayDay = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][today.getDay()];
 
-        {/* ===== This Week's Focus + Money Flow ===== */}
-        <div data-tour="recommendations" className="side-by-side animate-in delay-2" style={{ marginTop: 16 }}>
-          {/* Left: Recommendations */}
-          <div className="panel" style={{ padding: "18px 20px", overflow: "visible", display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>This Week&apos;s Focus</h2>
-              {recommendations.length > 0 && (
-                <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 6, background: "rgba(90,166,255,0.1)", color: "#5aa6ff" }}>
-                  {recommendations.length} {recommendations.length === 1 ? "item" : "items"}
-                </span>
+          if (!targetsSet) {
+            return (
+              <div className="animate-in delay-1" style={{ marginTop: 16 }}>
+                <CapacityTargetSetup
+                  connectionId={connectionId}
+                  adminConnectionId={adminConnectionId}
+                  currencyCode={currencyCode}
+                  currentWeeklyCents={weeklyTargetCents}
+                  currentDailyTargets={dailyTargets}
+                  currentWorkDays={workDaysList}
+                />
+              </div>
+            );
+          }
+
+          const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+          function buildWeekDays(weekStart: Date) {
+            return dayLabels.map((day, i) => {
+              const dayStart = addDaysUTC(weekStart, i);
+              const dayEnd = addDaysUTC(dayStart, 1);
+              const { rev, count } = capacityPeriodRevenue(dayStart, dayEnd);
+              const isWorkDay = workDaysList.includes(day);
+              const dayTarget = dailyTargets[day] || (isWorkDay && weeklyTargetCents ? Math.round(weeklyTargetCents / workDaysList.length) : 0);
+              return { day, scheduledCents: rev, targetCents: dayTarget, isToday: day === todayDay, isWorkDay, jobCount: count };
+            });
+          }
+
+          const lastWeekDays = buildWeekDays(addDaysUTC(thisWeekStart, -7));
+          const thisWeekDays = buildWeekDays(thisWeekStart);
+          const nextWeekDays = buildWeekDays(addDaysUTC(thisWeekStart, 7));
+
+          const lastWeekBooked = lastWeekDays.reduce((s, d) => s + d.scheduledCents, 0);
+          const thisWeekBooked = thisWeekSnap.scheduledRevenue;
+          const nextWeekBooked = nextWeekDays.reduce((s, d) => s + d.scheduledCents, 0);
+
+          const weekSets = [
+            { label: "Last Week", days: lastWeekDays.map(d => ({ ...d, isToday: false })), bookedCents: lastWeekBooked },
+            { label: "This Week", days: thisWeekDays, bookedCents: thisWeekBooked },
+            { label: "Next Week", days: nextWeekDays.map(d => ({ ...d, isToday: false })), bookedCents: nextWeekBooked },
+          ];
+
+          const booked = thisWeekBooked;
+          const fillPct = weeklyTargetCents ? Math.round((booked / weeklyTargetCents) * 100) : 0;
+          const openCents = unscheduledCents;
+          const openCount = unscheduledCount;
+
+          // Aging buckets for the donut
+          const agingBuckets: AgingBucket[] = [
+            { label: "Current", color: "#10b981", balanceCents: currentCents, count: currentCount },
+            { label: "1-7 days", color: "#f59e0b", balanceCents: b0_7, count: b0_7Count },
+            { label: "8-14 days", color: "#f97316", balanceCents: b8_14, count: b8_14Count },
+            { label: "15+ days", color: "#ef4444", balanceCents: b15p, count: b15pCount },
+          ];
+          const totalOutstanding = currentCents + totalAR;
+
+          return (
+            <div data-tour="revenue-chart" className="animate-in delay-1" style={{ marginTop: 16 }}>
+              <div className="side-by-side" style={{ gap: 12, alignItems: "stretch" }}>
+                {/* Left: This Week capacity */}
+                <div className="panel" style={{ padding: "16px 20px", flex: 1, minWidth: 0 }}>
+                  <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: "0 0 8px" }}>Scheduled Capacity</h2>
+
+                  <CapacityTargetDisplay
+                    weeklyTargetCents={weeklyTargetCents || 0}
+                    weeks={weekSets}
+                    defaultWeek={1}
+                    currencyCode={currencyCode}
+                    settingsHref={`/jobber/capacity${adminQs}`}
+                    adminConnectionId={adminConnectionId}
+                    workDays={workDaysList}
+                  />
+                </div>
+
+                {/* Right: Invoice Aging Donut */}
+                <div className="panel" style={{ padding: "20px", minWidth: 0, display: "flex", flexDirection: "column" }}>
+                  <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: "0 0 10px" }}>Outstanding Invoices</h2>
+                  {totalOutstanding > 0 ? (
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                      <AgingDonutWrapper
+                        buckets={agingBuckets}
+                        totalCents={totalOutstanding}
+                        currencyCode={currencyCode}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div className="text-muted" style={{ fontSize: 13, textAlign: "center" }}>No outstanding invoices</div>
+                    </div>
+                  )}
+                  <a href={`/jobber/invoices${adminQs}`} style={{ fontSize: 11, fontWeight: 600, color: "#5aa6ff", textDecoration: "none", marginTop: 10, textAlign: "right", display: "block" }}>
+                    View invoices &#8594;
+                  </a>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ============================================================ */}
+        {/* YOU'RE OWED — overdue invoices                                */}
+        {/* ============================================================ */}
+        {agedARInvoices.length > 0 && (
+          <div className="animate-in delay-1" style={{ marginTop: 20 }}>
+            <div className="text-muted" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>You&apos;re Owed</div>
+            <div className="panel" style={{ padding: 0, overflow: "hidden" }}>
+              {agedARInvoices.slice(0, 3).map((inv: any, i: number) => (
+                <a
+                  key={i}
+                  href={inv.jobber_url || `/jobber/invoices${adminQs}`}
+                  target={inv.jobber_url ? "_blank" : undefined}
+                  rel={inv.jobber_url ? "noreferrer" : undefined}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "14px 20px", textDecoration: "none",
+                    borderBottom: i < Math.min(agedARInvoices.length, 3) - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
+                    transition: "background 0.15s ease",
+                  }}
+                  className="hover-lift"
+                >
+                  <div>
+                    <div className="text-primary" style={{ fontSize: 14, fontWeight: 700 }}>{inv.client_name || "Unknown Client"}</div>
+                    <div className="text-muted" style={{ fontSize: 12 }}>
+                      Invoice #{inv.invoice_number}
+                      {inv.due_date ? ` \u00B7 sent ${new Date(inv.due_date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: inv.days_overdue >= 15 ? "#ef4444" : "#f59e0b" }}>
+                      {money(inv.amount_cents)}
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: inv.days_overdue >= 15 ? "#ef4444" : "#f59e0b" }}>
+                      {inv.days_overdue} day{inv.days_overdue !== 1 ? "s" : ""} overdue
+                    </div>
+                  </div>
+                </a>
+              ))}
+              {agedARInvoices.length > 3 && (
+                <a href={`/jobber/invoices${adminQs}`} style={{
+                  display: "block", padding: "12px 20px", textDecoration: "none",
+                  borderTop: "1px solid rgba(255,255,255,0.06)",
+                  fontSize: 13, fontWeight: 600, color: "#5aa6ff",
+                }}>
+                  See all {agedARInvoices.length} overdue invoices \u00B7 {money(totalAR)} total &#8594;
+                </a>
               )}
             </div>
-            {recommendations.length > 0 ? (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
-                {recommendations.slice(0, 4).map((rec, i) => {
-                  const prioColor = rec.priority === "high" ? "#f59e0b" : "#5aa6ff";
-                  const prioClass = rec.priority === "high" ? "rec-card-high" : "rec-card-medium";
-                  return (
-                    <a key={i} href={rec.href} className={`rec-card ${prioClass}`} style={{ borderLeft: `3px solid ${prioColor}`, flexDirection: "column", gap: 3, padding: "12px 14px" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                        <span className="text-primary" style={{ fontSize: 14, fontWeight: 700 }}>{rec.headline}</span>
-                        <span style={{ fontSize: 12, flexShrink: 0, fontWeight: 600, color: prioColor }}>&rarr;</span>
-                      </div>
-                      <span className="text-muted" style={{ fontSize: 12, lineHeight: 1.4 }}>{rec.detail}</span>
-                    </a>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-muted" style={{ textAlign: "center", padding: 32, fontSize: 14, flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                Nothing urgent — you&apos;re on top of things.
-              </div>
-            )}
           </div>
+        )}
 
-          {/* Right: Money Flow */}
-          <div className="panel" style={{ padding: "18px 20px", overflow: "visible", display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Money Flow</h2>
-              <span className="info-tooltip">?<span className="tooltip-text">Where work and money sit in your pipeline. Click any stage to drill in.</span></span>
+        {/* ============================================================ */}
+        {/* FALLING THROUGH THE CRACKS — actionable items                 */}
+        {/* ============================================================ */}
+        {(() => {
+          const draftInvoices = invoices.filter((inv: any) => (inv.status || "").toLowerCase() === "draft");
+          const draftCount = draftInvoices.length;
+          const draftCents = draftInvoices.reduce((s: number, inv: any) => s + Number(inv.total_amount_cents ?? 0), 0);
+
+          type CrackItem = { dot: string; label: string; sub: string; amount: number; badge?: string; badgeColor?: string; action: string; href: string };
+          const cracks: CrackItem[] = [];
+
+          if (needsInvoiceCount > 0) {
+            cracks.push({ dot: "#10b981", label: `${needsInvoiceCount} job${needsInvoiceCount > 1 ? "s" : ""} completed, never invoiced`, sub: "Work is done. You just haven't asked to get paid yet.", amount: needsInvoiceCents, badge: "easy money", badgeColor: "#10b981", action: "View jobs", href: `/jobber/invoices${adminQs}` });
+          }
+          if (draftCount > 0) {
+            cracks.push({ dot: "#10b981", label: `${draftCount} invoice${draftCount > 1 ? "s" : ""} sitting in draft`, sub: "Written but not sent. Send them today.", amount: draftCents, badge: "easy money", badgeColor: "#10b981", action: "View drafts", href: `/jobber/invoices${adminQs}` });
+          }
+          if (leakCount > 0) {
+            cracks.push({ dot: "#ef4444", label: `${leakCount} quote${leakCount > 1 ? "s" : ""} with no response`, sub: "Sitting cold. Follow up on the big ones today.", amount: leakDollars, action: "View quotes", href: `/jobber/sales${adminQs}` });
+          }
+          if (unscheduledOlderThan7Days.length > 0) {
+            const unschedOldCents = unscheduledOlderThan7Days.reduce((s: number, j: any) => s + Number(j.total_amount_cents ?? 0), 0);
+            cracks.push({ dot: "#f59e0b", label: `${unscheduledOlderThan7Days.length} job${unscheduledOlderThan7Days.length > 1 ? "s" : ""} not scheduled`, sub: "Sitting unbooked 7+ days. Customers are waiting.", amount: unschedOldCents, action: "View jobs", href: `/jobber/capacity${adminQs}` });
+          }
+          if (changesRequestedCount > 0) {
+            cracks.push({ dot: "#5aa6ff", label: `${changesRequestedCount} quote${changesRequestedCount > 1 ? "s" : ""} need${changesRequestedCount === 1 ? "s" : ""} revisions`, sub: "Client asked for changes. Ready to buy once updated.", amount: changesRequestedCents, action: "View quote" + (changesRequestedCount > 1 ? "s" : ""), href: `/jobber/sales${adminQs}` });
+          }
+
+          if (cracks.length === 0) return null;
+
+          return (
+            <div data-tour="recommendations" className="animate-in delay-2" style={{ marginTop: 20 }}>
+              <div className="text-muted" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Falling Through the Cracks</div>
+              <div className="panel" style={{ padding: 0, overflow: "hidden" }}>
+                {cracks.map((item, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "14px 20px", gap: 12,
+                    borderBottom: i < cracks.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 12, minWidth: 0 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: "50%", background: item.dot, flexShrink: 0, marginTop: 4 }} />
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                          <span className="text-primary" style={{ fontSize: 14, fontWeight: 700 }}>{item.label}</span>
+                          {item.badge && (
+                            <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 4, background: `${item.badgeColor}20`, color: item.badgeColor }}>
+                              {item.badge}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>{item.sub}</div>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      {item.amount > 0 && (
+                        <div style={{ fontSize: 16, fontWeight: 800, color: item.dot === "#ef4444" ? "#ef4444" : undefined }} className={item.dot !== "#ef4444" ? "text-primary" : undefined}>
+                          {money(item.amount)}
+                        </div>
+                      )}
+                      <a href={item.href} className="btn" style={{ padding: "4px 12px", fontSize: 11, marginTop: 4, display: "inline-block", textDecoration: "none" }}>
+                        {item.action}
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-              <MoneyFlowList stages={funnelStages} />
-            </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Footer */}
         <footer style={{

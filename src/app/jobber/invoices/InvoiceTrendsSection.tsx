@@ -5,7 +5,7 @@ import { useIsLight } from "@/lib/hooks";
 import { CollectionChart } from "./CollectionChart";
 
 type InvoiceEvent = { ts: number; amount: number; type: "sent" | "paid" };
-type AgingBucket = { label: string; color: string; balanceCents: number; count: number };
+export type AgingBucket = { label: string; color: string; balanceCents: number; count: number };
 type Granularity = "week" | "month";
 
 type Props = {
@@ -40,7 +40,7 @@ function defaultRange(preset: string) {
 }
 
 /* ---- Aging donut panel ---- */
-function AgingDonutPanel({ buckets, totalCents, currencyCode, isLight }: {
+export function AgingDonutPanel({ buckets, totalCents, currencyCode, isLight }: {
   buckets: AgingBucket[];
   totalCents: number;
   currencyCode: string;
@@ -73,7 +73,7 @@ function AgingDonutPanel({ buckets, totalCents, currencyCode, isLight }: {
   return (
     <div className="panel hover-lift" style={{ padding: 16, height: "100%", display: "flex", flexDirection: "column", overflow: "visible" }}>
       <div style={{ marginBottom: 12 }}>
-        <div className="text-primary" style={{ fontWeight: 700, fontSize: 14 }}>Outstanding Aging</div>
+        <div className="text-primary" style={{ fontWeight: 700, fontSize: 14 }}>Invoices by Days Past Due</div>
         <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
           {nonEmpty.length > 0
             ? `${buckets.reduce((s, b) => s + b.count, 0)} invoices across ${nonEmpty.length} ${nonEmpty.length === 1 ? "category" : "categories"}`

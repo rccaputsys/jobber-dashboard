@@ -12,25 +12,17 @@ export async function GET() {
 
     const { data: conn } = await supabaseAdmin
       .from("jobber_connections")
-      .select("weekly_capacity_cents")
+      .select("weekly_capacity_cents,monthly_capacity_cents,capacity_daily_targets,capacity_work_days,capacity_targets_set")
       .eq("user_id", user.id)
       .maybeSingle();
-
-    // Monthly column may not exist yet
-    let monthly = null;
-    try {
-      const { data: mc } = await supabaseAdmin
-        .from("jobber_connections")
-        .select("monthly_capacity_cents")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      monthly = mc?.monthly_capacity_cents ?? null;
-    } catch {}
 
     return NextResponse.json({
       ok: true,
       weekly_capacity_cents: conn?.weekly_capacity_cents ?? null,
-      monthly_capacity_cents: monthly,
+      monthly_capacity_cents: (conn as any)?.monthly_capacity_cents ?? null,
+      capacity_daily_targets: (conn as any)?.capacity_daily_targets ?? {},
+      capacity_work_days: (conn as any)?.capacity_work_days ?? ["Mon", "Tue", "Wed", "Thu", "Fri"],
+      capacity_targets_set: (conn as any)?.capacity_targets_set ?? false,
     });
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: String(e?.message ?? e) }, { status: 500 });
@@ -53,38 +45,37 @@ export async function POST(req: Request) {
     const eqField = connectionId ? "id" : "user_id";
     const eqValue = connectionId || user.id;
 
-    // Save weekly and monthly separately so a missing column doesn't block the other
-    const result: Record<string, number | null> = {};
+    // Build update object with only provided fields
+    const update: Record<string, any> = {};
 
     if ("weekly_capacity_cents" in body) {
-      const cents = typeof body.weekly_capacity_cents === "number" ? Math.round(body.weekly_capacity_cents) : null;
-      const { error } = await supabaseAdmin
-        .from("jobber_connections")
-        .update({ weekly_capacity_cents: cents })
-        .eq(eqField, eqValue);
-      if (error) throw error;
-      result.weekly_capacity_cents = cents;
+      update.weekly_capacity_cents = typeof body.weekly_capacity_cents === "number" ? Math.round(body.weekly_capacity_cents) : null;
     }
-
     if ("monthly_capacity_cents" in body) {
-      const cents = typeof body.monthly_capacity_cents === "number" ? Math.round(body.monthly_capacity_cents) : null;
-      try {
-        await supabaseAdmin
-          .from("jobber_connections")
-          .update({ monthly_capacity_cents: cents } as any)
-          .eq(eqField, eqValue);
-        result.monthly_capacity_cents = cents;
-      } catch {
-        // Column may not exist yet
-        result.monthly_capacity_cents = null;
-      }
+      update.monthly_capacity_cents = typeof body.monthly_capacity_cents === "number" ? Math.round(body.monthly_capacity_cents) : null;
+    }
+    if ("capacity_daily_targets" in body) {
+      update.capacity_daily_targets = body.capacity_daily_targets || {};
+    }
+    if ("capacity_work_days" in body) {
+      update.capacity_work_days = body.capacity_work_days || ["Mon", "Tue", "Wed", "Thu", "Fri"];
+    }
+    if ("capacity_targets_set" in body) {
+      update.capacity_targets_set = !!body.capacity_targets_set;
     }
 
-    if (Object.keys(result).length === 0) {
+    if (Object.keys(update).length === 0) {
       return NextResponse.json({ ok: false, error: "No fields to update" }, { status: 400 });
     }
 
-    return NextResponse.json({ ok: true, ...result });
+    const { error } = await supabaseAdmin
+      .from("jobber_connections")
+      .update(update)
+      .eq(eqField, eqValue);
+
+    if (error) throw error;
+
+    return NextResponse.json({ ok: true, ...update });
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: String(e?.message ?? e) }, { status: 500 });
   }
