@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useIsLight } from "@/lib/hooks";
+import { SyncButton } from "./SyncButton";
+import { ThemeToggle } from "./ThemeToggle";
+import { SubscriptionStatus, LogoutButton } from "./HeaderButtons";
 
 const tabs = [
   { label: "Overview", href: "/jobber/dashboard", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4" },
@@ -11,28 +14,57 @@ const tabs = [
   { label: "Invoices", href: "/jobber/invoices", icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
 ];
 
-export function SidebarNav({ adminConnectionId }: { adminConnectionId?: string }) {
+type Props = {
+  adminConnectionId?: string;
+  companyName?: string;
+  connectionId?: string;
+  lastSyncPretty?: string;
+  billingStatus?: string;
+  trialEndsAt?: number;
+  subscriptionActive?: boolean;
+  autoSync?: boolean;
+};
+
+export function SidebarNav({ adminConnectionId, companyName, connectionId, lastSyncPretty, billingStatus, trialEndsAt, subscriptionActive, autoSync }: Props) {
   const pathname = usePathname();
   const isLight = useIsLight();
 
   return (
     <nav className="sidebar-nav">
-      {/* Logo */}
-      <div style={{ padding: "20px 16px 16px", display: "flex", alignItems: "center", gap: 8 }}>
-        <svg width="28" height="28" viewBox="0 0 50 50" style={{ flexShrink: 0 }}>
-          <defs>
-            <linearGradient id="sidebarLogo" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#5aa6ff" />
-              <stop offset="100%" stopColor="#38bdf8" />
-            </linearGradient>
-          </defs>
-          <circle cx="25" cy="25" r="22" fill="none" stroke="url(#sidebarLogo)" strokeWidth="3" />
-          <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#sidebarLogo)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        <div style={{ fontSize: 13, fontWeight: 800, background: "linear-gradient(135deg, #5aa6ff, #38bdf8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-          AccuInsight
+      {/* Logo + company */}
+      <div style={{ padding: "16px 14px 12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+          <svg width="24" height="24" viewBox="0 0 50 50" style={{ flexShrink: 0 }}>
+            <defs>
+              <linearGradient id="sidebarLogo" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#5aa6ff" />
+                <stop offset="100%" stopColor="#38bdf8" />
+              </linearGradient>
+            </defs>
+            <circle cx="25" cy="25" r="22" fill="none" stroke="url(#sidebarLogo)" strokeWidth="3" />
+            <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#sidebarLogo)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div style={{ fontSize: 12, fontWeight: 800, background: "linear-gradient(135deg, #5aa6ff, #38bdf8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+            AccuInsight
+          </div>
         </div>
+        {companyName && (
+          <div className="text-primary" style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingLeft: 32 }}>
+            {companyName}
+          </div>
+        )}
       </div>
+
+      {/* Admin banner */}
+      {adminConnectionId && (
+        <div style={{
+          margin: "0 8px 8px", padding: "6px 10px", borderRadius: 6,
+          background: "rgba(90,166,255,0.1)", fontSize: 10, fontWeight: 600, color: "#5aa6ff",
+        }}>
+          Admin view
+          <a href="/admin" style={{ color: "#5aa6ff", marginLeft: 6, textDecoration: "underline", opacity: 0.8 }}>Back</a>
+        </div>
+      )}
 
       {/* Nav items */}
       <div style={{ padding: "0 8px", display: "flex", flexDirection: "column", gap: 2 }}>
@@ -46,7 +78,7 @@ export function SidebarNav({ adminConnectionId }: { adminConnectionId?: string }
               href={href}
               style={{
                 display: "flex", alignItems: "center", gap: 10,
-                padding: "10px 12px", borderRadius: 10,
+                padding: "10px 12px", borderRadius: 8,
                 textDecoration: "none",
                 background: isActive ? (isLight ? "rgba(90,166,255,0.1)" : "rgba(90,166,255,0.12)") : "transparent",
                 color: isActive ? "#5aa6ff" : (isLight ? "#64748b" : "rgba(255,255,255,0.5)"),
@@ -62,6 +94,33 @@ export function SidebarNav({ adminConnectionId }: { adminConnectionId?: string }
             </Link>
           );
         })}
+      </div>
+
+      {/* Spacer */}
+      <div style={{ flex: 1 }} />
+
+      {/* Bottom: Sync + controls */}
+      <div style={{ padding: "12px 12px 16px", borderTop: `1px solid ${isLight ? "#e2e8f0" : "rgba(255,255,255,0.06)"}` }}>
+        {/* Sync */}
+        {connectionId && (
+          <div style={{ marginBottom: 10 }}>
+            <SyncButton connectionId={connectionId} autoSync={autoSync} />
+            {lastSyncPretty && (
+              <div className="text-muted" style={{ fontSize: 9, marginTop: 4, paddingLeft: 2 }}>{lastSyncPretty}</div>
+            )}
+          </div>
+        )}
+
+        {/* Controls row */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <ThemeToggle />
+            <LogoutButton />
+          </div>
+          {billingStatus && trialEndsAt !== undefined && subscriptionActive !== undefined && (
+            <SubscriptionStatus billingStatus={billingStatus} trialEndsAt={trialEndsAt} subscriptionActive={subscriptionActive} />
+          )}
+        </div>
       </div>
     </nav>
   );

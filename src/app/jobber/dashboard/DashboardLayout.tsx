@@ -2,13 +2,22 @@
 
 import { SidebarNav } from "./SidebarNav";
 
-export function DashboardLayout({ adminConnectionId, children }: {
+type Props = {
   adminConnectionId?: string;
+  companyName?: string;
+  connectionId?: string;
+  lastSyncPretty?: string;
+  billingStatus?: string;
+  trialEndsAt?: number;
+  subscriptionActive?: boolean;
+  autoSync?: boolean;
   children: React.ReactNode;
-}) {
+};
+
+export function DashboardLayout({ children, ...sidebarProps }: Props) {
   return (
     <div className="app-layout">
-      <SidebarNav adminConnectionId={adminConnectionId} />
+      <SidebarNav {...sidebarProps} />
       <div className="app-main">
         {children}
       </div>

@@ -362,20 +362,11 @@ export default async function SalesPage({
         linear-gradient(180deg, #060811 0%, #0a1020 100%)
       `,
     }}>
-      <DashboardLayout adminConnectionId={adminConnectionId}>
+      <DashboardLayout adminConnectionId={adminConnectionId} companyName={companyName} connectionId={connectionId} lastSyncPretty={lastSyncPretty} billingStatus={billingStatus} trialEndsAt={trialEndsAt} subscriptionActive={subscriptionActive}>
       <style>{globalStyles}</style>
 
       <ErrorBoundary>
       <div className="dashboard-container">
-        <DashboardTopbar
-          companyName={companyName}
-          lastSyncPretty={lastSyncPretty}
-          connectionId={connectionId}
-          billingStatus={billingStatus}
-          trialEndsAt={trialEndsAt}
-          subscriptionActive={subscriptionActive}
-          adminConnectionId={adminConnectionId}
-        />
 
         {/* Quote KPIs with period toggle */}
         <div className="animate-in delay-1" style={{ marginTop: 20 }}>

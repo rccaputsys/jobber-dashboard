@@ -1540,22 +1540,12 @@ const quoteWonPct = quotesInLast30Days.length > 0
         linear-gradient(180deg, #060811 0%, #0a1020 100%)
       `,
     }}>
-      <DashboardLayout adminConnectionId={adminConnectionId}>
+      <DashboardLayout adminConnectionId={adminConnectionId} companyName={companyName} connectionId={connectionId} lastSyncPretty={lastSyncPretty} billingStatus={billingStatus} trialEndsAt={trialEndsAt} subscriptionActive={subscriptionActive} autoSync={retrySync}>
       <style>{globalStyles}</style>
       {!adminConnectionId && <AnalyticsProvider connectionId={connectionId} />}
 
       <ErrorBoundary>
       <div className="dashboard-container">
-        <DashboardTopbar
-          companyName={companyName}
-          lastSyncPretty={lastSyncPretty}
-          connectionId={connectionId}
-          billingStatus={billingStatus}
-          trialEndsAt={trialEndsAt}
-          subscriptionActive={subscriptionActive}
-          adminConnectionId={adminConnectionId}
-          autoSync={retrySync}
-        />
 
         {/* Empty State - Show when no data */}
         {invoices.length === 0 && jobs.length === 0 && quotes.length === 0 && (
