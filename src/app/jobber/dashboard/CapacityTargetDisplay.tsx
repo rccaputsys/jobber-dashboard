@@ -212,70 +212,99 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
         })}
       </div>
 
-      {/* Row 4: Horizontal bars — bigger, fill the space */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {visibleDays.map(d => {
-          const dayFill = d.targetCents > 0 ? Math.round((d.scheduledCents / d.targetCents) * 100) : 0;
-          const barWidthPct = d.targetCents > 0 ? Math.min((d.scheduledCents / d.targetCents) * 100, 100) : 0;
-          const overTarget = d.targetCents > 0 && d.scheduledCents > d.targetCents;
-          const empty = d.scheduledCents === 0;
-          const barColor = overTarget ? "#10b981" : dayFill >= 70 ? "#10b981" : dayFill >= 40 ? "#5aa6ff" : empty ? "transparent" : "#5aa6ff";
+      {/* Row 4: Horizontal bars */}
+      {(() => {
+        const dailyTarget = visibleDays.length > 0 ? Math.max(...visibleDays.map(d => d.targetCents), 1) : 1;
+        const scaleMax = weeklyTargetCents > 0 ? Math.round(weeklyTargetCents / visibleDays.length) : Math.max(...visibleDays.map(d => d.scheduledCents), 1);
 
-          return (
-            <div key={d.day} style={{
-              display: "flex", alignItems: "center", gap: 8,
-              padding: "4px 8px",
-              borderRadius: 8,
-              background: d.isToday ? (isLight ? "rgba(90,166,255,0.06)" : "rgba(90,166,255,0.05)") : "transparent",
-              border: d.isToday ? `1px solid ${isLight ? "rgba(90,166,255,0.15)" : "rgba(90,166,255,0.08)"}` : "1px solid transparent",
-            }}>
-              {/* Day */}
-              <div style={{
-                width: 32, flexShrink: 0,
-                fontSize: 12, fontWeight: d.isToday ? 800 : 600,
-                color: d.isToday ? "#5aa6ff" : (isLight ? "#64748b" : "rgba(255,255,255,0.5)"),
-              }}>
-                {d.day}
-              </div>
+        return (<>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            {visibleDays.map(d => {
+              const dayFill = d.targetCents > 0 ? Math.round((d.scheduledCents / d.targetCents) * 100) : 0;
+              const barWidthPct = d.targetCents > 0 ? Math.min((d.scheduledCents / d.targetCents) * 100, 100) : (scaleMax > 0 ? Math.min((d.scheduledCents / scaleMax) * 100, 100) : 0);
+              const overTarget = d.targetCents > 0 && d.scheduledCents > d.targetCents;
+              const zero = d.scheduledCents === 0;
 
-              {/* Bar — bigger height */}
-              <div style={{ flex: 1, position: "relative", height: 28, borderRadius: 6, background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.04)", overflow: "hidden" }}>
-                <div style={{
-                  position: "absolute", top: 0, left: 0, bottom: 0,
-                  width: empty ? "0%" : `${Math.max(barWidthPct, 3)}%`,
-                  borderRadius: 6, background: barColor, transition: "width 0.4s ease",
-                }} />
-                {overTarget && (
-                  <div style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 3, background: "#10b981", borderRadius: "0 6px 6px 0" }} />
-                )}
-                {/* % label inside */}
-                {d.targetCents > 0 && (
+              // Bolder colors: green when good, amber when building, red when zero
+              const barColor = overTarget ? "#10b981"
+                : dayFill >= 70 ? "#10b981"
+                : dayFill >= 40 ? "#f59e0b"
+                : zero ? "transparent"
+                : "#f59e0b";
+
+              return (
+                <div key={d.day} style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "5px 8px",
+                  borderRadius: 8,
+                  background: d.isToday ? (isLight ? "rgba(90,166,255,0.06)" : "rgba(90,166,255,0.06)") : "transparent",
+                  border: d.isToday ? `1px solid ${isLight ? "rgba(90,166,255,0.15)" : "rgba(90,166,255,0.1)"}` : "1px solid transparent",
+                }}>
+                  {/* Day label — bigger */}
                   <div style={{
-                    position: "absolute", top: 0, bottom: 0, left: 8,
-                    display: "flex", alignItems: "center",
-                    fontSize: 11, fontWeight: 700,
-                    color: barWidthPct > 30 ? "rgba(255,255,255,0.9)" : (isLight ? "#94a3b8" : "rgba(255,255,255,0.3)"),
+                    width: 34, flexShrink: 0,
+                    fontSize: 13, fontWeight: d.isToday ? 800 : 700,
+                    color: d.isToday ? "#5aa6ff" : (isLight ? "#334155" : "rgba(255,255,255,0.7)"),
                   }}>
-                    {dayFill}%
+                    {d.day}
                   </div>
-                )}
-              </div>
 
-              {/* Amount + jobs */}
-              <div style={{ width: 70, textAlign: "right", flexShrink: 0 }}>
-                {empty ? (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#ef4444" }}>empty</span>
-                ) : (
-                  <span className="text-primary" style={{ fontSize: 12, fontWeight: 700 }}>{money(d.scheduledCents)}</span>
-                )}
-                {d.jobCount > 0 && (
-                  <div className="text-muted" style={{ fontSize: 9 }}>{d.jobCount} job{d.jobCount !== 1 ? "s" : ""}</div>
-                )}
-              </div>
+                  {/* Bar — taller, bolder track */}
+                  <div style={{
+                    flex: 1, position: "relative", height: 32, borderRadius: 7,
+                    background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)",
+                    overflow: "hidden",
+                  }}>
+                    {/* Fill */}
+                    <div style={{
+                      position: "absolute", top: 0, left: 0, bottom: 0,
+                      width: zero ? "0%" : `${Math.max(barWidthPct, 2)}%`,
+                      borderRadius: 7, background: barColor, transition: "width 0.4s ease",
+                    }} />
+                    {/* Over-target glow */}
+                    {overTarget && (
+                      <div style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 4, background: "#10b981", borderRadius: "0 7px 7px 0" }} />
+                    )}
+                    {/* % label inside bar — bigger font */}
+                    {d.targetCents > 0 && !zero && (
+                      <div style={{
+                        position: "absolute", top: 0, bottom: 0, left: 10,
+                        display: "flex", alignItems: "center",
+                        fontSize: 12, fontWeight: 800,
+                        color: barWidthPct > 25 ? "rgba(255,255,255,0.95)" : (isLight ? "#64748b" : "rgba(255,255,255,0.4)"),
+                      }}>
+                        {dayFill}%
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Amount — bigger, bolder */}
+                  <div style={{ width: 75, textAlign: "right", flexShrink: 0 }}>
+                    <div style={{
+                      fontSize: 13, fontWeight: 800,
+                      color: zero ? (isLight ? "#94a3b8" : "rgba(255,255,255,0.25)") : (isLight ? "#1e293b" : "#EAF1FF"),
+                    }}>
+                      {money(d.scheduledCents)}
+                    </div>
+                    {d.jobCount > 0 && (
+                      <div className="text-muted" style={{ fontSize: 9 }}>{d.jobCount} job{d.jobCount !== 1 ? "s" : ""}</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Scale at the bottom */}
+          {weeklyTargetCents > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, paddingLeft: 42, paddingRight: 83 }}>
+              <span className="text-muted" style={{ fontSize: 9 }}>$0</span>
+              <span className="text-muted" style={{ fontSize: 9 }}>{money(Math.round(scaleMax / 2))}</span>
+              <span className="text-muted" style={{ fontSize: 9 }}>{money(scaleMax)}</span>
             </div>
-          );
-        })}
-      </div>
+          )}
+        </>);
+      })()}
     </div>
   );
 }
