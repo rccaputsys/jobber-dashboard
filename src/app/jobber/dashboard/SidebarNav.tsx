@@ -102,25 +102,23 @@ export function SidebarNav({ adminConnectionId, companyName, connectionId, lastS
       {/* Bottom: Sync + controls */}
       <div style={{ padding: "12px 12px 16px", borderTop: `1px solid ${isLight ? "#e2e8f0" : "rgba(255,255,255,0.06)"}` }}>
         {/* Sync */}
-        {connectionId && (
-          <div style={{ marginBottom: 10 }}>
-            <SyncButton connectionId={connectionId} autoSync={autoSync} />
-            {lastSyncPretty && (
-              <div className="text-muted" style={{ fontSize: 9, marginTop: 4, paddingLeft: 2 }}>{lastSyncPretty}</div>
-            )}
-          </div>
+        {/* Controls row: sync + theme + logout */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+          {connectionId && <SyncButton connectionId={connectionId} autoSync={autoSync} />}
+          <div style={{ flex: 1 }} />
+          <ThemeToggle />
+          <LogoutButton />
+        </div>
+        {lastSyncPretty && (
+          <div className="text-muted" style={{ fontSize: 9, marginTop: 4, paddingLeft: 2 }}>{lastSyncPretty}</div>
         )}
 
-        {/* Controls row */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <ThemeToggle />
-            <LogoutButton />
-          </div>
-          {billingStatus && trialEndsAt !== undefined && subscriptionActive !== undefined && (
+        {/* Subscription status below */}
+        {billingStatus && trialEndsAt !== undefined && subscriptionActive !== undefined && (
+          <div style={{ marginTop: 10 }}>
             <SubscriptionStatus billingStatus={billingStatus} trialEndsAt={trialEndsAt} subscriptionActive={subscriptionActive} />
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </nav>
   );
