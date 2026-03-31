@@ -24,9 +24,9 @@ type Bucket = {
 
 // Returns a color matching the bucket the quote belongs to
 function ageColor(days: number): string {
-  if (days >= 30) return "#ef4444";  // Cold — red
-  if (days >= 15) return "#f59e0b";  // Going Cold — amber
-  if (days >= 8) return "#5aa6ff";   // Warm — blue
+  if (days > 45) return "#6b7280";   // Inactive — grey
+  if (days > 30) return "#ef4444";   // Going Cold — red
+  if (days > 14) return "#f59e0b";   // Warm — amber
   return "#10b981";                   // Hot — green
 }
 
@@ -59,7 +59,13 @@ export function QuoteFollowUpTable({
 
   const money = useMemo(() => (cents: number) => moneyFmt(cents, currencyCode), [currencyCode]);
   const nonEmpty = buckets.filter(b => b.quotes.length > 0);
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    for (const b of buckets) init[b.key] = true;
+    return init;
+  });
+  const [showAll, setShowAll] = useState<Record<string, boolean>>({});
+  const PAGE_SIZE = 20;
   const [sortKey, setSortKey] = useState<SortKey>("days");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
@@ -164,7 +170,7 @@ export function QuoteFollowUpTable({
                   </div>
                 </td>
               </tr>
-              {!isCollapsed && sorted.map((q) => (
+              {!isCollapsed && (showAll[bucket.key] ? sorted : sorted.slice(0, PAGE_SIZE)).map((q) => (
                 <tr key={q.quote_number}>
                   <td style={{ textAlign: "center" }}>
                     <span style={{
@@ -204,6 +210,19 @@ export function QuoteFollowUpTable({
                   </td>
                 </tr>
               ))}
+              {!isCollapsed && !showAll[bucket.key] && sorted.length > PAGE_SIZE && (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: "center", padding: "10px 16px" }}>
+                    <button onClick={(e) => { e.stopPropagation(); setShowAll(prev => ({ ...prev, [bucket.key]: true })); }} style={{
+                      background: "none", border: "none", cursor: "pointer",
+                      fontSize: 12, fontWeight: 700, color: "#5aa6ff",
+                      padding: "6px 16px",
+                    }}>
+                      Show all {sorted.length.toLocaleString()} quotes
+                    </button>
+                  </td>
+                </tr>
+              )}
             </tbody>
           );
         })}

@@ -404,7 +404,7 @@ export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, sentOpenE
   const revTargetCents = activeRevTarget > 0 ? activeRevTarget * 100 : 0;
 
   return (
-    <div ref={chartRef} className="panel animate-in delay-2" style={{ padding: 0, marginTop: 16, overflow: "visible", position: "relative", zIndex: 10 }}>
+    <div ref={chartRef} className="panel animate-in delay-2" style={{ padding: 0, marginTop: 10, overflow: "visible", position: "relative", zIndex: 10 }}>
       <div style={{ padding: "12px 16px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -413,29 +413,7 @@ export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, sentOpenE
             </h2>
             <span className="info-tooltip">?<span className="tooltip-text">Sales won and win rate over time. Set weekly and monthly targets — the chart automatically uses the right one based on your selected view.</span></span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <TargetInput
-              label="Weekly Sales Target"
-              value={weeklyRevTarget}
-              onChange={setWeeklyRevTarget}
-              prefix="$"
-              color="#10b981"
-            />
-            <TargetInput
-              label="Monthly Sales Target"
-              value={monthlyRevTarget}
-              onChange={setMonthlyRevTarget}
-              prefix="$"
-              color="#10b981"
-            />
-            <TargetInput
-              label="Win Rate Target"
-              value={winRateTarget}
-              onChange={setWinRateTarget}
-              suffix="%"
-              color="#5aa6ff"
-            />
-          </div>
+          <div />
         </div>
         <InlineControls
           weekOffset={weekOffset} setWeekOffset={setWeekOffset}
@@ -460,11 +438,12 @@ export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, sentOpenE
             chartType={chart}
             color="#10b981"
             invertChangeColor={false}
-            targetValue={revTargetCents > 0 ? revTargetCents : undefined}
+            targetValue={undefined}
+            height={140}
           />
           <SparkLine
             title="Win Rate"
-            subtitle="Won / (Won + Lost) per period"
+            subtitle="Won / (Won + Lost + Open) per period"
             points={winRatePoints}
             formatType="percent"
             chartType={chart}
@@ -472,6 +451,7 @@ export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, sentOpenE
             invertChangeColor={false}
             targetValue={winRateTarget > 0 ? winRateTarget : undefined}
             overrideAvg={weightedWinRate}
+            height={140}
           />
         </div>
       )}

@@ -8,7 +8,6 @@ import { DashboardTopbar } from "../dashboard/DashboardTopbar";
 import { OnboardingOverlay } from "../dashboard/OnboardingOverlay";
 import { QuotePipeline } from "./QuotePipeline";
 import { SalesTrendsSection } from "./SalesTrendsSection";
-import { SalesKpiCards } from "./SalesKpiCards";
 import { QuoteFollowUpTable } from "./QuoteFollowUpTable";
 import { SalesActionTabs } from "./SalesActionTabs";
 import { ErrorBoundary } from "../dashboard/ErrorBoundary";
@@ -184,12 +183,11 @@ export default async function SalesPage({
   }
 
   const pipelineStages = [
-    { label: "Requests", count: openRequests.length, value: `${openRequests.length} leads` },
+    { label: "Requests", count: openRequests.length, value: "" },
     { label: "Draft", count: draftQuotes.length, value: money(sumCents(draftQuotes)) },
-    { label: "Sent", count: sentQuotes.length, value: money(sumCents(sentQuotes)) },
-    { label: "Changes Req", count: changesReqQuotes.length, value: money(sumCents(changesReqQuotes)) },
+    { label: "Awaiting Response", count: sentQuotes.length, value: money(sumCents(sentQuotes)) },
+    { label: "Changes Requested", count: changesReqQuotes.length, value: money(sumCents(changesReqQuotes)) },
     { label: "Approved", count: approvedQuotes.length, value: money(sumCents(approvedQuotes)) },
-    { label: "Won", count: wonQuotes.length, value: money(sumCents(wonQuotes)) },
   ];
 
   // Pipeline value (all open/sent, not won/lost)
@@ -368,45 +366,15 @@ export default async function SalesPage({
       <ErrorBoundary>
       <div className="dashboard-container">
 
-        {/* Quote KPIs with period toggle */}
-        <div className="animate-in delay-1" style={{ marginTop: 20 }}>
-          <SalesKpiCards
-            thisWeek={thisWeekKpi}
-            lastWeek={lastWeekKpi}
-            thisMonth={thisMonthKpi}
-            lastMonth={lastMonthKpi}
-            allTime={allTimeKpi}
-          />
-        </div>
-
-        {/* ===== Quote Pipeline ===== */}
-        <div className="panel animate-in delay-1" style={{ marginTop: 16, padding: 20, overflow: "visible" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16 }}>
-            <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
-              Quote Pipeline
-            </h2>
-            <span className="info-tooltip">?<span className="tooltip-text">Shows all your quotes grouped by status stage, from draft to won. Track how quotes flow through your sales process and where they get stuck.</span></span>
-          </div>
-          <div data-tour="sales-pipeline">
-            <QuotePipeline
-              stages={pipelineStages}
-              lostCount={lostQuotes.length}
-              lostValue={money(sumCents(lostQuotes))}
-            />
-          </div>
-        </div>
-
-        {/* Sales Trends */}
-        <SalesTrendsSection
-          wonQuoteEvents={wonQuoteEvents}
-          allClosureEvents={allClosureEvents}
-          sentOpenEvents={sentOpenEvents}
-          currencyCode={currencyCode}
-        />
-
-        {/* ===== Section D: Quote Follow-Up + Requests ===== */}
-        <div data-tour="sales-actions" className="panel animate-in delay-2" style={{ marginTop: 20, padding: 20 }}>
-          <SalesActionTabs requestCount={requestsList.length} requests={requestsList} quoteExportData={followUpExportData} changesRequested={changesRequestedList}>
+        {/* ===== Pipeline + Action List ===== */}
+        <div data-tour="sales-actions" className="panel animate-in delay-1" style={{ marginTop: 12, padding: "12px 20px", overflow: "visible" }}>
+          <SalesActionTabs
+            requestCount={requestsList.length}
+            requests={requestsList}
+            quoteExportData={followUpExportData}
+            changesRequested={changesRequestedList}
+            pipelineStages={pipelineStages}
+          >
 
           {followUpQuotes.length === 0 ? (
             <div className="text-muted" style={{ textAlign: "center", padding: 24, fontSize: 14 }}>
@@ -502,6 +470,14 @@ export default async function SalesPage({
 
           </SalesActionTabs>
         </div>
+
+        {/* Sales Trends */}
+        <SalesTrendsSection
+          wonQuoteEvents={wonQuoteEvents}
+          allClosureEvents={allClosureEvents}
+          sentOpenEvents={sentOpenEvents}
+          currencyCode={currencyCode}
+        />
 
         {/* Bottom spacer */}
         <div style={{ height: 40 }} />

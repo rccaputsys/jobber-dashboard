@@ -7,7 +7,9 @@ import { OnboardingOverlay } from "../dashboard/OnboardingOverlay";
 import { CapacityTrendsSection } from "./CapacityTrendsSection";
 import { CapacityWeekBreakdown } from "./CapacityWeekBreakdown";
 import { CapacityKpiCards } from "./CapacityKpiCards";
+import { CapacityHeatmap } from "./CapacityHeatmap";
 import { CapacityActionList } from "./CapacityActionList";
+import { ActionStrip } from "../dashboard/ActionStrip";
 import { ErrorBoundary } from "../dashboard/ErrorBoundary";
 import { DashboardLayout } from "../dashboard/DashboardLayout";
 import {
@@ -77,16 +79,24 @@ export default async function CapacityPage({
     connectionId = connection.id;
   }
 
-  // Fetch connection details + jobs
-  const [connDetails, jobs, visits] = await Promise.all([
+  // Fetch connection details + jobs + quotes
+  const [connDetails, jobs, visits, approvedQuotes] = await Promise.all([
     supabaseAdmin
       .from("jobber_connections")
-      .select("last_sync_at,trial_started_at,trial_ends_at,billing_status,currency_code,company_name,jobber_account_name,weekly_capacity_cents")
+      .select("last_sync_at,trial_started_at,trial_ends_at,billing_status,currency_code,company_name,jobber_account_name,weekly_capacity_cents,capacity_daily_targets,capacity_work_days")
       .eq("id", connectionId)
       .maybeSingle()
       .then((r) => r.data),
     fetchAllRows("fact_jobs", "jobber_job_id,total_amount_cents,job_title,job_number,scheduled_start_at,scheduled_end_at,status,jobber_url,created_at_jobber,created_at", connectionId),
     fetchAllRows("fact_visits", "jobber_visit_id,jobber_job_id,title,job_number,start_at,end_at,completed_at,visit_status,created_at_jobber,duration_minutes,is_complete", connectionId),
+    supabaseAdmin
+      .from("fact_quotes")
+      .select("jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,updated_at_jobber")
+      .eq("connection_id", connectionId)
+      .or("quote_status.ilike.%approv%,quote_status.ilike.%accept%")
+      .order("quote_total_cents", { ascending: false })
+      .limit(50)
+      .then((r) => r.data ?? []),
   ]);
 
   // Build unified schedule items: visits first, then backfill jobs without visits
@@ -400,6 +410,34 @@ export default async function CapacityPage({
     return { label, revenue, jobCount: dayItems.length, date: dayStart.toISOString() };
   });
 
+  // 8-week heatmap data (this week + 7 forward)
+  const workDaysList: string[] = (connDetails as any)?.capacity_work_days || ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  const dailyTargets: Record<string, number> = (connDetails as any)?.capacity_daily_targets || {};
+  const todayDayLabel = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date().getDay()];
+
+  const heatmapWeeks = Array.from({ length: 8 }, (_, w) => {
+    const wStart = addDaysUTC(thisWeekStart, w * 7);
+    const monthDay = `${wStart.toLocaleString(undefined, { month: "short", timeZone: "UTC" })} ${wStart.getUTCDate()}`;
+    const days: Record<string, { revenueCents: number; targetCents: number; jobCount: number; isToday: boolean; isPast: boolean }> = {};
+    for (let d = 0; d < 7; d++) {
+      const dayStart = addDaysUTC(wStart, d);
+      const dayEnd = addDaysUTC(dayStart, 1);
+      const dayItems = periodItems(dayStart, dayEnd);
+      const rev = dayItems.reduce((s: number, item) => s + item.amountCents, 0);
+      const day = dayLabels[d];
+      const isWorkDay = workDaysList.includes(day);
+      const dayTarget = dailyTargets[day] || (isWorkDay && weeklyCapacityCents ? Math.round(weeklyCapacityCents / workDaysList.length) : 0);
+      days[day] = {
+        revenueCents: rev,
+        targetCents: dayTarget,
+        jobCount: dayItems.length,
+        isToday: w === 0 && day === todayDayLabel,
+        isPast: dayEnd.getTime() < Date.now(),
+      };
+    }
+    return { label: monthDay, isCurrent: w === 0, days };
+  });
+
   // Historical events for trends (from unified schedule items)
   const jobEvents = scheduleItems
     .filter((item) => safeDate(item.startAt))
@@ -455,138 +493,45 @@ export default async function CapacityPage({
       <ErrorBoundary>
       <div className="dashboard-container">
 
-        {/* Quick Stats */}
-        <div className="kpi-grid-secondary animate-in delay-1" style={{ marginTop: 12 }}>
-          <div className="kpi-secondary">
-            <div className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 6 }}>Avg Revenue / Day (7d)</div>
-            <div className="kpi-value-medium text-primary">{money(avgRevenuePerDay7d)}</div>
-            <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>
-              Last 7 days, weekdays only
-            </div>
-          </div>
-          <div className="kpi-secondary">
-            <div className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 6 }}>Avg Per Visit</div>
-            <div className="kpi-value-medium text-primary">
-              {kpiThisWeek.revenuePerJobCents > 0 ? money(kpiThisWeek.revenuePerJobCents) : "\u2014"}
-            </div>
-            <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>
-              {kpiThisWeek.jobCount > 0 ? `${kpiThisWeek.jobCount} booked this week` : "No visits this week"}
-            </div>
-          </div>
-          <div className="kpi-secondary">
-            <div className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 6 }}>Backlog</div>
-            <div className={`kpi-value-medium ${unscheduledJobs.length > 5 ? "text-warning" : "text-success"}`}>
-              {money(unscheduledJobs.reduce((s: number, j: any) => s + j.total_amount_cents, 0))}
-            </div>
-            <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>
-              {unscheduledJobs.length} unscheduled
-            </div>
-          </div>
-          <div className="kpi-secondary">
-            <div className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 6 }}>Week over Week</div>
-            {(() => {
-              const delta = kpiLastWeek.scheduledRevenueCents > 0
-                ? Math.round(((kpiThisWeek.scheduledRevenueCents - kpiLastWeek.scheduledRevenueCents) / kpiLastWeek.scheduledRevenueCents) * 100)
-                : 0;
-              const up = delta >= 0;
-              const diff = kpiThisWeek.scheduledRevenueCents - kpiLastWeek.scheduledRevenueCents;
-              return (
-                <>
-                  <div className={`kpi-value-medium ${up ? "text-success" : "text-critical"}`}>
-                    {delta !== 0 ? `${up ? "+" : ""}${delta}%` : "\u2014"}
-                  </div>
-                  <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>
-                    {money(kpiThisWeek.scheduledRevenueCents)} vs {money(kpiLastWeek.scheduledRevenueCents)}
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </div>
+        {/* Priority actions */}
+        {(() => {
+          const capacityGap = weeklyCapacityCents ? Math.max(0, weeklyCapacityCents - kpiThisWeek.scheduledRevenueCents) : 0;
+          const unschedCents = unscheduledJobs.reduce((s: number, j: any) => s + j.total_amount_cents, 0);
+          const lateVisitCount = visits.filter((v: any) => v.visit_status === "LATE").length;
 
-        {/* 8-Week Capacity Chart */}
-        <div className="panel animate-in delay-1" style={{ marginTop: 12, overflow: "visible" }}>
-          <div style={{ padding: "12px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Capacity</h2>
-              <span className="info-tooltip">?<span className="tooltip-text">Set weekly or monthly revenue targets, then toggle between weekly and monthly views to see how full your schedule is.</span></span>
-            </div>
-            <CapacityKpiCards
-              thisWeek={kpiThisWeek}
-              lastWeek={kpiLastWeek}
-              thisMonth={kpiThisMonth}
-              lastMonth={kpiLastMonth}
-              allTime={kpiAllTime}
-              nextWeek={kpiNextWeek}
-              nextMonth={kpiNextMonth}
-              hasTarget={!!(weeklyCapacityCents || monthlyCapacityCents)}
-              currentWeeklyCents={weeklyCapacityCents}
-              currentMonthlyCents={monthlyCapacityCents}
-              currencyCode={currencyCode}
-              adminConnectionId={adminConnectionId}
-              projectionSummary={projectionSummary}
-              targetsOnly
-            />
-          </div>
-        </div>
+          const actions: { text: string; color: string }[] = [];
+          if (capacityGap > 0) actions.push({ text: `Schedule ${money(capacityGap)} of open work this week`, color: "#f59e0b" });
+          if (unscheduledJobs.length > 0) actions.push({ text: `${unscheduledJobs.length.toLocaleString()} jobs (${money(unschedCents)}) need scheduling`, color: "#5aa6ff" });
+          if (lateVisitCount > 0) actions.push({ text: `${lateVisitCount.toLocaleString()} late visit${lateVisitCount !== 1 ? "s" : ""} need attention`, color: "#ef4444" });
+          if (approvedQuotes.length > 0) actions.push({ text: `${approvedQuotes.length.toLocaleString()} approved quotes ready to book (${money(approvedQuotes.reduce((s: number, q: any) => s + Number(q.quote_total_cents ?? 0), 0))})`, color: "#10b981" });
 
-        {/* Side by side: Daily Breakdown + Schedule Health */}
-        <div className="side-by-side animate-in delay-1" style={{ marginTop: 16 }}>
-          {/* Left: Daily Breakdown */}
-          <CapacityWeekBreakdown
-            lastWeekDaily={lastWeekDaily}
-            thisWeekDaily={thisWeekDaily}
-            nextWeekDaily={nextWeekDaily}
-            weeklyCapacityCents={weeklyCapacityCents}
+          if (actions.length === 0) return null;
+
+          return (
+            <div className="animate-in delay-1" style={{ marginTop: 12 }}>
+              <ActionStrip
+                headline={capacityGap > 0 ? `${money(capacityGap)} open this week` : "Schedule needs attention"}
+                actions={actions}
+                borderColor="#f59e0b"
+              />
+            </div>
+          );
+        })()}
+
+        {/* 8-Week Capacity Heatmap */}
+        <div className="panel animate-in delay-1" style={{ marginTop: 12, padding: "16px 20px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>8-Week Schedule</h2>
+            {weeklyCapacityCents && weeklyCapacityCents > 0 && (
+              <span className="text-muted" style={{ fontSize: 11 }}>Target: {money(weeklyCapacityCents)}/week</span>
+            )}
+          </div>
+          <CapacityHeatmap
+            weeks={heatmapWeeks}
+            dayLabels={dayLabels.filter(d => workDaysList.includes(d))}
+            weeklyTargetCents={weeklyCapacityCents || 0}
             currencyCode={currencyCode}
           />
-
-          {/* Right: Schedule Health */}
-          <div className="panel" style={{ padding: "16px 20px", overflow: "visible", display: "flex", flexDirection: "column" }}>
-            <h2 className="text-primary" style={{ fontSize: 14, fontWeight: 700, margin: "0 0 14px" }}>Schedule Health</h2>
-            {(() => {
-              const lateVisits = visits.filter((v: any) => v.visit_status === "LATE");
-              const upcomingVisits = visits.filter((v: any) => {
-                if (v.visit_status !== "UPCOMING") return false;
-                const s = v.start_at ? new Date(v.start_at) : null;
-                return s && s >= thisWeekStart && s < nextWeekEnd;
-              });
-              const completedThisWeek = visits.filter((v: any) => {
-                const c = v.completed_at ? new Date(v.completed_at) : null;
-                return c && c >= thisWeekStart && c < thisWeekEnd;
-              });
-
-              const items = [
-                { label: "Late Visits", value: lateVisits.length, color: lateVisits.length > 0 ? "#ef4444" : "#10b981", detail: lateVisits.length > 0 ? "Behind schedule" : "All on time" },
-                { label: "Upcoming (2 weeks)", value: upcomingVisits.length, color: "#5aa6ff", detail: `${upcomingVisits.length} visits scheduled` },
-                { label: "Completed This Week", value: completedThisWeek.length, color: "#10b981", detail: `${completedThisWeek.length} done` },
-                { label: "Unscheduled", value: unscheduledJobs.length, color: unscheduledJobs.length > 5 ? "#ef4444" : unscheduledJobs.length > 0 ? "#f59e0b" : "#10b981", detail: unscheduledJobs.length > 0 ? `${money(unscheduledJobs.reduce((s: number, j: any) => s + j.total_amount_cents, 0))} to book` : "All scheduled" },
-              ];
-
-              return (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, justifyContent: "center" }}>
-                  {items.map((item, i) => (
-                    <div key={i} className="hover-lift" style={{
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                      padding: "16px 18px", borderRadius: 12,
-                      borderLeft: `3px solid ${item.color}`,
-                      background: `${item.color}08`,
-                      cursor: "default",
-                      transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease",
-                    }}>
-                      <div>
-                        <div className="text-primary" style={{ fontSize: 14, fontWeight: 700 }}>{item.label}</div>
-                        <div className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>{item.detail}</div>
-                      </div>
-                      <div style={{ fontSize: 28, fontWeight: 800, color: item.color, letterSpacing: -0.5 }}>
-                        {item.value}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-          </div>
         </div>
 
         {/* Action Lists: Unscheduled + Late */}
@@ -611,6 +556,13 @@ export default async function CapacityPage({
             })
             .sort((a: any, b: any) => b.days_late - a.days_late)
           }
+          approvedQuotes={approvedQuotes.map((q: any) => ({
+            quote_number: q.quote_number || "",
+            quote_title: q.quote_title || "",
+            quote_total_cents: Number(q.quote_total_cents ?? 0),
+            quote_url: q.quote_url || "",
+            updated_at_jobber: q.updated_at_jobber || null,
+          }))}
           currencyCode={currencyCode}
         />
 

@@ -22,6 +22,14 @@ type LateVisit = {
   jobber_url?: string;
 };
 
+type ApprovedQuote = {
+  quote_number: string;
+  quote_title: string;
+  quote_total_cents: number;
+  quote_url: string;
+  updated_at_jobber: string | null;
+};
+
 type Bucket = {
   key: string;
   label: string;
@@ -163,21 +171,25 @@ function GroupedTable({ buckets, money }: { buckets: Bucket[]; money: (c: number
 export function CapacityActionList({
   unscheduledJobs,
   lateVisits = [],
+  approvedQuotes = [],
   currencyCode,
 }: {
   unscheduledJobs: UnscheduledJob[];
   lateVisits?: LateVisit[];
+  approvedQuotes?: ApprovedQuote[];
   currencyCode: string;
 }) {
-  const [tab, setTab] = useState<"unscheduled" | "late">("unscheduled");
+  type TabKey = "unscheduled" | "late" | "approved";
+  const [tab, setTab] = useState<TabKey>("unscheduled");
   const isLight = useIsLight();
   const [hovered, setHovered] = useState<string | null>(null);
   const money = useMemo(() => (cents: number) => moneyFmt(cents, currencyCode), [currencyCode]);
 
-  if (unscheduledJobs.length === 0 && lateVisits.length === 0) return null;
+  if (unscheduledJobs.length === 0 && lateVisits.length === 0 && approvedQuotes.length === 0) return null;
 
   const totalCents = unscheduledJobs.reduce((s, j) => s + j.total_amount_cents, 0);
-  const activeTab = tab === "late" && lateVisits.length === 0 ? "unscheduled" : tab;
+  const approvedTotalCents = approvedQuotes.reduce((s, q) => s + Number(q.quote_total_cents ?? 0), 0);
+  const activeTab: TabKey = tab === "late" && lateVisits.length === 0 ? "unscheduled" : tab === "approved" && approvedQuotes.length === 0 ? "unscheduled" : tab;
 
   // Bucket unscheduled by value
   const buckets: Bucket[] = [
@@ -219,14 +231,16 @@ export function CapacityActionList({
     boxShadow: active ? "0 4px 12px rgba(124,92,255,0.3)" : "none", whiteSpace: "nowrap",
   });
 
-  const titles = { unscheduled: "Unscheduled Jobs", late: "Late Visits" };
-  const tooltips = {
+  const titles: Record<TabKey, string> = { unscheduled: "Unscheduled Jobs", late: "Late Visits", approved: "Approved Quotes" };
+  const tooltips: Record<TabKey, string> = {
     unscheduled: "Jobs without a scheduled date. Schedule these to fill your capacity gaps.",
     late: "Visits that are past their scheduled date and haven't been completed. These need immediate attention.",
+    approved: "Quotes your customers approved. This work is ready to be scheduled.",
   };
-  const subtitles = {
-    unscheduled: `${unscheduledJobs.length} ${unscheduledJobs.length === 1 ? "job" : "jobs"} totaling ${money(totalCents)} not yet scheduled`,
-    late: `${lateVisits.length} visit${lateVisits.length !== 1 ? "s" : ""} behind schedule`,
+  const subtitles: Record<TabKey, string> = {
+    unscheduled: `${unscheduledJobs.length.toLocaleString()} ${unscheduledJobs.length === 1 ? "job" : "jobs"} totaling ${money(totalCents)} not yet scheduled`,
+    late: `${lateVisits.length.toLocaleString()} visit${lateVisits.length !== 1 ? "s" : ""} behind schedule`,
+    approved: `${approvedQuotes.length.toLocaleString()} approved quote${approvedQuotes.length !== 1 ? "s" : ""} totaling ${money(approvedTotalCents)} ready to book`,
   };
 
   return (
@@ -273,11 +287,16 @@ export function CapacityActionList({
           )}
           <div style={pillGroup}>
             <button onClick={() => setTab("unscheduled")} onMouseEnter={() => setHovered("unsched")} onMouseLeave={() => setHovered(null)} style={btnStyle(activeTab === "unscheduled", hovered === "unsched")}>
-              Unscheduled ({unscheduledJobs.length})
+              Unscheduled ({unscheduledJobs.length.toLocaleString()})
             </button>
             <button onClick={() => setTab("late")} onMouseEnter={() => setHovered("late")} onMouseLeave={() => setHovered(null)} style={btnStyle(activeTab === "late", hovered === "late")}>
-              Late ({lateVisits.length})
+              Late ({lateVisits.length.toLocaleString()})
             </button>
+            {approvedQuotes.length > 0 && (
+              <button onClick={() => setTab("approved")} onMouseEnter={() => setHovered("approved")} onMouseLeave={() => setHovered(null)} style={btnStyle(activeTab === "approved", hovered === "approved")}>
+                Approved ({approvedQuotes.length.toLocaleString()})
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -409,6 +428,54 @@ export function CapacityActionList({
       {activeTab === "unscheduled" && unscheduledJobs.length === 0 && (
         <div className="text-muted" style={{ textAlign: "center", padding: 24, fontSize: 14 }}>
           No unscheduled jobs.
+        </div>
+      )}
+
+      {activeTab === "approved" && approvedQuotes.length > 0 && (
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Quote</th>
+                <th style={{ textAlign: "center" }}>Approved</th>
+                <th style={{ textAlign: "right" }}>Amount</th>
+                <th style={{ textAlign: "center", width: 70 }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {approvedQuotes.map((q, i) => (
+                <tr key={q.quote_number || i}>
+                  <td>
+                    <div className="text-primary" style={{ fontWeight: 700 }}>{q.quote_title || `Quote #${q.quote_number}`}</div>
+                    <div className="text-muted" style={{ fontSize: 11 }}>#{q.quote_number}</div>
+                  </td>
+                  <td style={{ textAlign: "center" }}>
+                    <span className="text-muted" style={{ fontSize: 12 }}>
+                      {q.updated_at_jobber ? fmtDate(q.updated_at_jobber) : "\u2014"}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    <span className="text-primary" style={{ fontWeight: 800 }}>{money(Number(q.quote_total_cents ?? 0))}</span>
+                  </td>
+                  <td style={{ textAlign: "center" }}>
+                    {q.quote_url ? (
+                      <a href={q.quote_url} target="_blank" rel="noreferrer" className="btn" style={{ padding: "4px 10px", fontSize: 11, textDecoration: "none" }}>
+                        Schedule
+                      </a>
+                    ) : (
+                      <span className="text-muted" style={{ fontSize: 11 }}>\u2014</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {activeTab === "approved" && approvedQuotes.length === 0 && (
+        <div className="text-muted" style={{ textAlign: "center", padding: 24, fontSize: 14 }}>
+          No approved quotes waiting to be scheduled.
         </div>
       )}
     </div>

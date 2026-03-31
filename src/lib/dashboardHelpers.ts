@@ -221,6 +221,9 @@ export const globalStyles = `
     box-shadow: 0 20px 40px rgba(0,0,0,0.3);
   }
 
+  .chart-bar-hover .chart-bar-tooltip { opacity: 0 !important; }
+  .chart-bar-hover:hover .chart-bar-tooltip { opacity: 1 !important; }
+
   .hover-glow {
     transition: box-shadow 0.2s ease;
   }
@@ -234,7 +237,7 @@ export const globalStyles = `
 
   /* Mobile-first responsive */
   .dashboard-container {
-    max-width: 1280px;
+    max-width: 1600px;
     margin: 0 auto;
     padding: 16px;
     width: 100%;
@@ -655,7 +658,7 @@ export const globalStyles = `
   /* Theme-aware text classes */
   .text-primary { color: #EAF1FF; }
   .text-secondary { color: rgba(234,241,255,0.7); }
-  .text-muted { color: rgba(234,241,255,0.5); }
+  .text-muted { color: rgba(234,241,255,0.65); }
 
   html[data-theme="light"] .text-primary { color: #1e293b !important; }
   html[data-theme="light"] .text-secondary { color: #475569 !important; }
@@ -844,12 +847,14 @@ export const globalStyles = `
     background: rgba(255,255,255,0.02);
     position: sticky;
     top: 0;
+    align-self: flex-start;
     height: 100vh;
     overflow-y: auto;
   }
   .app-main {
     flex: 1;
     min-width: 0;
+    overflow-x: hidden;
   }
   html[data-theme="light"] .sidebar-nav {
     background: #f8fafc !important;

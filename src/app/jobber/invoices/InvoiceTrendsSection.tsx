@@ -8,6 +8,8 @@ type InvoiceEvent = { ts: number; amount: number; type: "sent" | "paid" };
 export type AgingBucket = { label: string; color: string; balanceCents: number; count: number };
 type Granularity = "week" | "month";
 
+type PaymentTiming = { paidTs: number; dueTs: number };
+
 type Props = {
   events: InvoiceEvent[];
   agingBuckets: AgingBucket[];
@@ -15,6 +17,7 @@ type Props = {
   currencyCode: string;
   draftCount?: number;
   draftCents?: number;
+  paymentTimings?: PaymentTiming[];
 };
 
 function startOfDayUTC(d: Date) { return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); }
@@ -40,14 +43,16 @@ function defaultRange(preset: string) {
 }
 
 /* ---- Aging donut panel ---- */
-export function AgingDonutPanel({ buckets, totalCents, currencyCode, isLight }: {
+export function AgingDonutPanel({ buckets, totalCents, currencyCode, isLight, compact, donutSize }: {
   buckets: AgingBucket[];
   totalCents: number;
   currencyCode: string;
   isLight: boolean;
+  compact?: boolean;
+  donutSize?: number;
 }) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-  const size = 180;
+  const size = donutSize || 180;
   const svgPad = 8; // extra padding for hover stroke expansion
   const stroke = 24;
   const cx = size / 2;
@@ -71,22 +76,35 @@ export function AgingDonutPanel({ buckets, totalCents, currencyCode, isLight }: 
   const hoveredPct = hoveredBucket && totalCents > 0 ? Math.round((hoveredBucket.balanceCents / totalCents) * 100) : 0;
 
   return (
-    <div className="panel hover-lift" style={{ padding: 16, height: "100%", display: "flex", flexDirection: "column", overflow: "visible" }}>
-      <div style={{ marginBottom: 12 }}>
+    <div className={compact ? "" : "panel hover-lift"} style={{ padding: compact ? 0 : 16, height: "100%", display: "flex", flexDirection: "column", overflow: "visible" }}>
+      {!compact && <div style={{ marginBottom: 12 }}>
         <div className="text-primary" style={{ fontWeight: 700, fontSize: 14 }}>Invoices by Days Past Due</div>
         <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
           {nonEmpty.length > 0
             ? `${buckets.reduce((s, b) => s + b.count, 0)} invoices across ${nonEmpty.length} ${nonEmpty.length === 1 ? "category" : "categories"}`
             : "No outstanding invoices"}
         </div>
-      </div>
+      </div>}
 
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
         <div style={{ position: "relative", width: size + svgPad * 2, height: size + svgPad * 2, margin: `${-svgPad}px` }}>
           <svg width={size + svgPad * 2} height={size + svgPad * 2} viewBox={`${-svgPad} ${-svgPad} ${size + svgPad * 2} ${size + svgPad * 2}`}>
+            <defs>
+              <filter id="donut-shadow">
+                <feDropShadow dx="0" dy="1" stdDeviation="2" floodOpacity="0.15" />
+              </filter>
+              <filter id="donut-inner-shadow">
+                <feDropShadow dx="0" dy="1" stdDeviation="1" floodOpacity="0.1" />
+              </filter>
+            </defs>
+            {/* Track with inner shadow look */}
             <circle cx={cx} cy={cy} r={radius} fill="none"
-              stroke={isLight ? "#f1f5f9" : "rgba(255,255,255,0.06)"}
+              stroke={isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)"}
+              strokeWidth={stroke + 2} />
+            <circle cx={cx} cy={cy} r={radius} fill="none"
+              stroke={isLight ? "#f1f5f9" : "rgba(255,255,255,0.04)"}
               strokeWidth={stroke} />
+            {/* Segments with shadow */}
             {segments.map((seg, i) => (
               <circle key={seg.label} cx={cx} cy={cy} r={radius} fill="none"
                 stroke={seg.color}
@@ -95,6 +113,7 @@ export function AgingDonutPanel({ buckets, totalCents, currencyCode, isLight }: 
                 strokeDashoffset={-circumference * seg.startOffset}
                 transform={`rotate(-90 ${cx} ${cy})`}
                 opacity={hoveredIdx !== null && hoveredIdx !== i ? 0.4 : 1}
+                filter={hoveredIdx === i ? "url(#donut-shadow)" : ""}
                 style={{ cursor: "pointer", transition: "stroke-width 0.2s ease, opacity 0.2s ease" }}
                 onMouseEnter={() => setHoveredIdx(i)}
                 onMouseLeave={() => setHoveredIdx(null)}
@@ -111,64 +130,51 @@ export function AgingDonutPanel({ buckets, totalCents, currencyCode, isLight }: 
                 <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: hoveredBucket.color, marginBottom: 3 }}>
                   {hoveredBucket.label}
                 </div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: isLight ? "#1e293b" : "#EAF1FF", letterSpacing: -0.5, lineHeight: 1 }}>
-                  {money(hoveredBucket.balanceCents)}
+                <div className="text-primary" style={{ fontSize: 28, fontWeight: 800, letterSpacing: -1, lineHeight: 1 }}>
+                  {hoveredBucket.count}
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: hoveredBucket.color, marginTop: 3 }}>
-                  {hoveredPct}% &bull; {hoveredBucket.count} inv
+                <div className="text-muted" style={{ fontSize: 11, marginTop: 3 }}>
+                  invoice{hoveredBucket.count !== 1 ? "s" : ""}
                 </div>
               </>
             ) : (
               <>
-                <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, color: isLight ? "#94a3b8" : "rgba(255,255,255,0.4)", marginBottom: 3 }}>
-                  Outstanding
-                </div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: isLight ? "#1e293b" : "#EAF1FF", letterSpacing: -0.5, lineHeight: 1 }}>
-                  {money(totalCents)}
+                <div className="text-primary" style={{ fontSize: 28, fontWeight: 800, letterSpacing: -1, lineHeight: 1 }}>
+                  {buckets.reduce((s, b) => s + b.count, 0)}
                 </div>
                 <div className="text-muted" style={{ fontSize: 11, marginTop: 3 }}>
-                  {buckets.reduce((s, b) => s + b.count, 0)} invoices
+                  invoices
                 </div>
               </>
             )}
           </div>
         </div>
 
-        {/* Legend rows */}
-        <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 6 }}>
-          {buckets.map((bucket, i) => {
-            const pct = totalCents > 0 ? Math.round((bucket.balanceCents / totalCents) * 100) : 0;
-            const isHov = hoveredIdx === i;
+        {/* Legend rows — active first, empty at bottom */}
+        <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 0 }}>
+          {[...buckets].sort((a, b) => (b.balanceCents > 0 ? 1 : 0) - (a.balanceCents > 0 ? 1 : 0)).map((bucket) => {
+            const origIdx = nonEmpty.indexOf(bucket);
+            const isHov = hoveredIdx === origIdx && origIdx >= 0;
+            const empty = bucket.balanceCents === 0;
             return (
               <div key={bucket.label}
-                onMouseEnter={() => { if (bucket.balanceCents > 0) setHoveredIdx(nonEmpty.indexOf(bucket)); }}
+                onMouseEnter={() => { if (!empty) setHoveredIdx(origIdx); }}
                 onMouseLeave={() => setHoveredIdx(null)}
                 style={{
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "6px 10px", borderRadius: 8,
+                  display: "grid", gridTemplateColumns: "20px 30px 1fr auto", alignItems: "center", gap: 4,
+                  padding: compact ? "6px 0" : "7px 10px", borderRadius: 6,
                   background: isHov ? (isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)") : "transparent",
-                  cursor: bucket.balanceCents > 0 ? "pointer" : "default",
+                  cursor: empty ? "default" : "pointer",
                   transition: "background 0.15s ease",
-                  opacity: bucket.balanceCents > 0 ? 1 : 0.35,
+                  opacity: empty ? 0.4 : 1,
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: 3, background: bucket.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: isLight ? "#334155" : "rgba(255,255,255,0.8)" }}>
-                    {bucket.label}
-                  </span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span className="text-muted" style={{ fontSize: 11 }}>
-                    {bucket.count} inv
-                  </span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: bucket.balanceCents > 0 ? bucket.color : (isLight ? "#cbd5e1" : "rgba(255,255,255,0.15)"), minWidth: 60, textAlign: "right" }}>
-                    {bucket.balanceCents > 0 ? money(bucket.balanceCents) : "\u2014"}
-                  </span>
-                  {bucket.balanceCents > 0 && (
-                    <span className="text-muted" style={{ fontSize: 10, minWidth: 28, textAlign: "right" }}>{pct}%</span>
-                  )}
-                </div>
+                <span style={{ width: 10, height: 10, borderRadius: 3, background: empty ? (isLight ? "#cbd5e1" : "rgba(255,255,255,0.15)") : bucket.color, flexShrink: 0 }} />
+                <span className="text-primary" style={{ fontSize: 14, fontWeight: 800, textAlign: "right" }}>{bucket.count.toLocaleString()}</span>
+                <span className="text-primary" style={{ fontSize: 13, fontWeight: 600 }}>{bucket.label}</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: empty ? (isLight ? "#cbd5e1" : "rgba(255,255,255,0.15)") : bucket.color, textAlign: "right" }}>
+                  {empty ? "\u2014" : money(bucket.balanceCents)}
+                </span>
               </div>
             );
           })}
@@ -179,7 +185,7 @@ export function AgingDonutPanel({ buckets, totalCents, currencyCode, isLight }: 
 }
 
 /* ---- Main component ---- */
-export function InvoiceTrendsSection({ events, agingBuckets, totalOutstandingCents, currencyCode, draftCount, draftCents }: Props) {
+export function InvoiceTrendsSection({ events, agingBuckets, totalOutstandingCents, currencyCode, draftCount, draftCents, paymentTimings = [] }: Props) {
   const [range, setRangeRaw] = useState("8w");
   const [g, setGRaw] = useState<Granularity>("week");
 
@@ -250,15 +256,38 @@ export function InvoiceTrendsSection({ events, agingBuckets, totalOutstandingCen
     });
   }, [range, g, events]);
 
+  // Avg days to pay — filtered by selected range
+  const avgDaysToPay = useMemo(() => {
+    if (paymentTimings.length === 0) return 0;
+    const r = defaultRange(range);
+    const rangeStart = r.start.getTime();
+    const rangeEnd = addDaysUTC(r.end, 1).getTime();
+    const inRange = paymentTimings.filter(t => t.paidTs >= rangeStart && t.paidTs < rangeEnd);
+    if (inRange.length === 0) return 0;
+    const total = inRange.reduce((s, t) => s + Math.max(0, (t.paidTs - t.dueTs) / 86400000), 0);
+    return Math.round(total / inRange.length);
+  }, [paymentTimings, range]);
+
   return (
     <div className="panel animate-in delay-2" style={{ padding: 0, marginTop: 16, overflow: "visible" }}>
       <div style={{ padding: "12px 16px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
               Collections & Aging
             </h2>
-            <span className="info-tooltip">?<span className="tooltip-text">Left: Cash collected vs invoiced per period — are you keeping up? Right: How old your current outstanding balance is.</span></span>
+            <span className="info-tooltip">?<span className="tooltip-text">How fast you&apos;re collecting money. The chart shows cash invoiced vs collected each period. The donut shows how old your unpaid invoices are. Avg days to pay = time from due date to payment.</span></span>
+            {avgDaysToPay > 0 && (
+              <>
+                <div style={{ width: 1, height: 18, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)" }} />
+                <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                  <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5, color: avgDaysToPay <= 7 ? "#10b981" : avgDaysToPay <= 14 ? "#f59e0b" : "#ef4444" }}>
+                    {avgDaysToPay} days
+                  </span>
+                  <span className="text-muted" style={{ fontSize: 11, fontWeight: 600 }}>avg to pay</span>
+                </div>
+              </>
+            )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={labelStyle}>Range</span>

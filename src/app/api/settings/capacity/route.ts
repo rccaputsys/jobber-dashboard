@@ -3,17 +3,26 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getUser } from "@/lib/supabaseAuth";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const user = await getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Support admin reading a specific connection
+    const url = new URL(req.url);
+    const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").split(",").map(e => e.trim()).filter(Boolean);
+    const isAdmin = ADMIN_EMAILS.includes(user.email || "");
+    const connectionId = isAdmin ? url.searchParams.get("connection_id") : null;
+
+    const eqField = connectionId ? "id" : "user_id";
+    const eqValue = connectionId || user.id;
+
     const { data: conn } = await supabaseAdmin
       .from("jobber_connections")
-      .select("weekly_capacity_cents,monthly_capacity_cents,capacity_daily_targets,capacity_work_days,capacity_targets_set")
-      .eq("user_id", user.id)
+      .select("id,weekly_capacity_cents,monthly_capacity_cents,capacity_daily_targets,capacity_work_days,capacity_targets_set,annual_sales_target_cents,close_rate_target")
+      .eq(eqField, eqValue)
       .maybeSingle();
 
     return NextResponse.json({
@@ -23,6 +32,8 @@ export async function GET() {
       capacity_daily_targets: (conn as any)?.capacity_daily_targets ?? {},
       capacity_work_days: (conn as any)?.capacity_work_days ?? ["Mon", "Tue", "Wed", "Thu", "Fri"],
       capacity_targets_set: (conn as any)?.capacity_targets_set ?? false,
+      annual_sales_target_cents: (conn as any)?.annual_sales_target_cents ?? null,
+      close_rate_target: (conn as any)?.close_rate_target ?? null,
     });
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: String(e?.message ?? e) }, { status: 500 });
@@ -62,6 +73,12 @@ export async function POST(req: Request) {
     }
     if ("capacity_targets_set" in body) {
       update.capacity_targets_set = !!body.capacity_targets_set;
+    }
+    if ("annual_sales_target_cents" in body) {
+      update.annual_sales_target_cents = typeof body.annual_sales_target_cents === "number" ? Math.round(body.annual_sales_target_cents) : null;
+    }
+    if ("close_rate_target" in body) {
+      update.close_rate_target = typeof body.close_rate_target === "number" ? body.close_rate_target : null;
     }
 
     if (Object.keys(update).length === 0) {

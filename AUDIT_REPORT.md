@@ -111,16 +111,51 @@
 
 ## AUDIT 3: TEST PLAN
 
-*(Test plan agent is still generating scaffolds — will be appended when complete)*
+**Current State:** Zero automated tests. No test framework installed.
 
-### Priority Test Areas
+**Setup Required:** `npm install -D vitest @playwright/test`
 
-1. **Auth & Authorization** — Every API route needs auth verification tests
-2. **Cross-Tenant Data Access** — Verify user A cannot access user B's connection data
-3. **Webhook Signature Verification** — After fix is implemented
-4. **Dashboard Computation** — Unit tests for monthRevenue, weekSnapshot, score calculations
-5. **Sync Pipeline** — Integration tests for job + visit syncing
-6. **Edge Cases** — Empty data, expired tokens, throttled API responses
+### Test Files Generated (13 files, 100+ test cases)
+
+#### Unit Tests (6 files)
+
+| File | Covers | Test Cases |
+|------|--------|-----------|
+| `tests/unit/dashboardHelpers.test.ts` | All 16 exported functions from dashboardHelpers.ts | 57 cases — safeDate, clamp, pct, date utils, money formatting, status checks |
+| `tests/unit/crypto.test.ts` | Encrypt/decrypt round-trips | 7 cases — normal, empty, special chars, nonce uniqueness, tamper detection |
+| `tests/unit/syncHelpers.test.ts` | Sync route pure functions | 16 cases — dollarsToCents, date filtering, quote leak logic |
+| `tests/unit/monthRevenue.test.ts` | Revenue computation | 7 cases — visit splitting, visitless fallback, double-counting prevention |
+| `tests/unit/fetchAllRows.test.ts` | Supabase pagination | 6 cases — single/multi page, empty, errors, stop conditions |
+| `tests/unit/jobberAuth.test.ts` | Token refresh logic | 16 cases — expiry buffer, retry logic, 429/500/400 handling |
+
+#### Integration Tests (5 files)
+
+| File | Covers | Key Scenarios |
+|------|--------|--------------|
+| `tests/integration/stripeWebhook.test.ts` | Stripe webhook handler | Signature verification, checkout.session.completed, subscription updates/deletes, payment failures |
+| `tests/integration/jobberCallback.test.ts` | OAuth callback flow | State validation, token exchange, new vs existing connections, trial setup |
+| `tests/integration/middleware.test.ts` | Route protection | Protected routes, auth redirects, **documents gap in /capacity and /invoices** |
+| `tests/integration/capacitySettings.test.ts` | Settings API | Auth checks, GET/POST, admin overrides, rounding |
+| `tests/integration/syncThrottling.test.ts` | Jobber API throttling | THROTTLED code retry, max retries, 429 Retry-After, backoff |
+
+#### E2E Tests (1 file)
+
+| File | Covers | Test Cases |
+|------|--------|-----------|
+| `tests/e2e/dashboard.spec.ts` | Full user flows (Playwright) | 30+ cases — login, dashboard load, tab navigation, sync, period toggles, dark mode, responsive |
+
+#### Documentation
+
+| File | Contents |
+|------|----------|
+| `tests/EDGE_CASES.md` | 12 edge case categories with risk assessment |
+
+### Key Testing Findings
+
+1. **Pure functions are inline, not exported** — `dollarsToCents`, `monthRevenue`, `weekSnapshot` are defined inside page components. Extract to shared modules for testability.
+2. **Stripe webhook ordering vulnerability** — No guard against out-of-order delivery. A late `subscription.updated` could overwrite a `canceled` status.
+3. **Middleware gap confirmed** — `/jobber/capacity` and `/jobber/invoices` are NOT in `protectedPaths` or `config.matcher`.
+4. **Dead code confirmed** — Lines 108-112 in `complete-signup/route.ts` are unreachable after a `return` statement.
 
 ---
 

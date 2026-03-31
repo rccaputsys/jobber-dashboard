@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useIsLight } from "@/lib/hooks";
 import { ExportCSV } from "../dashboard/ExportCSV";
+import { QuotePipeline } from "./QuotePipeline";
 
 type RequestItem = {
   title: string;
@@ -52,7 +53,13 @@ type Bucket = {
 
 function RequestsContent({ buckets, isLight }: { buckets: Bucket[]; isLight: boolean }) {
   const nonEmpty = buckets.filter(b => b.items.length > 0);
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    for (const b of buckets) init[b.key] = true;
+    return init;
+  });
+  const [showAll, setShowAll] = useState<Record<string, boolean>>({});
+  const PAGE_SIZE = 20;
   const total = buckets.reduce((s, b) => s + b.items.length, 0);
 
   return (
@@ -153,7 +160,7 @@ function RequestsContent({ buckets, isLight }: { buckets: Bucket[]; isLight: boo
                   </div>
                 </td>
               </tr>
-              {!collapsed[bucket.key] && bucket.items.map((r, i) => (
+              {!collapsed[bucket.key] && (showAll[bucket.key] ? bucket.items : bucket.items.slice(0, PAGE_SIZE)).map((r, i) => (
                 <tr key={i}>
                   <td style={{ textAlign: "center" }}>
                     <span style={{
@@ -182,6 +189,18 @@ function RequestsContent({ buckets, isLight }: { buckets: Bucket[]; isLight: boo
                   </td>
                 </tr>
               ))}
+              {!collapsed[bucket.key] && !showAll[bucket.key] && bucket.items.length > PAGE_SIZE && (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: "center", padding: "10px 16px" }}>
+                    <button onClick={() => setShowAll(prev => ({ ...prev, [bucket.key]: true }))} style={{
+                      background: "none", border: "none", cursor: "pointer",
+                      fontSize: 12, fontWeight: 700, color: "#5aa6ff", padding: "6px 16px",
+                    }}>
+                      Show all {bucket.items.length.toLocaleString()}
+                    </button>
+                  </td>
+                </tr>
+              )}
             </tbody>
           ))}
         </table>
@@ -192,6 +211,8 @@ function RequestsContent({ buckets, isLight }: { buckets: Bucket[]; isLight: boo
 
 function ChangesRequestedContent({ items, isLight }: { items: ChangeRequestedItem[]; isLight: boolean }) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [showAll, setShowAll] = useState<Record<string, boolean>>({});
+  const PAGE_SIZE = 20;
 
   // Bucket by wait time (sorted descending — oldest first)
   const buckets = [
@@ -301,7 +322,7 @@ function ChangesRequestedContent({ items, isLight }: { items: ChangeRequestedIte
                   </div>
                 </td>
               </tr>
-              {!collapsed[bucket.key] && bucket.items.map((item, i) => (
+              {!collapsed[bucket.key] && (showAll[bucket.key] ? bucket.items : bucket.items.slice(0, PAGE_SIZE)).map((item, i) => (
                 <tr key={i}>
                   <td style={{ textAlign: "center" }}>
                     <span style={{
@@ -326,6 +347,18 @@ function ChangesRequestedContent({ items, isLight }: { items: ChangeRequestedIte
                   </td>
                 </tr>
               ))}
+              {!collapsed[bucket.key] && !showAll[bucket.key] && bucket.items.length > PAGE_SIZE && (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: "center", padding: "10px 16px" }}>
+                    <button onClick={() => setShowAll(prev => ({ ...prev, [bucket.key]: true }))} style={{
+                      background: "none", border: "none", cursor: "pointer",
+                      fontSize: 12, fontWeight: 700, color: "#5aa6ff", padding: "6px 16px",
+                    }}>
+                      Show all {bucket.items.length.toLocaleString()}
+                    </button>
+                  </td>
+                </tr>
+              )}
             </tbody>
           ))}
         </table>
@@ -334,20 +367,25 @@ function ChangesRequestedContent({ items, isLight }: { items: ChangeRequestedIte
   );
 }
 
+type PipelineStage = { label: string; count: number; value: string };
+
 export function SalesActionTabs({
   requestCount,
   children,
   requests,
   quoteExportData,
   changesRequested,
+  pipelineStages,
 }: {
   requestCount: number;
   children: React.ReactNode;
   requests: RequestItem[];
   quoteExportData: Record<string, unknown>[];
   changesRequested: ChangeRequestedItem[];
+  pipelineStages?: PipelineStage[];
 }) {
   const [tab, setTab] = useState<"quotes" | "requests" | "changes">("quotes");
+  const [pipelineSelected, setPipelineSelected] = useState<string | null>(null);
   const isLight = useIsLight();
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -395,8 +433,30 @@ export function SalesActionTabs({
     boxShadow: active ? "0 4px 12px rgba(124,92,255,0.3)" : "none", whiteSpace: "nowrap",
   });
 
+  // Pipeline click → switch tabs
+  function handlePipelineClick(label: string | null) {
+    if (label === pipelineSelected) { setPipelineSelected(null); return; }
+    setPipelineSelected(label);
+    if (label === "Requests") setTab("requests");
+    else if (label === "Changes Requested") setTab("changes");
+    else setTab("quotes");
+  }
+
   return (
     <div>
+      {/* Pipeline */}
+      {pipelineStages && (
+        <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: `1px solid ${isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"}` }}>
+          <QuotePipeline
+            stages={pipelineStages}
+            lostCount={0}
+            lostValue=""
+            selected={pipelineSelected}
+            onSelect={handlePipelineClick}
+          />
+        </div>
+      )}
+
       {/* Header: title + tabs + export */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
         <div>

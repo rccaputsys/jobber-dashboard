@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useIsLight } from "@/lib/hooks";
 
 type PeriodMetrics = {
@@ -122,131 +121,31 @@ function Gauge({ fillRate, size = 170, isLight = false }: { fillRate: number; si
   );
 }
 
-/* ---- Reusable target input ---- */
-function TargetInput({ label, field, currentCents, currencyCode, isLight, adminConnectionId }: {
+/* ---- Display-only target label ---- */
+function TargetLabel({ label, currentCents, currencyCode, isLight }: {
   label: string;
-  field: string; // "weekly_capacity_cents" or "monthly_capacity_cents"
   currentCents: number | null;
   currencyCode: string;
   isLight: boolean;
-  adminConnectionId?: string;
 }) {
-  const router = useRouter();
-  const [editing, setEditing] = useState(false);
-  const [dollars, setDollars] = useState(currentCents ? String(currentCents / 100) : "");
-  const [saving, setSaving] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
   const money = (v: number) => {
     try {
       return new Intl.NumberFormat("en-US", { style: "currency", currency: currencyCode, maximumFractionDigits: 0 }).format(v);
     } catch { return `$${v.toLocaleString()}`; }
   };
 
-  async function save() {
-    const val = parseFloat(dollars.replace(/,/g, ""));
-    if (isNaN(val) || val < 0) return;
-    setSaving(true);
-    try {
-      await fetch("/api/settings/capacity", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [field]: Math.round(val * 100), ...(adminConnectionId ? { connection_id: adminConnectionId } : {}) }),
-      });
-      setEditing(false);
-      // Notify onboarding checklist that a target was saved
-      try { window.dispatchEvent(new CustomEvent("accuinsight:target-saved")); } catch {}
-      router.refresh();
-    } finally { setSaving(false); }
-  }
-
-  function handleChange(raw: string) {
-    setDollars(raw.replace(/[^0-9.]/g, ""));
-  }
-
-  const displayValue = dollars && !isNaN(Number(dollars))
-    ? Number(dollars).toLocaleString("en-US")
-    : dollars;
-
-  if (!editing && currentCents) {
-    return (
-      <button
-        onClick={() => { setDollars(String(currentCents / 100)); setEditing(true); setTimeout(() => inputRef.current?.focus(), 0); }}
-        style={{
-          display: "flex", alignItems: "center", gap: 6,
-          padding: "6px 12px", borderRadius: 8, border: "none",
-          background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.05)",
-          cursor: "pointer", transition: "all 0.15s ease",
-        }}
-      >
-        <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3, color: isLight ? "#94a3b8" : "rgba(255,255,255,0.4)" }}>
-          {label}
-        </span>
-        <span style={{ fontSize: 13, fontWeight: 800, color: isLight ? "#1e293b" : "#EAF1FF" }}>
-          {money(currentCents / 100)}
-        </span>
-        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.4 }}>
-          <path d="M8.5 1.5l2 2-7 7H1.5V8.5l7-7z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-    );
-  }
-
-  if (!editing && !currentCents) {
-    return (
-      <button
-        onClick={() => { setEditing(true); setTimeout(() => inputRef.current?.focus(), 0); }}
-        style={{
-          display: "flex", alignItems: "center", gap: 6,
-          padding: "6px 12px", borderRadius: 8,
-          border: `1px dashed ${isLight ? "#cbd5e1" : "rgba(255,255,255,0.15)"}`,
-          background: "transparent", cursor: "pointer", transition: "all 0.15s ease",
-          color: isLight ? "#94a3b8" : "rgba(255,255,255,0.4)",
-          fontSize: 11, fontWeight: 600,
-        }}
-      >
-        <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>
-          {label}
-        </span>
-        <span>+ Set</span>
-      </button>
-    );
-  }
-
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3, color: isLight ? "#94a3b8" : "rgba(255,255,255,0.4)", marginRight: 2 }}>
+    <div style={{
+      display: "flex", alignItems: "center", gap: 6,
+      padding: "6px 12px", borderRadius: 8,
+      background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.05)",
+    }}>
+      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3, color: isLight ? "#94a3b8" : "rgba(255,255,255,0.4)" }}>
         {label}
       </span>
-      <div style={{
-        display: "flex", alignItems: "center",
-        border: `1px solid ${isLight ? "#7c5cff40" : "rgba(124,92,255,0.3)"}`,
-        borderRadius: 8, overflow: "hidden",
-        background: isLight ? "rgba(124,92,255,0.05)" : "rgba(124,92,255,0.1)",
-      }}>
-        <span style={{ padding: "5px 0 5px 8px", fontSize: 12, fontWeight: 700, color: isLight ? "#64748b" : "rgba(255,255,255,0.5)" }}>$</span>
-        <input
-          ref={inputRef}
-          type="text"
-          inputMode="decimal"
-          value={displayValue}
-          onChange={(e) => handleChange(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
-          autoFocus
-          placeholder="0"
-          style={{
-            width: 70, padding: "5px 6px 5px 3px", border: "none",
-            background: "transparent", color: isLight ? "#1e293b" : "#fff",
-            fontSize: 12, fontWeight: 700, outline: "none",
-          }}
-        />
-      </div>
-      <button onClick={save} disabled={saving || !dollars} className="btn" style={{ padding: "5px 10px", fontSize: 11, background: "rgba(16,185,129,0.15)", borderColor: "rgba(16,185,129,0.4)", opacity: saving || !dollars ? 0.5 : 1 }}>
-        {saving ? "..." : "Save"}
-      </button>
-      <button onClick={() => setEditing(false)} className="btn" style={{ padding: "5px 8px", fontSize: 11 }}>
-        <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M9 3L3 9M3 3l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-      </button>
+      <span style={{ fontSize: 13, fontWeight: 800, color: isLight ? "#1e293b" : "#EAF1FF" }}>
+        {currentCents ? money(currentCents / 100) : "Not set"}
+      </span>
     </div>
   );
 }
@@ -331,9 +230,9 @@ export function CapacityKpiCards({
   if (targetsOnly) {
     return (
       <div data-tour="capacity-target" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "4px 8px", borderRadius: 8 }}>
-        <TargetInput label="Weekly Target" field="weekly_capacity_cents" currentCents={currentWeeklyCents} currencyCode={currencyCode} isLight={isLight} adminConnectionId={adminConnectionId} />
+        <TargetLabel label="Weekly Target" currentCents={currentWeeklyCents} currencyCode={currencyCode} isLight={isLight} />
         <div style={{ width: 1, height: 20, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)" }} />
-        <TargetInput label="Monthly Target" field="monthly_capacity_cents" currentCents={currentMonthlyCents} currencyCode={currencyCode} isLight={isLight} adminConnectionId={adminConnectionId} />
+        <TargetLabel label="Monthly Target" currentCents={currentMonthlyCents} currencyCode={currencyCode} isLight={isLight} />
       </div>
     );
   }
@@ -348,9 +247,9 @@ export function CapacityKpiCards({
         borderBottom: `1px solid ${isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"}`,
       }}>
         <div data-tour="capacity-target" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "4px 8px", borderRadius: 8 }}>
-          <TargetInput label="Weekly Target" field="weekly_capacity_cents" currentCents={currentWeeklyCents} currencyCode={currencyCode} isLight={isLight} adminConnectionId={adminConnectionId} />
+          <TargetLabel label="Weekly Target" currentCents={currentWeeklyCents} currencyCode={currencyCode} isLight={isLight} />
           <div style={{ width: 1, height: 20, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)" }} />
-          <TargetInput label="Monthly Target" field="monthly_capacity_cents" currentCents={currentMonthlyCents} currencyCode={currencyCode} isLight={isLight} adminConnectionId={adminConnectionId} />
+          <TargetLabel label="Monthly Target" currentCents={currentMonthlyCents} currencyCode={currencyCode} isLight={isLight} />
         </div>
         <div style={pillGroup}>
           {options.map((o) => (

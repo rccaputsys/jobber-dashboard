@@ -1,265 +1,306 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useIsLight } from "@/lib/hooks";
 
-const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
-const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAY_KEYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+type Day = typeof DAY_KEYS[number];
 
-type DayConfig = Record<typeof DAY_KEYS[number], { enabled: boolean; target: number }>;
-
-const DEFAULT_CONFIG: DayConfig = {
-  mon: { enabled: true, target: 0 },
-  tue: { enabled: true, target: 0 },
-  wed: { enabled: true, target: 0 },
-  thu: { enabled: true, target: 0 },
-  fri: { enabled: true, target: 0 },
-  sat: { enabled: false, target: 0 },
-  sun: { enabled: false, target: 0 },
+type Props = {
+  currentWeeklyCents: number | null;
+  currentMonthlyCents: number | null;
+  currentDailyTargets: Record<string, number>;
+  currentWorkDays: string[];
+  weeklyJobTarget: number;
+  monthlyJobTarget: number;
+  currencyCode: string;
+  adminConnectionId?: string;
 };
+
+function moneyFmt(cents: number, code: string): string {
+  try { return new Intl.NumberFormat("en-US", { style: "currency", currency: code, maximumFractionDigits: 0 }).format(cents / 100); }
+  catch { return `$${Math.round(cents / 100).toLocaleString()}`; }
+}
 
 export function CapacitySettings({
   currentWeeklyCents,
+  currentMonthlyCents,
+  currentDailyTargets,
+  currentWorkDays,
+  weeklyJobTarget: initialWeeklyJobTarget,
+  monthlyJobTarget: initialMonthlyJobTarget,
   currencyCode,
-}: {
-  currentWeeklyCents: number | null;
-  currencyCode: string;
-}) {
+  adminConnectionId,
+}: Props) {
   const router = useRouter();
   const isLight = useIsLight();
+  const money = useCallback((c: number) => moneyFmt(c, currencyCode), [currencyCode]);
+
+  // Form state
   const [weeklyDollars, setWeeklyDollars] = useState(currentWeeklyCents ? String(currentWeeklyCents / 100) : "");
-  const [editingWeekly, setEditingWeekly] = useState(!currentWeeklyCents);
+  const [monthlyDollars, setMonthlyDollars] = useState(currentMonthlyCents ? String(currentMonthlyCents / 100) : "");
+  const [workDays, setWorkDays] = useState<Set<Day>>(new Set((currentWorkDays.length > 0 ? currentWorkDays : ["Mon", "Tue", "Wed", "Thu", "Fri"]) as Day[]));
+  const [dailyDollars, setDailyDollars] = useState<Record<string, string>>(() => {
+    const d: Record<string, string> = {};
+    for (const day of DAY_KEYS) {
+      const cents = currentDailyTargets[day];
+      d[day] = cents ? String(cents / 100) : "";
+    }
+    return d;
+  });
+  const [weeklyJobs, setWeeklyJobs] = useState(initialWeeklyJobTarget > 0 ? String(initialWeeklyJobTarget) : "");
+  const [monthlyJobs, setMonthlyJobs] = useState(initialMonthlyJobTarget > 0 ? String(initialMonthlyJobTarget) : "");
   const [saving, setSaving] = useState(false);
-  const [showDaily, setShowDaily] = useState(false);
-  const [dayConfig, setDayConfig] = useState<DayConfig>(DEFAULT_CONFIG);
-  const weeklyInputRef = useRef<HTMLInputElement>(null);
+  const [saved, setSaved] = useState(false);
 
-  // Load day config from localStorage
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("accuinsight_capacity_days");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setDayConfig(prev => ({ ...prev, ...parsed }));
-      }
-    } catch {}
+  // Auto-split weekly across work days
+  const splitWeekly = useCallback((dollars: string, days: Set<Day>) => {
+    const val = parseFloat(dollars.replace(/,/g, ""));
+    if (isNaN(val) || val <= 0 || days.size === 0) return;
+    const perDay = Math.round(val / days.size);
+    const updated: Record<string, string> = {};
+    for (const day of DAY_KEYS) {
+      updated[day] = days.has(day) ? String(perDay) : "";
+    }
+    setDailyDollars(updated);
   }, []);
 
-  // Save day config to localStorage
-  const saveDayConfig = useCallback((config: DayConfig) => {
-    setDayConfig(config);
-    try { localStorage.setItem("accuinsight_capacity_days", JSON.stringify(config)); } catch {}
-  }, []);
-
-  const enabledDays = DAY_KEYS.filter(k => dayConfig[k].enabled);
-  const weeklyTotal = currentWeeklyCents ? currentWeeklyCents / 100 : 0;
-  const dailyDefault = enabledDays.length > 0 ? Math.round(weeklyTotal / enabledDays.length) : 0;
-
-  // Get effective daily target for a day
-  const dailyTarget = (day: typeof DAY_KEYS[number]) => {
-    if (!dayConfig[day].enabled) return 0;
-    return dayConfig[day].target > 0 ? dayConfig[day].target : dailyDefault;
+  const handleWeeklyChange = (val: string) => {
+    setWeeklyDollars(val);
+    splitWeekly(val, workDays);
   };
 
-  async function saveWeekly() {
-    const dollars = parseFloat(weeklyDollars);
-    if (isNaN(dollars) || dollars < 0) return;
+  const toggleDay = (day: Day) => {
+    const next = new Set(workDays);
+    if (next.has(day)) {
+      if (next.size <= 1) return;
+      next.delete(day);
+    } else {
+      next.add(day);
+    }
+    setWorkDays(next);
+    splitWeekly(weeklyDollars, next);
+  };
+
+  const weeklyVal = parseFloat(weeklyDollars.replace(/,/g, "")) || 0;
+  const monthlyVal = parseFloat(monthlyDollars.replace(/,/g, "")) || 0;
+  const dailyTotal = DAY_KEYS.reduce((s, d) => s + (parseFloat(dailyDollars[d] || "0") || 0), 0);
+
+  async function save() {
     setSaving(true);
     try {
+      const weeklyCents = Math.round(weeklyVal * 100);
+      const monthlyCents = Math.round(monthlyVal * 100);
+      const dailyCents: Record<string, number> = {};
+      for (const day of DAY_KEYS) {
+        const v = parseFloat(dailyDollars[day] || "0");
+        if (v > 0) dailyCents[day] = Math.round(v * 100);
+      }
+
+      // Save revenue targets to API
       await fetch("/api/settings/capacity", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ weekly_capacity_cents: Math.round(dollars * 100) }),
+        body: JSON.stringify({
+          weekly_capacity_cents: weeklyCents,
+          monthly_capacity_cents: monthlyCents,
+          capacity_daily_targets: dailyCents,
+          capacity_work_days: Array.from(workDays),
+          capacity_targets_set: true,
+          ...(adminConnectionId ? { connection_id: adminConnectionId } : {}),
+        }),
       });
-      setEditingWeekly(false);
+
+      // Save job targets to localStorage
+      const wj = parseInt(weeklyJobs) || 0;
+      const mj = parseInt(monthlyJobs) || 0;
+      try {
+        localStorage.setItem("accuinsight_weekly_job_target", String(wj));
+        localStorage.setItem("accuinsight_monthly_job_target", String(mj));
+      } catch {}
+
+      try { window.dispatchEvent(new CustomEvent("accuinsight:target-saved")); } catch {}
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
       router.refresh();
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
 
-  function toggleDay(day: typeof DAY_KEYS[number]) {
-    const updated = { ...dayConfig, [day]: { ...dayConfig[day], enabled: !dayConfig[day].enabled } };
-    saveDayConfig(updated);
-  }
+  const inputStyle: React.CSSProperties = {
+    padding: "8px 12px", borderRadius: 8,
+    border: `1px solid ${isLight ? "#cbd5e1" : "rgba(255,255,255,0.15)"}`,
+    background: isLight ? "#fff" : "rgba(255,255,255,0.04)",
+    color: isLight ? "#1e293b" : "#fff",
+    fontSize: 15, fontWeight: 700, outline: "none",
+    width: "100%",
+  };
 
-  function setDayTarget(day: typeof DAY_KEYS[number], value: string) {
-    const parsed = parseInt(value.replace(/[^0-9]/g, ""), 10);
-    const updated = { ...dayConfig, [day]: { ...dayConfig[day], target: isNaN(parsed) ? 0 : parsed } };
-    saveDayConfig(updated);
-  }
+  const sectionStyle: React.CSSProperties = {
+    padding: "16px 18px", borderRadius: 12,
+    background: isLight ? "rgba(0,0,0,0.015)" : "rgba(255,255,255,0.02)",
+    border: `1px solid ${isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"}`,
+    marginBottom: 14,
+  };
 
-  const money = (dollars: number) => {
-    try {
-      return new Intl.NumberFormat("en-US", { style: "currency", currency: currencyCode, maximumFractionDigits: 0 }).format(dollars);
-    } catch {
-      return `$${dollars.toLocaleString()}`;
-    }
+  const labelStyle: React.CSSProperties = {
+    fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const,
+    letterSpacing: 0.5, marginBottom: 8,
+    color: isLight ? "#64748b" : "rgba(255,255,255,0.4)",
   };
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16 }}>
-        <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
-          Capacity Settings
-        </h2>
-        <span className="info-tooltip" style={{ width: 16, height: 16, fontSize: 10 }}>?<span className="tooltip-text">Set your weekly revenue target — how much scheduled work you aim to complete each week. Optionally configure per-day targets and disable days you don&apos;t work.</span></span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
+            Capacity Settings
+          </h2>
+          <span className="info-tooltip" style={{ width: 16, height: 16, fontSize: 10 }}>?<span className="tooltip-text">Configure your revenue targets, work days, and job goals. Changes apply across all dashboard views.</span></span>
+        </div>
       </div>
 
-      {/* Weekly Target */}
-      <div style={{
-        padding: "14px 16px",
-        borderRadius: 12,
-        background: isLight ? "rgba(16,185,129,0.04)" : "rgba(16,185,129,0.06)",
-        border: `1px solid ${isLight ? "rgba(16,185,129,0.15)" : "rgba(16,185,129,0.12)"}`,
-        marginBottom: 12,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+      {/* Revenue Targets */}
+      <div style={sectionStyle}>
+        <div style={labelStyle}>Revenue Targets</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div>
-            <div className="text-muted" style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
-              Weekly Capacity Target
+            <div className="text-muted" style={{ fontSize: 10, fontWeight: 600, marginBottom: 4 }}>Weekly</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: isLight ? "#94a3b8" : "rgba(255,255,255,0.4)" }}>$</span>
+              <input
+                type="text" inputMode="decimal"
+                value={weeklyDollars}
+                onChange={e => handleWeeklyChange(e.target.value.replace(/[^0-9.]/g, ""))}
+                placeholder="e.g. 15,000"
+                style={inputStyle}
+              />
             </div>
-            {!editingWeekly && currentWeeklyCents ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span className="text-primary" style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.5 }}>
-                  {money(currentWeeklyCents / 100)}
-                </span>
-                <button
-                  onClick={() => { setWeeklyDollars(String(currentWeeklyCents / 100)); setEditingWeekly(true); setTimeout(() => weeklyInputRef.current?.focus(), 0); }}
-                  className="btn"
-                  style={{ padding: "4px 12px", fontSize: 12 }}
-                >
-                  Edit
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 16, fontWeight: 700, color: isLight ? "#334155" : "rgba(255,255,255,0.7)" }}>$</span>
-                <input
-                  ref={weeklyInputRef}
-                  type="number"
-                  value={weeklyDollars}
-                  onChange={(e) => setWeeklyDollars(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") saveWeekly(); if (e.key === "Escape" && currentWeeklyCents) setEditingWeekly(false); }}
-                  autoFocus={!currentWeeklyCents}
-                  placeholder="e.g. 15000"
-                  style={{
-                    width: 130, padding: "6px 10px", borderRadius: 8,
-                    border: `1px solid ${isLight ? "#cbd5e1" : "rgba(255,255,255,0.2)"}`,
-                    background: isLight ? "#fff" : "rgba(255,255,255,0.06)",
-                    color: isLight ? "#1e293b" : "#fff",
-                    fontSize: 15, fontWeight: 700, outline: "none",
-                  }}
-                />
-                <button onClick={saveWeekly} disabled={saving || !weeklyDollars} className="btn" style={{ padding: "6px 14px", fontSize: 12, background: "rgba(16,185,129,0.15)", borderColor: "rgba(16,185,129,0.4)", opacity: saving || !weeklyDollars ? 0.5 : 1 }}>
-                  {saving ? "..." : "Save"}
-                </button>
-                {currentWeeklyCents && (
-                  <button onClick={() => setEditingWeekly(false)} className="btn" style={{ padding: "6px 14px", fontSize: 12 }}>Cancel</button>
-                )}
-              </div>
-            )}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span className="text-muted" style={{ fontSize: 11 }}>{enabledDays.length} working days</span>
-            {currentWeeklyCents && enabledDays.length > 0 && (
-              <span className="text-muted" style={{ fontSize: 11 }}>&bull; {money(dailyDefault)}/day avg</span>
-            )}
+          <div>
+            <div className="text-muted" style={{ fontSize: 10, fontWeight: 600, marginBottom: 4 }}>Monthly</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: isLight ? "#94a3b8" : "rgba(255,255,255,0.4)" }}>$</span>
+              <input
+                type="text" inputMode="decimal"
+                value={monthlyDollars}
+                onChange={e => setMonthlyDollars(e.target.value.replace(/[^0-9.]/g, ""))}
+                placeholder="e.g. 60,000"
+                style={inputStyle}
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Working Days + Daily Targets */}
-      <div style={{
-        padding: "14px 16px",
-        borderRadius: 12,
-        background: isLight ? "rgba(90,166,255,0.03)" : "rgba(255,255,255,0.02)",
-        border: `1px solid ${isLight ? "rgba(90,166,255,0.12)" : "rgba(255,255,255,0.06)"}`,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <div className="text-muted" style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-            Working Days
-          </div>
-          <button
-            onClick={() => setShowDaily(!showDaily)}
-            className="btn"
-            style={{ padding: "3px 10px", fontSize: 11 }}
-          >
-            {showDaily ? "Hide Daily Targets" : "Set Daily Targets"}
-          </button>
-        </div>
-
-        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, minWidth: 350 }}>
-          {DAY_KEYS.map((day, i) => {
-            const enabled = dayConfig[day].enabled;
-            const target = dailyTarget(day);
+      {/* Work Days */}
+      <div style={sectionStyle}>
+        <div style={labelStyle}>Work Days</div>
+        <div style={{ display: "flex", gap: 6 }}>
+          {DAY_KEYS.map(day => {
+            const active = workDays.has(day);
             return (
-              <div key={day} style={{ textAlign: "center" }}>
-                <button
-                  onClick={() => toggleDay(day)}
-                  style={{
-                    width: "100%",
-                    padding: "8px 4px",
-                    borderRadius: 8,
-                    border: `1px solid ${enabled ? (isLight ? "rgba(16,185,129,0.3)" : "rgba(16,185,129,0.25)") : (isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)")}`,
-                    background: enabled ? (isLight ? "rgba(16,185,129,0.08)" : "rgba(16,185,129,0.1)") : "transparent",
-                    color: enabled ? (isLight ? "#059669" : "#10b981") : (isLight ? "#94a3b8" : "rgba(255,255,255,0.3)"),
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    transition: "all 0.15s ease",
-                    textDecoration: enabled ? "none" : "line-through",
-                  }}
-                >
-                  {DAY_LABELS[i]}
-                </button>
-                {showDaily && enabled && (
-                  <input
-                    type="text"
-                    value={dayConfig[day].target > 0 ? dayConfig[day].target : ""}
-                    onChange={(e) => setDayTarget(day, e.target.value)}
-                    placeholder={String(dailyDefault)}
-                    style={{
-                      width: "100%",
-                      marginTop: 4,
-                      padding: "4px 2px",
-                      borderRadius: 6,
-                      border: `1px solid ${isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)"}`,
-                      background: isLight ? "#fff" : "rgba(255,255,255,0.04)",
-                      color: isLight ? "#1e293b" : "#fff",
-                      fontSize: 11,
-                      fontWeight: 600,
-                      textAlign: "center",
-                      outline: "none",
-                    }}
-                  />
-                )}
-                {showDaily && !enabled && (
-                  <div className="text-muted" style={{ fontSize: 10, marginTop: 6 }}>Off</div>
-                )}
-              </div>
+              <button
+                key={day}
+                onClick={() => toggleDay(day)}
+                style={{
+                  flex: 1, padding: "10px 2px", borderRadius: 8,
+                  border: `1px solid ${active ? (isLight ? "rgba(16,185,129,0.3)" : "rgba(16,185,129,0.25)") : (isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)")}`,
+                  background: active ? (isLight ? "rgba(16,185,129,0.08)" : "rgba(16,185,129,0.1)") : "transparent",
+                  color: active ? (isLight ? "#059669" : "#10b981") : (isLight ? "#94a3b8" : "rgba(255,255,255,0.3)"),
+                  fontSize: 12, fontWeight: 700, cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  textDecoration: active ? "none" : "line-through",
+                }}
+              >
+                {day}
+              </button>
             );
           })}
         </div>
+        <div className="text-muted" style={{ fontSize: 10, marginTop: 6 }}>
+          {workDays.size} working days{weeklyVal > 0 && workDays.size > 0 ? ` · ${money(Math.round(weeklyVal / workDays.size) * 100)}/day avg` : ""}
         </div>
-
-        {showDaily && (
-          <div className="text-muted" style={{ fontSize: 11, marginTop: 10 }}>
-            Enter a dollar amount per day, or leave blank to split the weekly target evenly across working days.
-          </div>
-        )}
       </div>
+
+      {/* Daily Targets */}
+      {weeklyVal > 0 && (
+        <div style={sectionStyle}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div style={labelStyle}>Daily Breakdown</div>
+            <span className="text-muted" style={{ fontSize: 10 }}>
+              Total: {money(Math.round(dailyTotal * 100))}{dailyTotal !== weeklyVal && weeklyVal > 0 && (
+                <span style={{ color: "#f59e0b" }}> (weekly is {money(Math.round(weeklyVal * 100))})</span>
+              )}
+            </span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {DAY_KEYS.filter(d => workDays.has(d)).map(day => (
+              <div key={day} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 34, fontSize: 12, fontWeight: 700, color: isLight ? "#334155" : "rgba(255,255,255,0.7)" }}>{day}</span>
+                <div style={{
+                  display: "flex", alignItems: "center", flex: 1,
+                  border: `1px solid ${isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)"}`,
+                  borderRadius: 6, background: isLight ? "#fff" : "rgba(255,255,255,0.04)",
+                }}>
+                  <span style={{ paddingLeft: 8, fontSize: 11, color: isLight ? "#94a3b8" : "rgba(255,255,255,0.3)" }}>$</span>
+                  <input type="text" inputMode="decimal" value={dailyDollars[day] || ""}
+                    onChange={e => setDailyDollars(prev => ({ ...prev, [day]: e.target.value.replace(/[^0-9.]/g, "") }))}
+                    style={{ flex: 1, padding: "6px 8px 6px 4px", border: "none", background: "transparent",
+                      color: isLight ? "#1e293b" : "#fff", fontSize: 13, fontWeight: 700, outline: "none" }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="text-muted" style={{ fontSize: 10, marginTop: 6 }}>
+            Edit individual days or change the weekly target to auto-split evenly.
+          </div>
+        </div>
+      )}
+
+      {/* Job Targets */}
+      <div style={sectionStyle}>
+        <div style={labelStyle}>Job Targets</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div>
+            <div className="text-muted" style={{ fontSize: 10, fontWeight: 600, marginBottom: 4 }}>Weekly Jobs</div>
+            <input
+              type="text" inputMode="numeric"
+              value={weeklyJobs}
+              onChange={e => setWeeklyJobs(e.target.value.replace(/[^0-9]/g, ""))}
+              placeholder="e.g. 20"
+              style={{ ...inputStyle, fontSize: 14 }}
+            />
+          </div>
+          <div>
+            <div className="text-muted" style={{ fontSize: 10, fontWeight: 600, marginBottom: 4 }}>Monthly Jobs</div>
+            <input
+              type="text" inputMode="numeric"
+              value={monthlyJobs}
+              onChange={e => setMonthlyJobs(e.target.value.replace(/[^0-9]/g, ""))}
+              placeholder="e.g. 80"
+              style={{ ...inputStyle, fontSize: 14 }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Save button */}
+      <button
+        onClick={save}
+        disabled={saving}
+        style={{
+          width: "100%", padding: "14px 28px", fontSize: 14, fontWeight: 700,
+          background: saved ? "#10b981" : "linear-gradient(135deg, #7c5cff, #5aa6ff)",
+          color: "#fff", border: "none", borderRadius: 10, cursor: saving ? "not-allowed" : "pointer",
+          boxShadow: "0 4px 12px rgba(124,92,255,0.3)",
+          opacity: saving ? 0.6 : 1,
+          transition: "all 0.2s ease",
+        }}
+      >
+        {saving ? "Saving..." : saved ? "Saved ✓" : "Save All Settings"}
+      </button>
     </div>
   );
-}
-
-// Export the day config reader for use by other components
-export function getCapacityDayConfig(): DayConfig {
-  try {
-    const stored = localStorage.getItem("accuinsight_capacity_days");
-    if (stored) return { ...DEFAULT_CONFIG, ...JSON.parse(stored) };
-  } catch {}
-  return DEFAULT_CONFIG;
 }

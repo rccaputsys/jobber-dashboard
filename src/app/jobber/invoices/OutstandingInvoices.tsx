@@ -201,7 +201,7 @@ export function OutstandingInvoices({
   // Outstanding buckets by aging
   const outstandingBuckets: Bucket[] = [
     { key: "30plus", label: "30+ Days Overdue", range: "Critical", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
-    { key: "7to30", label: "7\u201330 Days Overdue", range: "Needs follow-up", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
+    { key: "7to30", label: "8\u201330 Days Overdue", range: "Needs follow-up", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
     { key: "1to7", label: "1\u20137 Days Overdue", range: "Recently due", color: "#5aa6ff", bg: "rgba(90,166,255,0.08)", items: [], totalCents: 0 },
     { key: "current", label: "Not Yet Due", range: "Current", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
   ];
@@ -229,7 +229,7 @@ export function OutstandingInvoices({
   const nowMs = Date.now();
   const needsBuckets: Bucket[] = [
     { key: "30plus", label: "30+ Days Waiting", range: "Critical", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
-    { key: "7to30", label: "7\u201330 Days Waiting", range: "Send soon", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
+    { key: "7to30", label: "8\u201330 Days Waiting", range: "Send soon", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
     { key: "under7", label: "Under 7 Days", range: "Recent", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
   ];
   for (const j of needsInvoicing) {
@@ -256,7 +256,7 @@ export function OutstandingInvoices({
   // Draft invoices bucket (by age since created)
   const draftBuckets: Bucket[] = [
     { key: "30plus", label: "30+ Days in Draft", range: "Send now", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
-    { key: "7to30", label: "7\u201330 Days in Draft", range: "Review & send", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
+    { key: "7to30", label: "8\u201330 Days in Draft", range: "Review & send", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
     { key: "under7", label: "Under 7 Days", range: "Recently created", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
   ];
   for (const d of drafts) {

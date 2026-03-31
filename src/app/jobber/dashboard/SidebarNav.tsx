@@ -14,6 +14,9 @@ const tabs = [
   { label: "Invoices", href: "/jobber/invoices", icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
 ];
 
+// Bullseye/target icon paths
+const targetIcon = "M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0M12 12m-6 0a6 6 0 1 0 12 0a6 6 0 1 0 -12 0M12 12m-10 0a10 10 0 1 0 20 0a10 10 0 1 0 -20 0";
+
 type Props = {
   adminConnectionId?: string;
   companyName?: string;
@@ -23,9 +26,10 @@ type Props = {
   trialEndsAt?: number;
   subscriptionActive?: boolean;
   autoSync?: boolean;
+  onOpenTargets?: () => void;
 };
 
-export function SidebarNav({ adminConnectionId, companyName, connectionId, lastSyncPretty, billingStatus, trialEndsAt, subscriptionActive, autoSync }: Props) {
+export function SidebarNav({ adminConnectionId, companyName, connectionId, lastSyncPretty, billingStatus, trialEndsAt, subscriptionActive, autoSync, onOpenTargets }: Props) {
   const pathname = usePathname();
   const isLight = useIsLight();
 
@@ -94,6 +98,29 @@ export function SidebarNav({ adminConnectionId, companyName, connectionId, lastS
             </Link>
           );
         })}
+
+        {/* Targets — opens drawer instead of navigating */}
+        <button
+          onClick={onOpenTargets}
+          style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "10px 12px", borderRadius: 8,
+            background: "transparent",
+            color: isLight ? "#64748b" : "rgba(255,255,255,0.5)",
+            fontSize: 13, fontWeight: 600,
+            transition: "all 0.15s ease",
+            borderLeft: "3px solid transparent",
+            border: "none", cursor: "pointer", textAlign: "left",
+            width: "100%",
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <circle cx="12" cy="12" r="6" />
+            <circle cx="12" cy="12" r="2" />
+          </svg>
+          Targets
+        </button>
       </div>
 
       {/* Spacer */}
@@ -101,7 +128,6 @@ export function SidebarNav({ adminConnectionId, companyName, connectionId, lastS
 
       {/* Bottom: Sync + controls */}
       <div style={{ padding: "12px 12px 16px", borderTop: `1px solid ${isLight ? "#e2e8f0" : "rgba(255,255,255,0.06)"}` }}>
-        {/* Sync */}
         {/* Controls row: sync + theme + logout */}
         <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
           {connectionId && <SyncButton connectionId={connectionId} autoSync={autoSync} />}

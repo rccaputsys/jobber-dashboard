@@ -59,9 +59,6 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
   const [btnHovered, setBtnHovered] = useState<string | null>(null);
   const [weeklyJobTarget, setWeeklyJobTarget] = usePersistedNumber("accuinsight_weekly_job_target", 0);
   const [monthlyJobTarget, setMonthlyJobTarget] = usePersistedNumber("accuinsight_monthly_job_target", 0);
-  const [editingJobTarget, setEditingJobTarget] = useState(false);
-  const [jobTargetInput, setJobTargetInput] = useState("");
-  const [monthlyJobTargetInput, setMonthlyJobTargetInput] = useState("");
 
   useEffect(() => { if (chartRef.current) return observeChart(chartRef.current, "capacity_chart"); }, []);
 
@@ -123,13 +120,6 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
     return money(val);
   }
 
-  function saveJobTargets() {
-    const weekly = parseInt(jobTargetInput) || 0;
-    const monthly = parseInt(monthlyJobTargetInput) || 0;
-    setWeeklyJobTarget(weekly);
-    setMonthlyJobTarget(monthly);
-    setEditingJobTarget(false);
-  }
 
   return (
     <div ref={chartRef}>
@@ -197,36 +187,14 @@ export function CapacityChart({ weeks, months, weeklyTargetCents, monthlyTargetC
             </span>
           </div>
         )}
-        {metric === "jobs" && (
+        {metric === "jobs" && target > 0 && (
           <div style={{ borderLeft: `1px solid ${gridLine}`, paddingLeft: 16 }}>
-            {editingJobTarget ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <div>
-                  <div className="text-muted" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Weekly</div>
-                  <input type="number" value={jobTargetInput} onChange={e => setJobTargetInput(e.target.value)} placeholder="e.g. 20" onKeyDown={e => { if (e.key === "Enter") saveJobTargets(); }} autoFocus style={{
-                    width: 60, padding: "4px 8px", borderRadius: 6,
-                    border: `1px solid ${isLight ? "#cbd5e1" : "rgba(255,255,255,0.2)"}`,
-                    background: isLight ? "#fff" : "rgba(255,255,255,0.06)",
-                    color: isLight ? "#1e293b" : "#fff", fontSize: 13, fontWeight: 700, outline: "none",
-                  }} />
-                </div>
-                <div>
-                  <div className="text-muted" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Monthly</div>
-                  <input type="number" value={monthlyJobTargetInput} onChange={e => setMonthlyJobTargetInput(e.target.value)} placeholder="e.g. 80" onKeyDown={e => { if (e.key === "Enter") saveJobTargets(); }} style={{
-                    width: 60, padding: "4px 8px", borderRadius: 6,
-                    border: `1px solid ${isLight ? "#cbd5e1" : "rgba(255,255,255,0.2)"}`,
-                    background: isLight ? "#fff" : "rgba(255,255,255,0.06)",
-                    color: isLight ? "#1e293b" : "#fff", fontSize: 13, fontWeight: 700, outline: "none",
-                  }} />
-                </div>
-                <button onClick={saveJobTargets} className="btn" style={{ padding: "4px 12px", fontSize: 11, background: "rgba(16,185,129,0.15)", borderColor: "rgba(16,185,129,0.4)" }}>Save</button>
-                <button onClick={() => setEditingJobTarget(false)} className="btn" style={{ padding: "4px 10px", fontSize: 11 }}>Cancel</button>
-              </div>
-            ) : (
-              <button onClick={() => { setEditingJobTarget(true); setJobTargetInput(String(weeklyJobTarget || "")); setMonthlyJobTargetInput(String(monthlyJobTarget || "")); }} className="btn" style={{ padding: "6px 14px", fontSize: 12 }}>
-                {target > 0 ? "Edit Job Targets" : "Set Job Targets"}
-              </button>
-            )}
+            <div style={{ fontSize: 18, fontWeight: 800, color: mutedColor, letterSpacing: -0.5, lineHeight: 1 }}>
+              {target}
+            </div>
+            <div style={{ fontSize: 12, color: mutedColor, marginTop: 4, fontWeight: 500 }}>
+              {view === "monthly" ? "Monthly" : "Weekly"} Job Target
+            </div>
           </div>
         )}
       </div>

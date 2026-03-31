@@ -22,6 +22,7 @@ export function SparkLine(props: {
   secondaryLabel?: string;
   overrideAvg?: number;
   overrideAvgLabel?: string;
+  height?: number;
 }) {
   const formatY = (v: number): string => {
     if (props.formatType === "percent") {
@@ -52,7 +53,7 @@ export function SparkLine(props: {
 
   const hasTarget = props.targetValue != null && props.targetValue > 0;
   const vbW = 360;
-  const vbH = 190;
+  const vbH = props.height || 190;
   const padL = hasTarget ? 72 : 54;
   const padR = 14;
   const padT = 24;
@@ -96,9 +97,27 @@ export function SparkLine(props: {
   };
   const xOf = (i: number) => padL + i * xStep;
 
-  const d = props.points
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${xOf(i).toFixed(1)} ${yOf(p.value).toFixed(1)}`)
-    .join(" ");
+  // Smooth catmull-rom spline for line charts
+  function smoothPath(pts: { x: number; y: number }[]): string {
+    if (pts.length < 2) return pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+    const tension = 0.3;
+    let path = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[Math.max(i - 1, 0)];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[Math.min(i + 2, pts.length - 1)];
+      const cp1x = p1.x + (p2.x - p0.x) * tension;
+      const cp1y = p1.y + (p2.y - p0.y) * tension;
+      const cp2x = p2.x - (p3.x - p1.x) * tension;
+      const cp2y = p2.y - (p3.y - p1.y) * tension;
+      path += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+    }
+    return path;
+  }
+
+  const linePoints = props.points.map((p, i) => ({ x: xOf(i), y: yOf(p.value) }));
+  const d = props.chartType === "line" ? smoothPath(linePoints) : props.points.map((p, i) => `${i === 0 ? "M" : "L"} ${xOf(i).toFixed(1)} ${yOf(p.value).toFixed(1)}`).join(" ");
 
   const areaD = props.points.length > 0
     ? d + ` L ${xOf(props.points.length - 1).toFixed(1)} ${vbH - padB} L ${xOf(0).toFixed(1)} ${vbH - padB} Z`
@@ -321,9 +340,8 @@ export function SparkLine(props: {
               {/* Secondary line */}
               {hasSecondary && (() => {
                 const secColor = props.secondaryColor || "#10b981";
-                const sd = props.secondaryPoints!
-                  .map((p, i) => `${i === 0 ? "M" : "L"} ${xOf(i).toFixed(1)} ${yOf(p.value).toFixed(1)}`)
-                  .join(" ");
+                const secPts = props.secondaryPoints!.map((p, i) => ({ x: xOf(i), y: yOf(p.value) }));
+                const sd = smoothPath(secPts);
                 return (
                   <>
                     <path d={sd} fill="none" stroke={`${secColor}30`} strokeWidth="8" strokeLinecap="round" />

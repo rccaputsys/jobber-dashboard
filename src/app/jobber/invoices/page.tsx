@@ -4,8 +4,8 @@ import { getUser } from "@/lib/supabaseAuth";
 import { redirect } from "next/navigation";
 import { DashboardTopbar } from "../dashboard/DashboardTopbar";
 import { OnboardingOverlay } from "../dashboard/OnboardingOverlay";
-import { InvoiceKpiCards } from "./InvoiceKpiCards";
 import { InvoiceTrendsSection } from "./InvoiceTrendsSection";
+import { ActionStrip } from "../dashboard/ActionStrip";
 import { OutstandingInvoices } from "./OutstandingInvoices";
 import { ErrorBoundary } from "../dashboard/ErrorBoundary";
 import { DashboardLayout } from "../dashboard/DashboardLayout";
@@ -209,7 +209,7 @@ export default async function InvoicesPage({
   // Aging buckets for donut chart (matches OutstandingInvoices categories)
   const agingBuckets = [
     { label: "30+ Days", color: "#ef4444", balanceCents: 0, count: 0 },
-    { label: "7\u201330 Days", color: "#f59e0b", balanceCents: 0, count: 0 },
+    { label: "8\u201330 Days", color: "#f59e0b", balanceCents: 0, count: 0 },
     { label: "1\u20137 Days", color: "#5aa6ff", balanceCents: 0, count: 0 },
     { label: "Current", color: "#10b981", balanceCents: 0, count: 0 },
   ];
@@ -240,6 +240,11 @@ export default async function InvoicesPage({
       return events;
     })
     .flat();
+
+  // Payment timings for avg days to pay (reactive to range slicer)
+  const paymentTimings = invoices
+    .filter((i: any) => i.status === "paid" && safeDate(i.due_at) && safeDate(i.paid_at))
+    .map((i: any) => ({ paidTs: safeDate(i.paid_at)!.getTime(), dueTs: safeDate(i.due_at)!.getTime() }));
 
   // Jobs needing invoicing — include completed visits for context
   const needsInvoicingJobIds = new Set(needsInvoicingRaw.map((j: any) => j.jobber_job_id).filter(Boolean));
@@ -287,22 +292,39 @@ export default async function InvoicesPage({
       <ErrorBoundary>
       <div className="dashboard-container">
 
-        {/* KPI Cards */}
-        <div className="animate-in delay-1" style={{ marginTop: 20 }}>
-          <InvoiceKpiCards
-            thisWeek={thisWeekKpi}
-            lastWeek={lastWeekKpi}
-            thisMonth={thisMonthKpi}
-            lastMonth={lastMonthKpi}
-            allTime={allTimeKpi}
-            outstandingBalance={money(outstandingBalance)}
-            outstandingBalanceCents={outstandingBalance}
-            pastDueBalance={money(pastDueBalance)}
-            pastDueBalanceCents={pastDueBalance}
-            outstandingCount={outstanding.length}
-            pastDueCount={pastDueCount}
-          />
-        </div>
+        {/* Priority Actions */}
+        {(() => {
+          const adminQs = adminConnectionId ? `?admin_connection_id=${adminConnectionId}` : "";
+          const over30 = outstanding.filter(i => i.days_overdue >= 30);
+          const over30Cents = over30.reduce((s, i) => s + i.balance_cents, 0);
+          const needsInvCents = needsInvoicing.reduce((s: number, j: any) => s + j.total_amount_cents, 0);
+
+          const actions: { text: string; href?: string; color: string }[] = [];
+          if (over30.length > 0) actions.push({ text: `Collect ${money(over30Cents)} in overdue cash (${over30.length.toLocaleString()} invoices 30+ days late)`, color: "#ef4444" });
+          if (pastDueCount > 0 && over30.length === 0) actions.push({ text: `${pastDueCount.toLocaleString()} invoices past due — ${money(pastDueBalance)} outstanding`, color: "#f59e0b" });
+          if (draftCount > 0) actions.push({ text: `Send ${draftCount.toLocaleString()} draft invoices (${money(draftCents)}) — work is done, just needs billing`, color: "#5aa6ff" });
+          if (needsInvoicing.length > 0) actions.push({ text: `Invoice ${needsInvoicing.length.toLocaleString()} completed jobs (${money(needsInvCents)}) — you haven\u2019t billed yet`, color: "#10b981" });
+
+          const headlineCents = over30Cents > 0 ? over30Cents : pastDueBalance;
+          const headline = headlineCents > 0
+            ? `${money(headlineCents)} needs collecting`
+            : draftCount > 0
+            ? `${money(draftCents)} in unsent invoices`
+            : needsInvoicing.length > 0
+            ? `${money(needsInvCents)} in completed work not yet invoiced`
+            : "Invoices are in good shape";
+
+          return actions.length > 0 ? (
+            <div className="animate-in delay-1" style={{ marginTop: 16 }}>
+              <ActionStrip
+                headline={headline}
+                subline={headlineCents > 0 ? `${money(outstandingBalance)} total outstanding across ${outstanding.length.toLocaleString()} invoices` : undefined}
+                actions={actions}
+                borderColor={actions[0]?.color}
+              />
+            </div>
+          ) : null;
+        })()}
 
         {/* Trends */}
         <div data-tour="invoice-chart">
@@ -313,6 +335,7 @@ export default async function InvoicesPage({
           currencyCode={currencyCode}
           draftCount={draftCount}
           draftCents={draftCents}
+          paymentTimings={paymentTimings}
         />
         </div>
 
