@@ -296,21 +296,22 @@ export default async function SalesPage({
     .sort((a: any, b: any) => b.days_quiet - a.days_quiet);
 
   // Group quotes by age bucket (coldest first)
+  // Age buckets — matches overview: Hot <14, Warm 14-30, Going Cold 30-45, Inactive 45+
   const ageBuckets = [
-    { key: "cold", label: "Cold", range: "30+ days quiet", color: "#ef4444", bg: "rgba(239,68,68,0.08)", quotes: [] as typeof followUpQuotes },
-    { key: "going-cold", label: "Going Cold", range: "15\u201330 days quiet", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", quotes: [] as typeof followUpQuotes },
-    { key: "warm", label: "Warm", range: "8\u201314 days quiet", color: "#5aa6ff", bg: "rgba(90,166,255,0.08)", quotes: [] as typeof followUpQuotes },
-    { key: "hot", label: "Hot", range: "0\u20137 days quiet", color: "#10b981", bg: "rgba(16,185,129,0.08)", quotes: [] as typeof followUpQuotes },
+    { key: "hot", label: "Hot", range: "< 14 days", color: "#10b981", bg: "rgba(16,185,129,0.08)", quotes: [] as typeof followUpQuotes },
+    { key: "warm", label: "Warm", range: "14\u201330 days", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", quotes: [] as typeof followUpQuotes },
+    { key: "going-cold", label: "Going Cold", range: "30\u201345 days", color: "#ef4444", bg: "rgba(239,68,68,0.08)", quotes: [] as typeof followUpQuotes },
+    { key: "inactive", label: "Inactive", range: "45+ days", color: "#6b7280", bg: "rgba(107,114,128,0.08)", quotes: [] as typeof followUpQuotes },
   ];
   for (const q of followUpQuotes) {
-    if (q.days_quiet >= 30) ageBuckets[0].quotes.push(q);
-    else if (q.days_quiet >= 15) ageBuckets[1].quotes.push(q);
-    else if (q.days_quiet >= 8) ageBuckets[2].quotes.push(q);
+    if (q.days_quiet <= 14) ageBuckets[0].quotes.push(q);
+    else if (q.days_quiet <= 30) ageBuckets[1].quotes.push(q);
+    else if (q.days_quiet <= 45) ageBuckets[2].quotes.push(q);
     else ageBuckets[3].quotes.push(q);
   }
   // Export data
   const followUpExportData = followUpQuotes.map((q) => ({
-    "Age Group": q.days_quiet >= 30 ? "Cold" : q.days_quiet >= 15 ? "Going Cold" : q.days_quiet >= 8 ? "Warm" : "Hot",
+    "Age Group": q.days_quiet > 45 ? "Inactive" : q.days_quiet > 30 ? "Going Cold" : q.days_quiet > 14 ? "Warm" : "Hot",
     "Days Quiet": q.days_quiet,
     "Quote #": q.quote_number,
     "Title": q.quote_title,
@@ -381,19 +382,20 @@ export default async function SalesPage({
               No open quotes to follow up on.
             </div>
           ) : (<>
-            {/* Aging distribution bar */}
+            {/* Aging distribution bar — excludes inactive */}
             {(() => {
-              const totalCents = followUpQuotes.reduce((s, q) => s + q.amount_cents, 0);
+              const activeBkts = ageBuckets.filter(b => b.key !== "inactive");
+              const activeTotalCents = activeBkts.reduce((s, b) => s + b.quotes.reduce((s2, q) => s2 + q.amount_cents, 0), 0);
               return (
-                <div style={{ marginBottom: 20 }}>
+                <div style={{ marginBottom: 12 }}>
                   {/* Stacked bar */}
                   <div style={{
                     display: "flex", height: 32, borderRadius: 8, overflow: "hidden",
                     background: "rgba(255,255,255,0.04)",
                   }}>
-                    {ageBuckets.map((bucket) => {
+                    {activeBkts.map((bucket) => {
                       const bucketCents = bucket.quotes.reduce((s, q) => s + q.amount_cents, 0);
-                      const widthPct = totalCents > 0 ? (bucketCents / totalCents) * 100 : 0;
+                      const widthPct = activeTotalCents > 0 ? (bucketCents / activeTotalCents) * 100 : 0;
                       if (widthPct === 0) return null;
                       return (
                         <div
@@ -415,36 +417,37 @@ export default async function SalesPage({
                   {/* Bucket legend */}
                   <div style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(4, 1fr)",
-                    gap: 8,
-                    marginTop: 10,
+                    gridTemplateColumns: `repeat(${ageBuckets.length}, 1fr)`,
+                    gap: 10,
+                    marginTop: 12,
                   }}>
                     {ageBuckets.map((bucket) => {
                       const bucketCents = bucket.quotes.reduce((s, q) => s + q.amount_cents, 0);
-                      const pctOfTotal = totalCents > 0 ? Math.round((bucketCents / totalCents) * 100) : 0;
+                      const allCents = followUpQuotes.reduce((s, q) => s + q.amount_cents, 0);
+                      const pctOfTotal = allCents > 0 ? Math.round((bucketCents / allCents) * 100) : 0;
                       return (
                         <div key={bucket.key} style={{
-                          padding: "8px 10px",
-                          borderRadius: 8,
+                          padding: "12px 14px",
+                          borderRadius: 10,
                           background: bucket.quotes.length > 0 ? bucket.bg : "transparent",
                           borderLeft: `3px solid ${bucket.quotes.length > 0 ? bucket.color : 'rgba(255,255,255,0.06)'}`,
                           opacity: bucket.quotes.length > 0 ? 1 : 0.4,
                         }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: bucket.color }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: bucket.color }}>
                               {bucket.label}
                             </span>
                             {bucket.quotes.length > 0 && (
-                              <span className="text-muted" style={{ fontSize: 10 }}>
+                              <span className="text-muted" style={{ fontSize: 11 }}>
                                 {pctOfTotal}%
                               </span>
                             )}
                           </div>
-                          <div style={{ fontSize: 15, fontWeight: 800, color: bucket.quotes.length > 0 ? bucket.color : 'rgba(255,255,255,0.2)' }}>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: bucket.quotes.length > 0 ? bucket.color : 'rgba(255,255,255,0.2)' }}>
                             {bucket.quotes.length > 0 ? money(bucketCents) : "\u2014"}
                           </div>
-                          <div className="text-muted" style={{ fontSize: 11, marginTop: 1 }}>
-                            {bucket.quotes.length} {bucket.quotes.length === 1 ? "quote" : "quotes"}
+                          <div className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
+                            {bucket.quotes.length.toLocaleString()} {bucket.quotes.length === 1 ? "quote" : "quotes"} &middot; {bucket.range}
                           </div>
                         </div>
                       );

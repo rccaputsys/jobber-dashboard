@@ -447,6 +447,7 @@ export function SalesActionTabs({
       {/* Pipeline */}
       {pipelineStages && (
         <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: `1px solid ${isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"}` }}>
+          <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: "0 0 10px" }}>Quote Pipeline</h2>
           <QuotePipeline
             stages={pipelineStages}
             lostCount={0}
