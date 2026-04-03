@@ -208,16 +208,16 @@ export default async function SalesPage({
   const pipelineStages = [
     { label: "Requests", count: openRequests.length, value: "" },
     { label: "Draft", count: draftQuotes.length, value: money(sumCents(draftQuotes)) },
-    { label: "Awaiting Response", count: sentQuotes.length, value: money(sumCents(sentQuotes)) },
-    { label: "Changes Requested", count: changesReqQuotes.length, value: money(sumCents(changesReqQuotes)) },
-    { label: "Approved", count: approvedQuotes.length, value: money(sumCents(approvedQuotes)) },
+    { label: "Waiting on Customers", count: sentQuotes.length, value: money(sumCents(sentQuotes)) },
+    { label: "Customer Wants Changes", count: changesReqQuotes.length, value: money(sumCents(changesReqQuotes)) },
+    { label: "Won", count: approvedQuotes.length, value: money(sumCents(approvedQuotes)) },
   ];
 
   const pipelineQuoteRows = {
     Draft: draftQuotes.map(quoteToRow),
-    "Awaiting Response": sentQuotes.map(quoteToRow),
-    "Changes Requested": changesReqQuotes.map(quoteToRow),
-    Approved: approvedQuotes.map(quoteToRow),
+    "Waiting on Customers": sentQuotes.map(quoteToRow),
+    "Customer Wants Changes": changesReqQuotes.map(quoteToRow),
+    Won: approvedQuotes.map(quoteToRow),
   };
 
   // Pipeline value (all open/sent, not won/lost)
@@ -328,10 +328,10 @@ export default async function SalesPage({
   // Group quotes by age bucket (coldest first)
   // Age buckets — matches overview: Hot <14, Warm 14-30, Going Cold 30-45, Inactive 45+
   const ageBuckets = [
-    { key: "hot", label: "Hot", range: "< 14 days", color: "#10b981", bg: "rgba(16,185,129,0.08)", quotes: [] as typeof followUpQuotes },
-    { key: "warm", label: "Warm", range: "14\u201330 days", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", quotes: [] as typeof followUpQuotes },
-    { key: "going-cold", label: "Going Cold", range: "30\u201345 days", color: "#ef4444", bg: "rgba(239,68,68,0.08)", quotes: [] as typeof followUpQuotes },
-    { key: "inactive", label: "Inactive", range: "45+ days", color: "#6b7280", bg: "rgba(107,114,128,0.08)", quotes: [] as typeof followUpQuotes },
+    { key: "hot", label: "Customers are interested", range: "< 14 days", color: "#10b981", bg: "rgba(16,185,129,0.08)", quotes: [] as typeof followUpQuotes },
+    { key: "warm", label: "Follow up soon", range: "14\u201330 days", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", quotes: [] as typeof followUpQuotes },
+    { key: "going-cold", label: "Call today or lose them", range: "30\u201345 days", color: "#ef4444", bg: "rgba(239,68,68,0.08)", quotes: [] as typeof followUpQuotes },
+    { key: "inactive", label: "Probably lost", range: "45+ days", color: "#6b7280", bg: "rgba(107,114,128,0.08)", quotes: [] as typeof followUpQuotes },
   ];
   for (const q of followUpQuotes) {
     if (q.days_quiet <= 14) ageBuckets[0].quotes.push(q);
@@ -341,7 +341,7 @@ export default async function SalesPage({
   }
   // Export data
   const followUpExportData = followUpQuotes.map((q) => ({
-    "Age Group": q.days_quiet > 45 ? "Inactive" : q.days_quiet > 30 ? "Going Cold" : q.days_quiet > 14 ? "Warm" : "Hot",
+    "Age Group": q.days_quiet > 45 ? "Probably lost" : q.days_quiet > 30 ? "Call today or lose them" : q.days_quiet > 14 ? "Follow up soon" : "Customers are interested",
     "Days Quiet": q.days_quiet,
     "Quote #": q.quote_number,
     "Title": q.quote_title,

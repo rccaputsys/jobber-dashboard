@@ -1777,14 +1777,14 @@ const quoteWonPct = quotesInLast30Days.length > 0
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <h2 className="text-primary" style={{ fontSize: 18, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        {todayUTC.getUTCFullYear()} Revenue Goal
+                        {isAutoGoal ? `You're on track for ${money(yearlyGoal)} this year` : `${todayUTC.getUTCFullYear()} Revenue Goal`}
                       </h2>
                       {isAutoGoal && (
-                        <span className="text-muted" style={{ fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4, background: "rgba(90,166,255,0.1)" }}>Based on your pace</span>
+                        <span className="text-muted" style={{ fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4, background: "rgba(90,166,255,0.1)" }}>based on what you've been doing</span>
                       )}
                     </div>
                     <div style={{ padding: "3px 10px", borderRadius: 12, background: `${paceColor}12`, border: `1px solid ${paceColor}20` }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: paceColor }}>{money(Math.abs(aheadByCents))} {isAhead ? "ahead" : "behind"}</span>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: paceColor }}>{money(Math.abs(aheadByCents))} {isAhead ? "ahead of pace" : "behind pace"}</span>
                     </div>
                   </div>
                   <div style={{ position: "relative" }}>
@@ -1827,17 +1827,17 @@ const quoteWonPct = quotesInLast30Days.length > 0
                   <div style={{ display: "flex", justifyContent: "center", marginTop: 8, gap: 16, flexWrap: "wrap" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <span style={{ width: 12, height: 10, borderRadius: 3, background: paceGrad, flexShrink: 0 }} />
-                      <span style={{ fontSize: 14, fontWeight: 600, color: paceColor }}>{money(yearRevenue)} completed</span>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: paceColor }}>{money(yearRevenue)} earned so far</span>
                     </div>
                     {projectedCents > 0 && (<>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <span style={{ fontSize: 14, fontWeight: 600, color: paceColor }}>+</span>
                         <span style={{ width: 12, height: 10, borderRadius: 3, flexShrink: 0, background: `repeating-linear-gradient(115deg, ${paceColor}60, ${paceColor}60 2px, ${paceColor}15 2px, ${paceColor}15 4px)` }} />
-                        <span className="text-muted" style={{ fontSize: 14, fontWeight: 600 }}>{money(projectedCents)} booked</span>
+                        <span className="text-muted" style={{ fontSize: 14, fontWeight: 600 }}>{money(projectedCents)} scheduled</span>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <span style={{ fontSize: 14, fontWeight: 600, color: paceColor }}>=</span>
-                        <span className="text-primary" style={{ fontSize: 14, fontWeight: 800 }}>{money(yearRevenue + projectedCents)} projected</span>
+                        <span className="text-primary" style={{ fontSize: 14, fontWeight: 800 }}>{money(yearRevenue + projectedCents)} on track for</span>
                       </div>
                     </>)}
                   </div>
@@ -1869,19 +1869,19 @@ const quoteWonPct = quotesInLast30Days.length > 0
 
                 const healthBuckets = [
                   ...(openRequestsCount > 0 ? [{ label: "Requests", days: "new", count: openRequestsCount, cents: 0, color: "#5aa6ff", hideValue: true }] : []),
-                  { label: "Hot", days: "< 14d", count: hotQuotes.length, cents: sumCents(hotQuotes), color: "#10b981", hideValue: false },
-                  { label: "Warm", days: "14–30d", count: warmQuotes.length, cents: sumCents(warmQuotes), color: "#f59e0b", hideValue: false },
-                  { label: "Going Cold", days: "30–45d", count: goingColdQuotes.length, cents: sumCents(goingColdQuotes), color: "#ef4444", hideValue: false },
-                  ...(inactiveQuotes.length > 0 ? [{ label: "Inactive", days: "45+d", count: inactiveQuotes.length, cents: sumCents(inactiveQuotes), color: "#6b7280", hideValue: false }] : []),
+                  { label: "Customers are interested", days: "< 14d", count: hotQuotes.length, cents: sumCents(hotQuotes), color: "#10b981", hideValue: false },
+                  { label: "Follow up soon", days: "14–30d", count: warmQuotes.length, cents: sumCents(warmQuotes), color: "#f59e0b", hideValue: false },
+                  { label: "Call today or lose them", days: "30–45d", count: goingColdQuotes.length, cents: sumCents(goingColdQuotes), color: "#ef4444", hideValue: false },
+                  ...(inactiveQuotes.length > 0 ? [{ label: "Probably lost", days: "45+d", count: inactiveQuotes.length, cents: sumCents(inactiveQuotes), color: "#6b7280", hideValue: false }] : []),
                 ];
-                const healthTotal = healthBuckets.filter(b => b.label !== "Inactive").reduce((s, b) => s + b.count, 0) || 1;
+                const healthTotal = healthBuckets.filter(b => b.label !== "Probably lost").reduce((s, b) => s + b.count, 0) || 1;
 
                 return (
                   <div className="panel" style={{ padding: "20px 20px 16px", display: "flex", flexDirection: "column" }}>
                     <a href={`/jobber/sales${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                       <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 6v0a2 2 0 0 1-2 2"/><path d="M18 6v0a2 2 0 0 0 2 2"/><path d="M6 18v0a2 2 0 0 0-2-2"/><path d="M18 18v0a2 2 0 0 1 2-2"/></svg>
-                        Sales
+                        How Are Sales?
                       </h2>
                       <span className="text-muted" style={{ fontSize: 11, fontWeight: 600 }}>Details &#8594;</span>
                     </a>
@@ -1925,22 +1925,22 @@ const quoteWonPct = quotesInLast30Days.length > 0
 
                     {/* Quote Status */}
                     <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                      <div className="text-primary" style={{ fontSize: 13, fontWeight: 800, marginBottom: 6 }}>Quote Status</div>
+                      <div className="text-primary" style={{ fontSize: 13, fontWeight: 800, marginBottom: 6 }}>Your Open Quotes</div>
                       {/* Stacked bar */}
                       <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", background: "rgba(255,255,255,0.04)", marginBottom: 6 }}>
-                        {healthBuckets.filter(b => b.label !== "Inactive").map(b => { const pct = (b.count / healthTotal) * 100; if (pct === 0) return null; return <div key={b.label} style={{ width: `${pct}%`, minWidth: b.count > 0 ? 4 : 0, background: b.color, transition: "width 0.5s ease" }} />; })}
+                        {healthBuckets.filter(b => b.label !== "Probably lost").map(b => { const pct = (b.count / healthTotal) * 100; if (pct === 0) return null; return <div key={b.label} style={{ width: `${pct}%`, minWidth: b.count > 0 ? 4 : 0, background: b.color, transition: "width 0.5s ease" }} />; })}
                       </div>
                       {/* Labels — flex to fill */}
                       <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
                         {healthBuckets.map(b => (
-                          <div key={b.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flex: 1, opacity: b.label === "Inactive" ? 0.5 : 1 }}>
+                          <div key={b.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flex: 1, opacity: b.label === "Probably lost" ? 0.5 : 1 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                              <span style={{ width: 8, height: 8, borderRadius: 2, background: b.label === "Inactive" ? "rgba(107,114,128,0.3)" : b.color, flexShrink: 0 }} />
+                              <span style={{ width: 8, height: 8, borderRadius: 2, background: b.label === "Probably lost" ? "rgba(107,114,128,0.3)" : b.color, flexShrink: 0 }} />
                               <span className="text-primary" style={{ fontSize: 13, fontWeight: 800 }}>{b.count.toLocaleString()}</span>
                               <span className="text-primary" style={{ fontSize: 12, fontWeight: 600 }}>{b.label}</span>
                               <span className="text-muted" style={{ fontSize: 10 }}>{b.days}</span>
                             </div>
-                            {!b.hideValue && <span style={{ fontSize: 12, fontWeight: 700, color: b.label === "Inactive" ? undefined : b.color }} className={b.label === "Inactive" ? "text-muted" : ""}>{money(b.cents)}</span>}
+                            {!b.hideValue && <span style={{ fontSize: 12, fontWeight: 700, color: b.label === "Probably lost" ? undefined : b.color }} className={b.label === "Probably lost" ? "text-muted" : ""}>{money(b.cents)}</span>}
                           </div>
                         ))}
                       </div>
@@ -2029,7 +2029,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
                     <a href={`/jobber/capacity${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                       <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><rect x="7" y="14" width="3" height="3" rx="0.5" fill="currentColor" stroke="none" opacity="0.35"/><rect x="14" y="14" width="3" height="3" rx="0.5" fill="currentColor" stroke="none" opacity="0.35"/></svg>
-                        Schedule &amp; Capacity
+                        How Full Is Your Week?
                       </h2>
                       <span className="text-muted" style={{ fontSize: 11, fontWeight: 600 }}>Details &#8594;</span>
                     </a>
@@ -2052,7 +2052,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 <a href={`/jobber/invoices${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                   <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 3 2V2l-3 2-3-2-3 2-3-2-3 2Z"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg>
-                    Invoices
+                    Who Owes You?
                   </h2>
                   <span className="text-muted" style={{ fontSize: 11, fontWeight: 600 }}>Details &#8594;</span>
                 </a>
@@ -2063,7 +2063,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
                     {totalOutstandingCard > 0 ? money(totalOutstandingCard) : "$0"}
                   </div>
                   <div className="text-muted" style={{ fontSize: 11, marginTop: 3 }}>
-                    {totalOutstandingCard > 0 ? "owed to you" : "all collected"}
+                    {totalOutstandingCard > 0 ? "owed to you" : "you're all caught up"}
                   </div>
                 </div>
 

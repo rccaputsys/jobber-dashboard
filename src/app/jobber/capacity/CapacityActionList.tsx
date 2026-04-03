@@ -225,9 +225,9 @@ export function CapacityActionList({
 
   // Bucket unscheduled by value
   const buckets: Bucket[] = [
-    { key: "high", label: "High Value", range: "$1,000+", color: "#10b981", bg: "rgba(16,185,129,0.08)", jobs: [], totalCents: 0 },
-    { key: "medium", label: "Medium Value", range: "$250\u2013$999", color: "#5aa6ff", bg: "rgba(90,166,255,0.08)", jobs: [], totalCents: 0 },
-    { key: "low", label: "Low Value", range: "Under $250", color: "#8b5cf6", bg: "rgba(139,92,246,0.08)", jobs: [], totalCents: 0 },
+    { key: "high", label: "Big Jobs ($1,000+)", range: "", color: "#10b981", bg: "rgba(16,185,129,0.08)", jobs: [], totalCents: 0 },
+    { key: "medium", label: "Mid-Size Jobs ($250\u2013$999)", range: "", color: "#5aa6ff", bg: "rgba(90,166,255,0.08)", jobs: [], totalCents: 0 },
+    { key: "low", label: "Smaller Jobs (Under $250)", range: "", color: "#8b5cf6", bg: "rgba(139,92,246,0.08)", jobs: [], totalCents: 0 },
   ];
   for (const j of unscheduledJobs) {
     const dollars = j.total_amount_cents / 100;
@@ -238,8 +238,8 @@ export function CapacityActionList({
 
   // Bucket late visits by how late
   const lateBuckets: Bucket[] = [
-    { key: "very-late", label: "7+ Days Late", range: "Critical", color: "#ef4444", bg: "rgba(239,68,68,0.08)", jobs: [], totalCents: 0 },
-    { key: "late", label: "1\u20136 Days Late", range: "Overdue", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", jobs: [], totalCents: 0 },
+    { key: "very-late", label: "More Than a Week Late", range: "Needs a call", color: "#ef4444", bg: "rgba(239,68,68,0.08)", jobs: [], totalCents: 0 },
+    { key: "late", label: "A Few Days Late", range: "Getting late", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", jobs: [], totalCents: 0 },
   ];
   for (const v of lateVisits) {
     const bucket = v.days_late >= 7 ? lateBuckets[0] : lateBuckets[1];
@@ -258,16 +258,16 @@ export function CapacityActionList({
 
   type ToggleCard = { key: TabKey; label: string; count: number; dollars: string; color: string };
   const toggleCards: ToggleCard[] = [
-    { key: "unscheduled", label: "Unscheduled", count: unscheduledJobs.length, dollars: money(totalCents), color: "#5aa6ff" },
-    { key: "late", label: "Late Visits", count: lateVisits.length, dollars: money(lateTotalCents), color: "#ef4444" },
-    { key: "approved", label: "Approved", count: approvedQuotes.length, dollars: money(approvedTotalCents), color: "#10b981" },
+    { key: "unscheduled", label: "Needs Scheduling", count: unscheduledJobs.length, dollars: money(totalCents), color: "#5aa6ff" },
+    { key: "late", label: "Running Late", count: lateVisits.length, dollars: money(lateTotalCents), color: "#ef4444" },
+    { key: "approved", label: "Ready to Book", count: approvedQuotes.length, dollars: money(approvedTotalCents), color: "#10b981" },
   ];
 
   return (
     <div className="panel animate-in delay-2" style={{ marginTop: 20, padding: 20 }}>
       {/* Title row with inline toggle cards */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-        <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Action List</h2>
+        <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>What Needs Your Attention</h2>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {toggleCards.map(card => {
             const active = activeTab === card.key;
@@ -315,7 +315,7 @@ export function CapacityActionList({
           {activeTab === "unscheduled" && unscheduledJobs.length > 0 && (
             <ExportCSV
               data={unscheduledJobs.map(j => ({
-                "Value Group": j.total_amount_cents >= 100000 ? "High Value" : j.total_amount_cents >= 25000 ? "Medium Value" : "Low Value",
+                "Value Group": j.total_amount_cents >= 100000 ? "Big Jobs ($1,000+)" : j.total_amount_cents >= 25000 ? "Mid-Size Jobs ($250-$999)" : "Smaller Jobs (Under $250)",
                 "Job #": j.job_number,
                 "Title": j.job_title,
                 "Amount": (j.total_amount_cents / 100).toFixed(2),
@@ -351,7 +351,7 @@ export function CapacityActionList({
       )}
       {activeTab === "unscheduled" && unscheduledJobs.length === 0 && (
         <div className="text-muted" style={{ textAlign: "center", padding: 24, fontSize: 14 }}>
-          No unscheduled jobs — everything is on the calendar.
+          Everything's on the calendar.
         </div>
       )}
 
@@ -364,16 +364,16 @@ export function CapacityActionList({
       )}
       {activeTab === "late" && lateVisits.length === 0 && (
         <div className="text-muted" style={{ textAlign: "center", padding: 24, fontSize: 14 }}>
-          No late visits — all on schedule.
+          Nothing's running late.
         </div>
       )}
 
       {/* Approved tab */}
       {activeTab === "approved" && approvedQuotes.length > 0 && (() => {
         const approvedBuckets: Bucket[] = [
-          { key: "high", label: "High Value", range: "$1,000+", color: "#10b981", bg: "rgba(16,185,129,0.08)", jobs: [], totalCents: 0 },
-          { key: "medium", label: "Medium Value", range: "$250\u2013$999", color: "#5aa6ff", bg: "rgba(90,166,255,0.08)", jobs: [], totalCents: 0 },
-          { key: "low", label: "Low Value", range: "Under $250", color: "#8b5cf6", bg: "rgba(139,92,246,0.08)", jobs: [], totalCents: 0 },
+          { key: "high", label: "Big Jobs ($1,000+)", range: "", color: "#10b981", bg: "rgba(16,185,129,0.08)", jobs: [], totalCents: 0 },
+          { key: "medium", label: "Mid-Size Jobs ($250\u2013$999)", range: "", color: "#5aa6ff", bg: "rgba(90,166,255,0.08)", jobs: [], totalCents: 0 },
+          { key: "low", label: "Smaller Jobs (Under $250)", range: "", color: "#8b5cf6", bg: "rgba(139,92,246,0.08)", jobs: [], totalCents: 0 },
         ];
         for (const q of approvedQuotes) {
           const dollars = Number(q.quote_total_cents ?? 0) / 100;
@@ -397,7 +397,7 @@ export function CapacityActionList({
       })()}
       {activeTab === "approved" && approvedQuotes.length === 0 && (
         <div className="text-muted" style={{ textAlign: "center", padding: 24, fontSize: 14 }}>
-          No approved quotes waiting to be scheduled.
+          No approved quotes to book right now.
         </div>
       )}
     </div>

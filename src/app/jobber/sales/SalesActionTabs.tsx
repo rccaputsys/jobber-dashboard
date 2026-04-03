@@ -528,22 +528,22 @@ export function SalesActionTabs({
   }));
 
   const draftQuotes = pipelineQuotes?.["Draft"] || [];
-  const awaitingQuotes = pipelineQuotes?.["Awaiting Response"] || [];
-  const approvedQuotes = pipelineQuotes?.["Approved"] || [];
+  const awaitingQuotes = pipelineQuotes?.["Waiting on Customers"] || [];
+  const approvedQuotes = pipelineQuotes?.["Won"] || [];
 
   type ToggleCard = { key: TabKey; label: string; count: number; color: string };
   const toggleCards: ToggleCard[] = [
     { key: "requests", label: "Requests", count: requestCount, color: "#5aa6ff" },
-    { key: "draft", label: "Draft", count: draftQuotes.length, color: "#6b7280" },
-    { key: "awaiting", label: "Awaiting Response", count: awaitingQuotes.length, color: "#f59e0b" },
-    { key: "changes", label: "Changes Requested", count: changesRequested.length, color: "#ef4444" },
-    { key: "approved", label: "Approved", count: approvedQuotes.length, color: "#10b981" },
+    { key: "draft", label: "Drafts", count: draftQuotes.length, color: "#6b7280" },
+    { key: "awaiting", label: "Waiting on Customers", count: awaitingQuotes.length, color: "#f59e0b" },
+    { key: "changes", label: "Customer Wants Changes", count: changesRequested.length, color: "#ef4444" },
+    { key: "approved", label: "Won — Ready to Book", count: approvedQuotes.length, color: "#10b981" },
   ];
 
   // Map between toggle card keys and pipeline labels
-  const tabToPipeline: Record<string, string> = { requests: "Requests", draft: "Draft", awaiting: "Awaiting Response", changes: "Changes Requested", approved: "Approved" };
+  const tabToPipeline: Record<string, string> = { requests: "Requests", draft: "Draft", awaiting: "Waiting on Customers", changes: "Customer Wants Changes", approved: "Won" };
   const pipelineToTab: Record<string, TabKey> = {
-    Requests: "requests", Draft: "draft", "Awaiting Response": "awaiting", "Changes Requested": "changes", Approved: "approved",
+    Requests: "requests", Draft: "draft", "Waiting on Customers": "awaiting", "Customer Wants Changes": "changes", Won: "approved",
   };
 
   // Toggle card click → set tab + highlight pipeline
@@ -581,7 +581,7 @@ export function SalesActionTabs({
 
       {/* Action list header with toggle cards — always visible */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
-          <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Action List</h2>
+          <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>What Needs Your Attention</h2>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", overflow: "visible" }}>
             {toggleCards.map(card => {
               const active = tab === card.key;
@@ -640,7 +640,7 @@ export function SalesActionTabs({
           <div>
             {changesRequested.length === 0 ? (
               <div className="text-muted" style={{ textAlign: "center", padding: 24, fontSize: 14 }}>
-                No quotes with changes requested.
+                No customers requesting changes right now.
               </div>
             ) : (
               <ChangesRequestedContent items={changesRequested} isLight={isLight} />
@@ -650,7 +650,7 @@ export function SalesActionTabs({
           <div>
             {draftQuotes.length === 0 ? (
               <div className="text-muted" style={{ textAlign: "center", padding: 24, fontSize: 14 }}>
-                No draft quotes.
+                No drafts right now.
               </div>
             ) : (
               <PipelineQuoteList quotes={draftQuotes} isLight={isLight} />
@@ -660,7 +660,7 @@ export function SalesActionTabs({
           <div>
             {approvedQuotes.length === 0 ? (
               <div className="text-muted" style={{ textAlign: "center", padding: 24, fontSize: 14 }}>
-                No approved quotes.
+                No approved quotes right now.
               </div>
             ) : (
               <PipelineQuoteList quotes={approvedQuotes} isLight={isLight} />
@@ -670,7 +670,7 @@ export function SalesActionTabs({
           <div>
             {requests.length === 0 ? (
               <div className="text-muted" style={{ textAlign: "center", padding: 24, fontSize: 14 }}>
-                No open requests.
+                No new requests right now.
               </div>
             ) : (
               <RequestsContent buckets={requestBuckets} isLight={isLight} />

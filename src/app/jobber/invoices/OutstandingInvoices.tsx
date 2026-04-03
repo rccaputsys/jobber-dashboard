@@ -229,10 +229,10 @@ export function OutstandingInvoices({
 
   // Outstanding buckets by aging
   const outstandingBuckets: Bucket[] = [
-    { key: "30plus", label: "30+ Days Overdue", range: "Critical", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
-    { key: "7to30", label: "8\u201330 Days Overdue", range: "Needs follow-up", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
-    { key: "1to7", label: "1\u20137 Days Overdue", range: "Recently due", color: "#5aa6ff", bg: "rgba(90,166,255,0.08)", items: [], totalCents: 0 },
-    { key: "current", label: "Not Yet Due", range: "Current", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
+    { key: "30plus", label: "Way Overdue (30+ days)", range: "Call them today", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
+    { key: "7to30", label: "Getting Late (8\u201330 days)", range: "Send a reminder", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
+    { key: "1to7", label: "Just Past Due (1\u20137 days)", range: "Just came due", color: "#5aa6ff", bg: "rgba(90,166,255,0.08)", items: [], totalCents: 0 },
+    { key: "current", label: "Not Due Yet", range: "On time", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
   ];
   for (const inv of invoices) {
     const b = inv.days_overdue >= 30 ? outstandingBuckets[0] : inv.days_overdue >= 7 ? outstandingBuckets[1] : inv.days_overdue > 0 ? outstandingBuckets[2] : outstandingBuckets[3];
@@ -256,9 +256,9 @@ export function OutstandingInvoices({
 
   // Needs invoicing buckets
   const needsBuckets: Bucket[] = [
-    { key: "30plus", label: "30+ Days Waiting", range: "Critical", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
-    { key: "7to30", label: "8\u201330 Days Waiting", range: "Send soon", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
-    { key: "under7", label: "Under 7 Days", range: "Recent", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
+    { key: "30plus", label: "Way Overdue \u2014 Bill Now", range: "", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
+    { key: "7to30", label: "Send the Invoice Soon", range: "", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
+    { key: "under7", label: "Recently Finished", range: "", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
   ];
   for (const j of needsInvoicing) {
     const completedDate = j.scheduled_at ? new Date(j.scheduled_at).getTime() : 0;
@@ -282,9 +282,9 @@ export function OutstandingInvoices({
 
   // Draft buckets
   const draftBuckets: Bucket[] = [
-    { key: "30plus", label: "30+ Days in Draft", range: "Send now", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
-    { key: "7to30", label: "8\u201330 Days in Draft", range: "Review & send", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
-    { key: "under7", label: "Under 7 Days", range: "Recently created", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
+    { key: "30plus", label: "Sitting Too Long \u2014 Send Now", range: "", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
+    { key: "7to30", label: "Review and Send", range: "", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
+    { key: "under7", label: "Just Created", range: "", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
   ];
   for (const d of drafts) {
     const createdDate = d.created_at ? new Date(d.created_at).getTime() : 0;
@@ -361,16 +361,16 @@ export function OutstandingInvoices({
   // Toggle cards — always show all 3
   type ToggleCard = { key: TabKey; label: string; count: number; dollars: string; color: string };
   const toggleCards: ToggleCard[] = [
-    { key: "needs_invoicing", label: "Needs Invoiced", count: needsInvoicing.length, dollars: money(totalNeedsInvoicing), color: "#10b981" },
-    { key: "drafts", label: "Drafts", count: drafts.length, dollars: money(totalDrafts), color: "#6b7280" },
-    { key: "outstanding", label: "Outstanding", count: invoices.length, dollars: money(totalOutstanding), color: "#ef4444" },
+    { key: "needs_invoicing", label: "Work Done, Not Billed", count: needsInvoicing.length, dollars: money(totalNeedsInvoicing), color: "#10b981" },
+    { key: "drafts", label: "Invoices to Send", count: drafts.length, dollars: money(totalDrafts), color: "#6b7280" },
+    { key: "outstanding", label: "Money Owed to You", count: invoices.length, dollars: money(totalOutstanding), color: "#ef4444" },
   ];
 
   return (
     <div className="panel animate-in delay-2" style={{ marginTop: 20, padding: 20 }}>
       {/* Title row with inline toggle cards */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-        <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Invoice Action List</h2>
+        <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>What Needs Your Attention</h2>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {toggleCards.map(card => {
             const active = activeTab === card.key;
@@ -442,9 +442,9 @@ export function OutstandingInvoices({
         </>
       ) : (
         <div className="text-muted" style={{ textAlign: "center", padding: 24, fontSize: 14 }}>
-          {activeTab === "outstanding" && "No outstanding invoices — all paid up."}
-          {activeTab === "needs_invoicing" && "No jobs waiting to be invoiced."}
-          {activeTab === "drafts" && "No draft invoices."}
+          {activeTab === "outstanding" && "Everyone's paid up."}
+          {activeTab === "needs_invoicing" && "All your work has been billed."}
+          {activeTab === "drafts" && "No unsent invoices."}
         </div>
       )}
     </div>

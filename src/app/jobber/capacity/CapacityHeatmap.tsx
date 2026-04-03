@@ -43,13 +43,13 @@ function fillBg(pct: number, isLight: boolean): string {
 
 function weekLabel(pct: number, isCurrent: boolean): string {
   if (isCurrent) {
-    if (pct >= 100) return "On target";
-    if (pct >= 70) return "Almost";
+    if (pct >= 100) return "On track";
+    if (pct >= 70) return "Almost there";
     return "Needs work";
   }
   if (pct >= 120) return "Overbooked";
   if (pct >= 100) return "Full";
-  if (pct >= 70) return "Almost";
+  if (pct >= 70) return "Almost there";
   if (pct > 0) return "Open";
   return "Empty";
 }
@@ -109,7 +109,7 @@ export function CapacityHeatmap({ weeks, dayLabels, weeklyTargetCents, currencyC
             </th>
             {hasTarget && (
               <th style={{ width: 76, fontSize: 12, fontWeight: 800, textAlign: "center", padding: "8px 2px", color: isLight ? "#475569" : "rgba(255,255,255,0.5)", letterSpacing: -0.2 }}>
-                Fill
+                Progress
               </th>
             )}
             {dayLabels.map(day => (

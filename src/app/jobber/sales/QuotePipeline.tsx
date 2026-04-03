@@ -12,9 +12,9 @@ const stageColors: Record<string, string> = {
   Requests:    "#5aa6ff",
   Draft:       "#6b7280",
   Sent:        "#f59e0b",
-  "Awaiting Response": "#94a3b8",
-  "Changes Requested": "#ef4444",
-  Approved:    "#10b981",
+  "Waiting on Customers": "#94a3b8",
+  "Customer Wants Changes": "#ef4444",
+  Won:    "#10b981",
 };
 
 export function QuotePipeline({

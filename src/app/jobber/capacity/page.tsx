@@ -519,11 +519,11 @@ export default async function CapacityPage({
         {/* 8-Week Capacity Heatmap */}
         <div className="panel animate-in delay-1" style={{ marginTop: 12, padding: "16px 20px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>6-Week Schedule</h2>
+            <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>Your Next 6 Weeks</h2>
             {effectiveWeeklyTarget > 0 && (
               <span className="text-muted" style={{ fontSize: 11 }}>
-                Target: {money(effectiveWeeklyTarget)}/week
-                {isAutoCapacity && <span style={{ fontSize: 9, marginLeft: 4, padding: "1px 4px", borderRadius: 3, background: "rgba(90,166,255,0.1)" }}>avg of last 4 weeks</span>}
+                Weekly goal: {money(effectiveWeeklyTarget)}
+                {isAutoCapacity && <span style={{ fontSize: 9, marginLeft: 4, padding: "1px 4px", borderRadius: 3, background: "rgba(90,166,255,0.1)" }}>based on your recent weeks</span>}
               </span>
             )}
           </div>

@@ -67,7 +67,7 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
       <div style={{ marginBottom: 10 }}>
         {weeklyTargetCents > 0 ? (
           <>
-            <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -1.5, lineHeight: 1, color: fillPct >= 100 ? "#10b981" : fillPct >= 70 ? (isLight ? "#1e293b" : "#EAF1FF") : "#f59e0b" }}>{fillPct}% capacity</div>
+            <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -1.5, lineHeight: 1, color: fillPct >= 100 ? "#10b981" : fillPct >= 70 ? (isLight ? "#1e293b" : "#EAF1FF") : "#f59e0b" }}>{fillPct}% of your goal</div>
             <div className="text-muted" style={{ fontSize: 12, marginTop: 3, fontWeight: 600 }}>{money(booked)} booked {periodLabel}</div>
           </>
         ) : (
@@ -133,7 +133,7 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
                 )}
                 {zero && (
                   <div className="text-muted" style={{ position: "absolute", top: 0, bottom: 0, left: 10, display: "flex", alignItems: "center", fontSize: 12, fontWeight: 600, pointerEvents: "none" }}>
-                    {d.isToday ? "Open — fill today" : "Open"}
+                    {d.isToday ? "Open — schedule work today" : "Open"}
                   </div>
                 )}
               </div>
