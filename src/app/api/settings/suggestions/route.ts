@@ -55,8 +55,27 @@ export async function GET(req: Request) {
       ? Math.round(nonZeroWeeks.reduce((a, b) => a + b, 0) / nonZeroWeeks.length)
       : 0;
 
-    // Annual projections from weekly average
-    const suggestedAnnualRevenueCents = avgWeeklyCents > 0 ? avgWeeklyCents * 52 : 0;
+    // YTD revenue for extrapolation
+    const yearStart = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1));
+    const { data: ytdJobs } = await supabaseAdmin
+      .from("fact_jobs")
+      .select("total_amount_cents,scheduled_start_at,status")
+      .eq("connection_id", connectionId)
+      .gte("scheduled_start_at", yearStart.toISOString())
+      .limit(50000);
+
+    const ytdRevenue = (ytdJobs || []).reduce((s: number, j: any) => {
+      const st = String(j.status ?? "").toLowerCase();
+      if (st === "completed" || st === "closed" || st === "archived") return s + Number(j.total_amount_cents || 0);
+      return s;
+    }, 0);
+
+    const dayOfYear = Math.max(1, Math.floor((Date.now() - yearStart.getTime()) / 86400000));
+    const daysInYear = 365;
+    const ytdExtrapolated = ytdRevenue > 0 ? Math.round(ytdRevenue * (daysInYear / dayOfYear)) : 0;
+
+    // Annual suggestion: prefer YTD extrapolation (puts user "on pace"), fall back to weekly×52
+    const suggestedAnnualRevenueCents = ytdExtrapolated || (avgWeeklyCents > 0 ? avgWeeklyCents * 52 : 0);
 
     // Fetch quotes for close rate suggestion
     const { data: recentQuotes } = await supabaseAdmin

@@ -214,14 +214,23 @@ export const globalStyles = `
   .delay-5 { animation-delay: 0.5s; }
 
   .hover-lift {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
   }
   .hover-lift:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  }
+
+  .toggle-btn {
+    transition: all 0.15s ease;
+  }
+  .toggle-btn:hover {
+    filter: brightness(1.15);
+    transform: scale(1.05);
   }
 
   .chart-bar-hover .chart-bar-tooltip { opacity: 0 !important; }
+  .chart-bar-hover { transition: opacity 0.15s ease, filter 0.15s ease; }
+  .chart-bar-hover:hover { opacity: 1 !important; filter: brightness(1.2); }
   .chart-bar-hover:hover .chart-bar-tooltip { opacity: 1 !important; }
 
   .hover-glow {
@@ -242,6 +251,9 @@ export const globalStyles = `
     padding: 16px;
     width: 100%;
     overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
   }
 
   @media (min-width: 640px) {
@@ -787,11 +799,10 @@ export const globalStyles = `
 
   /* Hover micro-animations */
   .hover-lift {
-    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
   .hover-lift:hover {
-    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   }
   .kpi-primary {
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
@@ -838,23 +849,24 @@ export const globalStyles = `
   /* Sidebar layout */
   .app-layout {
     display: flex;
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
   }
   .sidebar-nav {
     width: 200px;
     flex-shrink: 0;
     border-right: 1px solid rgba(255,255,255,0.06);
     background: rgba(255,255,255,0.02);
-    position: sticky;
-    top: 0;
-    align-self: flex-start;
-    height: 100vh;
+    height: 100%;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
   }
   .app-main {
     flex: 1;
     min-width: 0;
     overflow-x: hidden;
+    overflow-y: auto;
   }
   html[data-theme="light"] .sidebar-nav {
     background: #f8fafc !important;

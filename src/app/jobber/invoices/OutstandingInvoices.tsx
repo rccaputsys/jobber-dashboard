@@ -25,6 +25,14 @@ type NeedsInvoicingJob = {
   completedVisits?: number;
 };
 
+type DraftInvoice = {
+  invoice_number: string;
+  client_name: string;
+  total_amount_cents: number;
+  jobber_url: string;
+  created_at: string | null;
+};
+
 type BucketItem = { key: string; cells: React.ReactNode[]; sortDays: number; sortAmount: number; sortDate: number };
 
 type Bucket = {
@@ -54,18 +62,58 @@ function ageColor(days: number): string {
   return "#10b981";
 }
 
+/* ---- Distribution bar ---- */
+function DistributionBar({ buckets, total, money, isLight }: { buckets: Bucket[]; total: number; money: (c: number) => string; isLight: boolean }) {
+  if (total === 0) return null;
+  const nonEmpty = buckets.filter(b => b.items.length > 0);
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{
+        display: "flex", height: 22, borderRadius: 6, overflow: "visible", position: "relative",
+        background: isLight ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.04)",
+      }}>
+        {nonEmpty.map((b) => {
+          const w = total > 0 ? (b.totalCents / total) * 100 : 0;
+          if (w === 0) return null;
+          return (
+            <div key={b.key} className="chart-bar-hover" style={{
+              width: `${w}%`, minWidth: w > 0 ? 3 : 0,
+              background: b.color, opacity: 0.85, transition: "width 0.3s ease",
+              position: "relative",
+            }}>
+              <span className="chart-bar-tooltip" style={{
+                position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)",
+                background: isLight ? "#1e293b" : "rgba(10,15,30,0.95)", color: "#fff",
+                padding: "4px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, whiteSpace: "nowrap",
+                pointerEvents: "none", opacity: 0,
+              }}>
+                {b.label}: {b.items.length} &middot; {money(b.totalCents)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ---- Collapsible grouped table ---- */
 type SortKey = "days" | "amount" | "date";
 type SortDir = "asc" | "desc";
 
-function GroupedTable({ buckets, headers, sortableColumns, headerStyles }: {
+function GroupedTable({ buckets, headers, sortableColumns, headerStyles, money }: {
   buckets: Bucket[];
   headers: React.ReactNode[];
   sortableColumns?: { index: number; key: SortKey }[];
   headerStyles?: { textAlign?: string; width?: number | string }[];
+  money: (c: number) => string;
 }) {
   const nonEmpty = buckets.filter(b => b.items.length > 0);
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    for (const b of buckets) init[b.key] = true;
+    return init;
+  });
   const [sortKey, setSortKey] = useState<SortKey>("days");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const colCount = headers.length;
@@ -114,29 +162,28 @@ function GroupedTable({ buckets, headers, sortableColumns, headerStyles }: {
           <tbody key={bucket.key}>
             <tr onClick={() => setCollapsed(prev => ({ ...prev, [bucket.key]: !prev[bucket.key] }))} style={{ cursor: "pointer" }}>
               <td colSpan={colCount} style={{
-                padding: "12px 16px", background: bucket.bg,
+                padding: "10px 14px", background: bucket.bg,
                 borderLeft: `3px solid ${bucket.color}`,
                 borderBottom: "1px solid rgba(255,255,255,0.06)",
                 userSelect: "none",
               }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      width: 20, height: 20, borderRadius: 5, fontSize: 12, fontWeight: 700, color: bucket.color,
+                      width: 18, height: 18, borderRadius: 4, fontSize: 11, fontWeight: 700, color: bucket.color,
                       background: `${bucket.color}20`, transition: "transform 0.2s ease",
                       transform: collapsed[bucket.key] ? "rotate(-90deg)" : "rotate(0deg)",
                     }}>&#9662;</span>
-                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: bucket.color }} />
-                    <span style={{ fontWeight: 800, fontSize: 15, color: bucket.color }}>{bucket.label}</span>
-                    <span className="text-muted" style={{ fontSize: 13 }}>{bucket.range}</span>
+                    <span style={{ fontWeight: 800, fontSize: 14, color: bucket.color }}>{bucket.label}</span>
+                    <span className="text-muted" style={{ fontSize: 12 }}>{bucket.range}</span>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                    <span className="text-muted" style={{ fontSize: 13, fontWeight: 600 }}>
-                      {bucket.items.length} {bucket.items.length === 1 ? "item" : "items"}
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <span className="text-muted" style={{ fontSize: 12, fontWeight: 600 }}>
+                      {bucket.items.length.toLocaleString()} {bucket.items.length === 1 ? "item" : "items"}
                     </span>
-                    <span style={{ fontSize: 16, fontWeight: 800, color: bucket.color }}>
-                      {moneyFmt(bucket.totalCents, "USD")}
+                    <span style={{ fontSize: 14, fontWeight: 800, color: bucket.color }}>
+                      {money(bucket.totalCents)}
                     </span>
                   </div>
                 </div>
@@ -157,14 +204,6 @@ function GroupedTable({ buckets, headers, sortableColumns, headerStyles }: {
 }
 
 /* ---- Main component ---- */
-type DraftInvoice = {
-  invoice_number: string;
-  client_name: string;
-  total_amount_cents: number;
-  jobber_url: string;
-  created_at: string | null;
-};
-
 export function OutstandingInvoices({
   invoices,
   needsInvoicing,
@@ -176,27 +215,17 @@ export function OutstandingInvoices({
   drafts?: DraftInvoice[];
   currencyCode: string;
 }) {
-  const [tab, setTab] = useState<"outstanding" | "needs_invoicing" | "drafts">("outstanding");
+  type TabKey = "needs_invoicing" | "drafts" | "outstanding";
+  const [tab, setTab] = useState<TabKey>("outstanding");
   const isLight = useIsLight();
-  const [hovered, setHovered] = useState<string | null>(null);
   const money = useMemo(() => (cents: number) => moneyFmt(cents, currencyCode), [currencyCode]);
-
-  if (invoices.length === 0 && needsInvoicing.length === 0 && drafts.length === 0) return null;
-
-  const hasOutstanding = invoices.length > 0;
-  const hasNeedsInvoicing = needsInvoicing.length > 0;
-  const hasDrafts = drafts.length > 0;
-  const activeTab = tab === "outstanding" && !hasOutstanding
-    ? (hasNeedsInvoicing ? "needs_invoicing" : hasDrafts ? "drafts" : "outstanding")
-    : tab === "needs_invoicing" && !hasNeedsInvoicing
-    ? (hasOutstanding ? "outstanding" : hasDrafts ? "drafts" : "outstanding")
-    : tab === "drafts" && !hasDrafts
-    ? "outstanding"
-    : tab;
 
   const totalOutstanding = invoices.reduce((s, i) => s + i.balance_cents, 0);
   const totalNeedsInvoicing = needsInvoicing.reduce((s, j) => s + j.total_amount_cents, 0);
   const totalDrafts = drafts.reduce((s, d) => s + d.total_amount_cents, 0);
+  const activeTab: TabKey = tab;
+
+  const nowMs = Date.now();
 
   // Outstanding buckets by aging
   const outstandingBuckets: Bucket[] = [
@@ -225,15 +254,13 @@ export function OutstandingInvoices({
     });
   }
 
-  // Needs invoicing buckets by age (how long since job was completed)
-  const nowMs = Date.now();
+  // Needs invoicing buckets
   const needsBuckets: Bucket[] = [
     { key: "30plus", label: "30+ Days Waiting", range: "Critical", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
     { key: "7to30", label: "8\u201330 Days Waiting", range: "Send soon", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
     { key: "under7", label: "Under 7 Days", range: "Recent", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
   ];
   for (const j of needsInvoicing) {
-    // Use latest visit completion or scheduled date for "waiting" calculation
     const completedDate = j.scheduled_at ? new Date(j.scheduled_at).getTime() : 0;
     const daysWaiting = completedDate > 0 ? Math.max(0, Math.floor((nowMs - completedDate) / 86400000)) : 0;
     const b = daysWaiting >= 30 ? needsBuckets[0] : daysWaiting >= 7 ? needsBuckets[1] : needsBuckets[2];
@@ -253,7 +280,7 @@ export function OutstandingInvoices({
     });
   }
 
-  // Draft invoices bucket (by age since created)
+  // Draft buckets
   const draftBuckets: Bucket[] = [
     { key: "30plus", label: "30+ Days in Draft", range: "Send now", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
     { key: "7to30", label: "8\u201330 Days in Draft", range: "Review & send", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
@@ -280,9 +307,11 @@ export function OutstandingInvoices({
     });
   }
 
+  // Active tab data
   const activeBuckets = activeTab === "outstanding" ? outstandingBuckets : activeTab === "needs_invoicing" ? needsBuckets : draftBuckets;
   const activeTotal = activeTab === "outstanding" ? totalOutstanding : activeTab === "needs_invoicing" ? totalNeedsInvoicing : totalDrafts;
   const activeCount = activeTab === "outstanding" ? invoices.length : activeTab === "needs_invoicing" ? needsInvoicing.length : drafts.length;
+
   type HeaderDef = { label: string; align?: "center" | "right" | "left"; width?: number | string };
   const activeHeaderDefs: HeaderDef[] = activeTab === "outstanding"
     ? [
@@ -309,18 +338,6 @@ export function OutstandingInvoices({
   const activeHeaders = activeHeaderDefs.map((h, i) => <span key={i}>{h.label}</span>);
   const activeHeaderStyles = activeHeaderDefs.map(h => ({ textAlign: h.align || "left" as const, width: h.width }));
 
-  const titles: Record<string, string> = { outstanding: "Outstanding Invoices", needs_invoicing: "Needs Invoicing", drafts: "Draft Invoices" };
-  const tooltips: Record<string, string> = {
-    outstanding: "Unpaid invoices grouped by how overdue they are. Follow up on overdue invoices to improve cash flow.",
-    needs_invoicing: "Completed jobs that haven't been invoiced yet. Send these invoices to get paid for work already done.",
-    drafts: "Invoices created but never sent. Review and send these to start collecting.",
-  };
-  const subtitles: Record<string, string> = {
-    outstanding: `${activeCount} ${activeCount === 1 ? "invoice" : "invoices"} totaling ${money(activeTotal)} outstanding`,
-    needs_invoicing: `${activeCount} ${activeCount === 1 ? "job" : "jobs"} totaling ${money(activeTotal)} not yet invoiced`,
-    drafts: `${activeCount} draft${activeCount !== 1 ? "s" : ""} totaling ${money(activeTotal)} not sent`,
-  };
-
   // Export data
   const exportData = activeTab === "outstanding"
     ? invoices.map((i) => ({
@@ -341,101 +358,95 @@ export function OutstandingInvoices({
         "Created": d.created_at ? new Date(d.created_at).toLocaleDateString() : "", "Jobber URL": d.jobber_url,
       }));
 
-  const pillGroup: React.CSSProperties = { display: "flex", gap: 2, background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.05)", borderRadius: 10, padding: 3 };
-  const btnStyle = (active: boolean, h: boolean): React.CSSProperties => ({
-    padding: "6px 14px", borderRadius: 8, border: "none",
-    background: active ? "linear-gradient(135deg, #7c5cff, #5aa6ff)" : h ? (isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)") : "transparent",
-    color: active ? "#fff" : isLight ? "#334155" : "rgba(255,255,255,0.85)",
-    fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s ease",
-    boxShadow: active ? "0 4px 12px rgba(124,92,255,0.3)" : "none", whiteSpace: "nowrap",
-  });
+  // Toggle cards — always show all 3
+  type ToggleCard = { key: TabKey; label: string; count: number; dollars: string; color: string };
+  const toggleCards: ToggleCard[] = [
+    { key: "needs_invoicing", label: "Needs Invoiced", count: needsInvoicing.length, dollars: money(totalNeedsInvoicing), color: "#10b981" },
+    { key: "drafts", label: "Drafts", count: drafts.length, dollars: money(totalDrafts), color: "#6b7280" },
+    { key: "outstanding", label: "Outstanding", count: invoices.length, dollars: money(totalOutstanding), color: "#ef4444" },
+  ];
 
   return (
     <div className="panel animate-in delay-2" style={{ marginTop: 20, padding: 20 }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
-              {titles[activeTab]}
-            </h2>
-            <span className="info-tooltip">?<span className="tooltip-text">{tooltips[activeTab]}</span></span>
-          </div>
-          <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
-            {subtitles[activeTab]}
-          </p>
+      {/* Title row with inline toggle cards */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+        <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Invoice Action List</h2>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {toggleCards.map(card => {
+            const active = activeTab === card.key;
+            return (
+              <button
+                key={card.key}
+                className="toggle-btn"
+                onClick={() => setTab(card.key)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "6px 14px", borderRadius: 10,
+                  border: "none",
+                  background: active
+                    ? `linear-gradient(135deg, ${card.color}22, ${card.color}10)`
+                    : (isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)"),
+                  boxShadow: active
+                    ? `0 0 0 1.5px ${card.color}, 0 2px 8px ${card.color}20`
+                    : `inset 0 0 0 1px ${isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"}`,
+                  cursor: "pointer", transition: "all 0.2s ease",
+                  opacity: active ? 1 : 0.65,
+                  transform: active ? "scale(1)" : "scale(0.98)",
+                }}
+              >
+                <span style={{
+                  width: 7, height: 7, borderRadius: "50%",
+                  background: card.color, flexShrink: 0,
+                  boxShadow: active ? `0 0 6px ${card.color}60` : "none",
+                }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: isLight ? "#334155" : "rgba(255,255,255,0.8)" }}>
+                  {card.label}
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: isLight ? "#1e293b" : "#EAF1FF" }}>
+                  {card.count.toLocaleString()}
+                </span>
+                {card.count > 0 && (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: card.color }}>
+                    {card.dollars}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
           {exportData.length > 0 && (
-            <ExportCSV data={exportData} filename={activeTab === "outstanding" ? "outstanding-invoices" : "needs-invoicing"} label="Export CSV" />
+            <ExportCSV data={exportData} filename={activeTab === "outstanding" ? "outstanding-invoices" : activeTab === "needs_invoicing" ? "needs-invoicing" : "draft-invoices"} label="Download" />
           )}
-          <div style={pillGroup}>
-            <button onClick={() => setTab("outstanding")} onMouseEnter={() => setHovered("out")} onMouseLeave={() => setHovered(null)} style={btnStyle(activeTab === "outstanding", hovered === "out")}>
-              Outstanding ({invoices.length})
-            </button>
-            <button onClick={() => setTab("needs_invoicing")} onMouseEnter={() => setHovered("ni")} onMouseLeave={() => setHovered(null)} style={btnStyle(activeTab === "needs_invoicing", hovered === "ni")}>
-              Needs Invoicing ({needsInvoicing.length})
-            </button>
-            <button onClick={() => setTab("drafts")} onMouseEnter={() => setHovered("dr")} onMouseLeave={() => setHovered(null)} style={btnStyle(activeTab === "drafts", hovered === "dr")}>
-              Drafts ({drafts.length})
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* Distribution bar */}
-      {activeTotal > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ display: "flex", height: 32, borderRadius: 8, overflow: "hidden", background: isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)" }}>
-            {activeBuckets.map((bucket) => {
-              const widthPct = activeTotal > 0 ? (bucket.totalCents / activeTotal) * 100 : 0;
-              if (widthPct === 0) return null;
-              return (
-                <div key={bucket.key} style={{ width: `${widthPct}%`, minWidth: 2, background: bucket.color, opacity: 0.85, transition: "width 0.3s ease" }}
-                  title={`${bucket.label}: ${bucket.items.length} items — ${money(bucket.totalCents)}`} />
-              );
-            })}
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, marginTop: 10 }}>
-            {activeBuckets.map((bucket) => {
-              const pct = activeTotal > 0 ? Math.round((bucket.totalCents / activeTotal) * 100) : 0;
-              return (
-                <div key={bucket.key} style={{
-                  padding: "8px 10px", borderRadius: 8,
-                  background: bucket.items.length > 0 ? bucket.bg : "transparent",
-                  borderLeft: `3px solid ${bucket.items.length > 0 ? bucket.color : "rgba(255,255,255,0.06)"}`,
-                  opacity: bucket.items.length > 0 ? 1 : 0.4,
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: bucket.color }}>{bucket.label}</span>
-                    {bucket.items.length > 0 && <span className="text-muted" style={{ fontSize: 10 }}>{pct}%</span>}
-                  </div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: bucket.items.length > 0 ? bucket.color : "rgba(255,255,255,0.2)" }}>
-                    {bucket.items.length > 0 ? money(bucket.totalCents) : "\u2014"}
-                  </div>
-                  <div className="text-muted" style={{ fontSize: 11, marginTop: 1 }}>
-                    {bucket.items.length} {bucket.items.length === 1 ? "item" : "items"}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+      {/* Content for active tab */}
+      {activeCount > 0 ? (
+        <>
+          <DistributionBar buckets={activeBuckets} total={activeTotal} money={money} isLight={isLight} />
+          <GroupedTable
+            key={activeTab}
+            buckets={activeBuckets}
+            headers={activeHeaders}
+            headerStyles={activeHeaderStyles}
+            money={money}
+            sortableColumns={
+              activeTab === "outstanding"
+                ? [{ index: 0, key: "days" as SortKey }, { index: 2, key: "amount" as SortKey }, { index: 3, key: "date" as SortKey }]
+                : activeTab === "needs_invoicing"
+                ? [{ index: 0, key: "days" as SortKey }, { index: 2, key: "amount" as SortKey }]
+                : [{ index: 0, key: "days" as SortKey }, { index: 2, key: "amount" as SortKey }, { index: 3, key: "date" as SortKey }]
+            }
+          />
+        </>
+      ) : (
+        <div className="text-muted" style={{ textAlign: "center", padding: 24, fontSize: 14 }}>
+          {activeTab === "outstanding" && "No outstanding invoices — all paid up."}
+          {activeTab === "needs_invoicing" && "No jobs waiting to be invoiced."}
+          {activeTab === "drafts" && "No draft invoices."}
         </div>
       )}
-
-      {/* Grouped table */}
-      <GroupedTable
-        buckets={activeBuckets}
-        headers={activeHeaders}
-        headerStyles={activeHeaderStyles}
-        sortableColumns={
-          activeTab === "outstanding"
-            ? [{ index: 0, key: "days" as SortKey }, { index: 2, key: "amount" as SortKey }, { index: 3, key: "date" as SortKey }]
-            : activeTab === "needs_invoicing"
-            ? [{ index: 0, key: "days" as SortKey }, { index: 2, key: "amount" as SortKey }]
-            : [{ index: 0, key: "days" as SortKey }, { index: 2, key: "amount" as SortKey }, { index: 3, key: "date" as SortKey }]
-        }
-      />
     </div>
   );
 }

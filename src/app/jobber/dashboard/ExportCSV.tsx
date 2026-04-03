@@ -9,7 +9,7 @@ type ExportCSVProps = {
   label?: string;
 };
 
-export function ExportCSV({ data, filename, label = "Export CSV ↗" }: ExportCSVProps) {
+export function ExportCSV({ data, filename, label = "Download" }: ExportCSVProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   function handleExport() {
@@ -45,27 +45,12 @@ export function ExportCSV({ data, filename, label = "Export CSV ↗" }: ExportCS
       onClick={handleExport}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      className="btn"
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 10,
-        padding: "10px 14px",
-        borderRadius: 12,
-        fontWeight: 700,
-        fontSize: 13,
-        textDecoration: "none",
-        border: "1px solid rgba(255,255,255,0.2)",
-        background: isHovered
-          ? "linear-gradient(135deg, rgba(140,108,255,1), rgba(106,182,255,1))"
-          : "linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95))",
-        color: "white",
-        boxShadow: isHovered
-          ? "0 12px 32px rgba(90,166,255,0.35)"
-          : "0 8px 24px rgba(90,166,255,0.22)",
+        padding: "4px 10px",
+        fontSize: 11,
+        fontWeight: 600,
         cursor: "pointer",
-        transition: "all 0.2s ease",
-        transform: isHovered ? "translateY(-2px)" : "translateY(0)",
       }}
     >
       {label}

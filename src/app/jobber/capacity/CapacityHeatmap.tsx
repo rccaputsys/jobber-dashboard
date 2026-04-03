@@ -61,6 +61,39 @@ function weekColor(pct: number): string {
   return "rgba(255,255,255,0.2)";
 }
 
+function DialGauge({ pct, color, size = 36, isLight }: { pct: number; color: string; size?: number; isLight: boolean }) {
+  const strokeW = Math.round(size / 6);
+  const r = (size - strokeW) / 2;
+  const cx = size / 2;
+  const cy = size / 2 + strokeW / 2;
+  const halfCircumference = Math.PI * r;
+  const fillLen = halfCircumference * Math.min(pct, 120) / 100;
+  const gapLen = halfCircumference - fillLen;
+
+  // Semicircle arc path: left to right across the top
+  const arcD = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`;
+
+  return (
+    <svg width={size} height={cy + 2} viewBox={`0 0 ${size} ${cy + 2}`}>
+      {/* Track */}
+      <path d={arcD} fill="none" stroke={isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"} strokeWidth={strokeW} strokeLinecap="round" />
+      {/* Fill */}
+      {pct > 0 && (
+        <path d={arcD} fill="none" stroke={color} strokeWidth={strokeW} strokeLinecap="round"
+          strokeDasharray={`${fillLen} ${gapLen}`}
+          style={{ transition: "stroke-dasharray 0.5s ease" }}
+        />
+      )}
+      {/* Center label */}
+      <text x={cx} y={cy - 2} textAnchor="middle" dominantBaseline="middle"
+        style={{ fontSize: size > 40 ? 13 : 10, fontWeight: 800, fill: color }}
+      >
+        {pct}%
+      </text>
+    </svg>
+  );
+}
+
 export function CapacityHeatmap({ weeks, dayLabels, weeklyTargetCents, currencyCode }: Props) {
   const isLight = useIsLight();
   const money = (c: number) => moneyShort(c, currencyCode);
@@ -71,18 +104,18 @@ export function CapacityHeatmap({ weeks, dayLabels, weeklyTargetCents, currencyC
       <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 2 }}>
         <thead>
           <tr>
-            <th style={{ width: 72, fontSize: 10, fontWeight: 700, textAlign: "left", padding: "6px 6px", color: isLight ? "#64748b" : "rgba(255,255,255,0.4)" }}>
+            <th style={{ width: 76, fontSize: 12, fontWeight: 800, textAlign: "left", padding: "8px 6px", color: isLight ? "#475569" : "rgba(255,255,255,0.5)", letterSpacing: -0.2 }}>
               Week of
             </th>
             {hasTarget && (
-              <th style={{ width: 100, fontSize: 10, fontWeight: 700, textAlign: "center", padding: "6px 4px", color: isLight ? "#64748b" : "rgba(255,255,255,0.4)" }}>
+              <th style={{ width: 76, fontSize: 12, fontWeight: 800, textAlign: "center", padding: "8px 2px", color: isLight ? "#475569" : "rgba(255,255,255,0.5)", letterSpacing: -0.2 }}>
                 Fill
               </th>
             )}
             {dayLabels.map(day => (
               <th key={day} style={{
-                fontSize: 11, fontWeight: 700, textAlign: "center", padding: "6px 2px",
-                color: isLight ? "#475569" : "rgba(255,255,255,0.5)",
+                fontSize: 12, fontWeight: 800, textAlign: "center", padding: "8px 2px",
+                color: isLight ? "#475569" : "rgba(255,255,255,0.5)", letterSpacing: -0.2,
               }}>
                 {day}
               </th>
@@ -107,42 +140,22 @@ export function CapacityHeatmap({ weeks, dayLabels, weeklyTargetCents, currencyC
               }}>
                 {/* Week label */}
                 <td style={{
-                  fontSize: 11, fontWeight: week.isCurrent ? 800 : 600,
-                  padding: "6px 6px", whiteSpace: "nowrap",
-                  color: week.isCurrent ? (isLight ? "#1e293b" : "#EAF1FF") : (isLight ? "#64748b" : "rgba(255,255,255,0.45)"),
+                  padding: "4px 6px", whiteSpace: "nowrap", verticalAlign: "middle",
                 }}>
-                  {week.label}
-                  {week.isCurrent && <span style={{ fontSize: 8, marginLeft: 3, color: "#5aa6ff", fontWeight: 700 }}>NOW</span>}
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{
+                      fontSize: 13, fontWeight: week.isCurrent ? 800 : 600,
+                      color: week.isCurrent ? (isLight ? "#1e293b" : "#EAF1FF") : (isLight ? "#64748b" : "rgba(255,255,255,0.45)"),
+                    }}>
+                      {week.label}
+                    </span>
+                    {week.isCurrent && <span style={{ fontSize: 9, color: "#5aa6ff", fontWeight: 700 }}>NOW</span>}
+                  </div>
                 </td>
-
-                {/* Weekly summary — left side */}
+                {/* Dial gauge */}
                 {hasTarget && (
-                  <td style={{
-                    padding: "6px 8px", verticalAlign: "middle",
-                    borderRight: `1px solid ${isLight ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.04)"}`,
-                  }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: wColor, letterSpacing: -0.5, lineHeight: 1, minWidth: 32, textAlign: "right" }}>
-                        {weekPct}%
-                      </div>
-                      <div style={{ flex: 1, height: 6, borderRadius: 3, background: isLight ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.04)", overflow: "hidden", minWidth: 30 }}>
-                        <div style={{
-                          height: "100%", borderRadius: 3,
-                          width: `${barWidth}%`,
-                          background: wColor,
-                          opacity: 0.6,
-                          transition: "width 0.5s ease",
-                        }} />
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2 }}>
-                      <span style={{ fontSize: 8, fontWeight: 600, color: wColor, textTransform: "uppercase", letterSpacing: 0.3 }}>
-                        {wLabel}
-                      </span>
-                      <span style={{ fontSize: 9, color: isLight ? "#94a3b8" : "rgba(255,255,255,0.3)" }}>
-                        {weekJobs.toLocaleString()} jobs
-                      </span>
-                    </div>
+                  <td style={{ padding: "2px 4px", textAlign: "center", verticalAlign: "middle" }}>
+                    <DialGauge pct={weekPct} color={wColor} size={72} isLight={isLight} />
                   </td>
                 )}
 
@@ -156,19 +169,19 @@ export function CapacityHeatmap({ weeks, dayLabels, weeklyTargetCents, currencyC
 
                   return (
                     <td key={day} style={{
-                      padding: "6px 3px",
-                      borderRadius: 6,
+                      padding: "4px 2px",
+                      borderRadius: 5,
                       background: bg,
                       textAlign: "center",
                       verticalAlign: "middle",
                       border: "2px solid transparent",
-                      minWidth: 56,
+                      minWidth: 44,
                       transition: "background 0.2s ease",
                     }}>
                       {cell.targetCents > 0 && !empty ? (
                         <>
                           <div style={{
-                            fontSize: 14, fontWeight: 800, letterSpacing: -0.5,
+                            fontSize: 13, fontWeight: 800, letterSpacing: -0.5,
                             color: pct >= 100 ? "#10b981" : pct >= 70 ? (isLight ? "#1e293b" : "#EAF1FF") : "#f59e0b",
                             lineHeight: 1,
                           }}>
@@ -189,7 +202,7 @@ export function CapacityHeatmap({ weeks, dayLabels, weeklyTargetCents, currencyC
                         </>
                       ) : (
                         <div style={{
-                          fontSize: empty ? 11 : 12,
+                          fontSize: empty ? 10 : 11,
                           fontWeight: empty ? 500 : 700,
                           color: empty
                             ? (cell.isPast ? (isLight ? "#cbd5e1" : "rgba(255,255,255,0.12)") : (isLight ? "#94a3b8" : "rgba(255,255,255,0.25)"))

@@ -52,7 +52,7 @@ export default async function CapacityPage({
       .maybeSingle();
     if (!adminConn) {
       return (
-        <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100vh", background: "#060811" }}>
+        <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100%", background: "#060811" }}>
           <h2>Connection not found</h2>
           <p style={{ marginTop: 8, color: theme.sub }}>The specified connection ID does not exist.</p>
           <a href="/admin" style={{ color: "#5aa6ff", marginTop: 16, display: "inline-block" }}>&larr; Back to Admin</a>
@@ -69,7 +69,7 @@ export default async function CapacityPage({
 
     if (!connection) {
       return (
-        <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100vh", background: "#060811" }}>
+        <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100%", background: "#060811" }}>
           <h2>No Jobber account connected</h2>
           <p style={{ marginTop: 8, color: theme.sub }}>See Your Numbers Now.</p>
           <a href="/jobber" style={{ color: "#5aa6ff", marginTop: 16, display: "inline-block" }}>Connect Jobber &rarr;</a>
@@ -214,7 +214,7 @@ export default async function CapacityPage({
   if (!hasAccess) {
     return (
       <main style={{
-        minHeight: "100vh",
+        minHeight: "100%",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -317,14 +317,36 @@ export default async function CapacityPage({
   }
 
   const lastWeekStart = addDaysUTC(thisWeekStart, -7);
-  const kpiLastWeek = computePeriodMetrics(lastWeekStart, thisWeekStart, weeklyCapacityCents, "Last Week");
-  const kpiThisWeek = computePeriodMetrics(thisWeekStart, thisWeekEnd, weeklyCapacityCents, "This Week");
-  const kpiNextWeek = computePeriodMetrics(nextWeekStart, nextWeekEnd, weeklyCapacityCents, "Next Week");
-  const kpiThisMonth = computePeriodMetrics(thisMonthStart, thisMonthEnd, weeklyCapacityCents, "This Month", monthlyCapacityCents);
+
+  // Auto weekly target: average work-day revenue of last 4 completed weeks
+  const _workDays: string[] = (connDetails as any)?.capacity_work_days || ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  const autoWeeklyTarget = (() => {
+    let total = 0;
+    const dayLabelsAll = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    for (let w = 1; w <= 4; w++) {
+      const wStart = addDaysUTC(thisWeekStart, -7 * w);
+      // Only count work days
+      for (let d = 0; d < 7; d++) {
+        const dayLabel = dayLabelsAll[d];
+        if (!_workDays.includes(dayLabel)) continue;
+        const dStart = addDaysUTC(wStart, d);
+        const dEnd = addDaysUTC(dStart, 1);
+        total += periodItems(dStart, dEnd).reduce((s: number, item) => s + item.amountCents, 0);
+      }
+    }
+    return total > 0 ? Math.round(total / 4) : 0;
+  })();
+  const effectiveWeeklyTarget = weeklyCapacityCents || autoWeeklyTarget;
+  const isAutoCapacity = !weeklyCapacityCents && autoWeeklyTarget > 0;
+
+  const kpiLastWeek = computePeriodMetrics(lastWeekStart, thisWeekStart, effectiveWeeklyTarget, "Last Week");
+  const kpiThisWeek = computePeriodMetrics(thisWeekStart, thisWeekEnd, effectiveWeeklyTarget, "This Week");
+  const kpiNextWeek = computePeriodMetrics(nextWeekStart, nextWeekEnd, effectiveWeeklyTarget, "Next Week");
+  const kpiThisMonth = computePeriodMetrics(thisMonthStart, thisMonthEnd, effectiveWeeklyTarget, "This Month", monthlyCapacityCents);
   const lastMonthStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() - 1, 1));
-  const kpiLastMonth = computePeriodMetrics(lastMonthStart, thisMonthStart, weeklyCapacityCents, "Last Month", monthlyCapacityCents);
-  const kpiNextMonth = computePeriodMetrics(nextMonthStart, nextMonthEnd, weeklyCapacityCents, "Next Month", monthlyCapacityCents);
-  const kpiAllTime = computePeriodMetrics(new Date(0), new Date(Date.now() + 86400000), weeklyCapacityCents, "All Time");
+  const kpiLastMonth = computePeriodMetrics(lastMonthStart, thisMonthStart, effectiveWeeklyTarget, "Last Month", monthlyCapacityCents);
+  const kpiNextMonth = computePeriodMetrics(nextMonthStart, nextMonthEnd, effectiveWeeklyTarget, "Next Month", monthlyCapacityCents);
+  const kpiAllTime = computePeriodMetrics(new Date(0), new Date(Date.now() + 86400000), effectiveWeeklyTarget, "All Time");
 
   // Fixed 7-day revenue average (always last 7 days, weekdays only)
   const sevenDaysAgo = addDaysUTC(todayUTC, -7);
@@ -369,7 +391,7 @@ export default async function CapacityPage({
 
   // 8-week projection summary (for the hero callout)
   let projectionSummary: { fillPct: number; gapCents: number; weeks: number } | null = null;
-  if (weeklyCapacityCents) {
+  if (effectiveWeeklyTarget) {
     const PROJ_WEEKS = 8;
     let totalScheduled = 0;
     for (let i = 0; i < PROJ_WEEKS; i++) {
@@ -378,7 +400,7 @@ export default async function CapacityPage({
       const rev = periodItems(wStart, wEnd).reduce((s: number, item) => s + item.amountCents, 0);
       totalScheduled += rev;
     }
-    const totalTarget = weeklyCapacityCents * PROJ_WEEKS;
+    const totalTarget = effectiveWeeklyTarget * PROJ_WEEKS;
     projectionSummary = {
       fillPct: totalTarget > 0 ? totalScheduled / totalTarget : 0,
       gapCents: totalTarget - totalScheduled,
@@ -415,7 +437,7 @@ export default async function CapacityPage({
   const dailyTargets: Record<string, number> = (connDetails as any)?.capacity_daily_targets || {};
   const todayDayLabel = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date().getDay()];
 
-  const heatmapWeeks = Array.from({ length: 8 }, (_, w) => {
+  const heatmapWeeks = Array.from({ length: 6 }, (_, w) => {
     const wStart = addDaysUTC(thisWeekStart, w * 7);
     const monthDay = `${wStart.toLocaleString(undefined, { month: "short", timeZone: "UTC" })} ${wStart.getUTCDate()}`;
     const days: Record<string, { revenueCents: number; targetCents: number; jobCount: number; isToday: boolean; isPast: boolean }> = {};
@@ -426,7 +448,7 @@ export default async function CapacityPage({
       const rev = dayItems.reduce((s: number, item) => s + item.amountCents, 0);
       const day = dayLabels[d];
       const isWorkDay = workDaysList.includes(day);
-      const dayTarget = dailyTargets[day] || (isWorkDay && weeklyCapacityCents ? Math.round(weeklyCapacityCents / workDaysList.length) : 0);
+      const dayTarget = dailyTargets[day] || (isWorkDay && effectiveWeeklyTarget ? Math.round(effectiveWeeklyTarget / workDaysList.length) : 0);
       days[day] = {
         revenueCents: rev,
         targetCents: dayTarget,
@@ -479,7 +501,7 @@ export default async function CapacityPage({
   /* ------------------------------------------------------------------ */
   return (
     <main className="dashboard-main" style={{
-      minHeight: "100vh",
+      minHeight: "100%",
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       background: `
         radial-gradient(ellipse 80% 60% at 50% -20%, rgba(124,92,255,0.15), transparent),
@@ -493,43 +515,22 @@ export default async function CapacityPage({
       <ErrorBoundary>
       <div className="dashboard-container">
 
-        {/* Priority actions */}
-        {(() => {
-          const capacityGap = weeklyCapacityCents ? Math.max(0, weeklyCapacityCents - kpiThisWeek.scheduledRevenueCents) : 0;
-          const unschedCents = unscheduledJobs.reduce((s: number, j: any) => s + j.total_amount_cents, 0);
-          const lateVisitCount = visits.filter((v: any) => v.visit_status === "LATE").length;
-
-          const actions: { text: string; color: string }[] = [];
-          if (capacityGap > 0) actions.push({ text: `Schedule ${money(capacityGap)} of open work this week`, color: "#f59e0b" });
-          if (unscheduledJobs.length > 0) actions.push({ text: `${unscheduledJobs.length.toLocaleString()} jobs (${money(unschedCents)}) need scheduling`, color: "#5aa6ff" });
-          if (lateVisitCount > 0) actions.push({ text: `${lateVisitCount.toLocaleString()} late visit${lateVisitCount !== 1 ? "s" : ""} need attention`, color: "#ef4444" });
-          if (approvedQuotes.length > 0) actions.push({ text: `${approvedQuotes.length.toLocaleString()} approved quotes ready to book (${money(approvedQuotes.reduce((s: number, q: any) => s + Number(q.quote_total_cents ?? 0), 0))})`, color: "#10b981" });
-
-          if (actions.length === 0) return null;
-
-          return (
-            <div className="animate-in delay-1" style={{ marginTop: 12 }}>
-              <ActionStrip
-                headline={capacityGap > 0 ? `${money(capacityGap)} open this week` : "Schedule needs attention"}
-                actions={actions}
-                borderColor="#f59e0b"
-              />
-            </div>
-          );
-        })()}
 
         {/* 8-Week Capacity Heatmap */}
         <div className="panel animate-in delay-1" style={{ marginTop: 12, padding: "16px 20px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>8-Week Schedule</h2>
-            {weeklyCapacityCents && weeklyCapacityCents > 0 && (
-              <span className="text-muted" style={{ fontSize: 11 }}>Target: {money(weeklyCapacityCents)}/week</span>
+            <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>6-Week Schedule</h2>
+            {effectiveWeeklyTarget > 0 && (
+              <span className="text-muted" style={{ fontSize: 11 }}>
+                Target: {money(effectiveWeeklyTarget)}/week
+                {isAutoCapacity && <span style={{ fontSize: 9, marginLeft: 4, padding: "1px 4px", borderRadius: 3, background: "rgba(90,166,255,0.1)" }}>avg of last 4 weeks</span>}
+              </span>
             )}
           </div>
           <CapacityHeatmap
             weeks={heatmapWeeks}
             dayLabels={dayLabels.filter(d => workDaysList.includes(d))}
-            weeklyTargetCents={weeklyCapacityCents || 0}
+            weeklyTargetCents={effectiveWeeklyTarget || 0}
             currencyCode={currencyCode}
           />
         </div>

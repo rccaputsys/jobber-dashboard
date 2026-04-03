@@ -53,7 +53,7 @@ export default async function SalesPage({
       .maybeSingle();
     if (!adminConn) {
       return (
-        <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100vh", background: "#060811" }}>
+        <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100%", background: "#060811" }}>
           <h2>Connection not found</h2>
           <p style={{ marginTop: 8, color: theme.sub }}>The specified connection ID does not exist.</p>
           <a href="/admin" style={{ color: "#5aa6ff", marginTop: 16, display: "inline-block" }}>&larr; Back to Admin</a>
@@ -70,7 +70,7 @@ export default async function SalesPage({
 
     if (!connection) {
       return (
-        <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100vh", background: "#060811" }}>
+        <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100%", background: "#060811" }}>
           <h2>No Jobber account connected</h2>
           <p style={{ marginTop: 8, color: theme.sub }}>See Your Numbers Now.</p>
           <a href="/jobber" style={{ color: "#5aa6ff", marginTop: 16, display: "inline-block" }}>Connect Jobber &rarr;</a>
@@ -119,7 +119,7 @@ export default async function SalesPage({
   if (!hasAccess) {
     return (
       <main style={{
-        minHeight: "100vh",
+        minHeight: "100%",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -163,9 +163,16 @@ export default async function SalesPage({
     const s = (q.quote_status || "").toUpperCase();
     return s === "DRAFT";
   });
+  // Quote age helper
+  const nowHealth = Date.now();
+  function quoteAgeDays(q: any): number {
+    const d = safeDate(q.updated_at_jobber) || safeDate(q.sent_at) || safeDate(q.created_at_jobber);
+    return d ? (nowHealth - d.getTime()) / 86400000 : 9999;
+  }
+
   const sentQuotes = quotes.filter((q: any) => {
     const s = (q.quote_status || "").toUpperCase();
-    return s === "AWAITING_RESPONSE" || s === "SENT";
+    return (s === "AWAITING_RESPONSE" || s === "SENT") && quoteAgeDays(q) <= 45;
   });
   const changesReqQuotes = quotes.filter((q: any) => {
     const s = (q.quote_status || "").toUpperCase();
@@ -182,6 +189,22 @@ export default async function SalesPage({
     return arr.reduce((s: number, q: any) => s + Number(q.quote_total_cents ?? 0), 0);
   }
 
+  // Build quote rows for each pipeline stage (for action list + export)
+  function quoteToRow(q: any) {
+    const updated = safeDate(q.updated_at_jobber);
+    const sent = safeDate(q.sent_at);
+    return {
+      quote_number: q.quote_number || "",
+      quote_title: q.quote_title || "",
+      amount_cents: Number(q.quote_total_cents ?? 0),
+      status: q.quote_status || "",
+      quote_url: q.quote_url || "",
+      sent_at: sent ? sent.toISOString() : null,
+      updated_at: updated ? updated.toISOString() : null,
+      days_quiet: updated ? Math.max(0, Math.round((Date.now() - updated.getTime()) / 86400000)) : 999,
+    };
+  }
+
   const pipelineStages = [
     { label: "Requests", count: openRequests.length, value: "" },
     { label: "Draft", count: draftQuotes.length, value: money(sumCents(draftQuotes)) },
@@ -189,6 +212,13 @@ export default async function SalesPage({
     { label: "Changes Requested", count: changesReqQuotes.length, value: money(sumCents(changesReqQuotes)) },
     { label: "Approved", count: approvedQuotes.length, value: money(sumCents(approvedQuotes)) },
   ];
+
+  const pipelineQuoteRows = {
+    Draft: draftQuotes.map(quoteToRow),
+    "Awaiting Response": sentQuotes.map(quoteToRow),
+    "Changes Requested": changesReqQuotes.map(quoteToRow),
+    Approved: approvedQuotes.map(quoteToRow),
+  };
 
   // Pipeline value (all open/sent, not won/lost)
   const openQuotes = quotes.filter((q: any) => {
@@ -353,7 +383,7 @@ export default async function SalesPage({
   /* ------------------------------------------------------------------ */
   return (
     <main className="dashboard-main" style={{
-      minHeight: "100vh",
+      minHeight: "100%",
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       background: `
         radial-gradient(ellipse 80% 60% at 50% -20%, rgba(124,92,255,0.15), transparent),
@@ -367,6 +397,14 @@ export default async function SalesPage({
       <ErrorBoundary>
       <div className="dashboard-container">
 
+        {/* Sales Trends */}
+        <SalesTrendsSection
+          wonQuoteEvents={wonQuoteEvents}
+          allClosureEvents={allClosureEvents}
+          sentOpenEvents={sentOpenEvents}
+          currencyCode={currencyCode}
+        />
+
         {/* ===== Pipeline + Action List ===== */}
         <div data-tour="sales-actions" className="panel animate-in delay-1" style={{ marginTop: 12, padding: "12px 20px", overflow: "visible" }}>
           <SalesActionTabs
@@ -375,6 +413,7 @@ export default async function SalesPage({
             quoteExportData={followUpExportData}
             changesRequested={changesRequestedList}
             pipelineStages={pipelineStages}
+            pipelineQuotes={pipelineQuoteRows}
           >
 
           {followUpQuotes.length === 0 ? (
@@ -382,82 +421,7 @@ export default async function SalesPage({
               No open quotes to follow up on.
             </div>
           ) : (<>
-            {/* Aging distribution bar — excludes inactive */}
-            {(() => {
-              const activeBkts = ageBuckets.filter(b => b.key !== "inactive");
-              const activeTotalCents = activeBkts.reduce((s, b) => s + b.quotes.reduce((s2, q) => s2 + q.amount_cents, 0), 0);
-              return (
-                <div style={{ marginBottom: 12 }}>
-                  {/* Stacked bar */}
-                  <div style={{
-                    display: "flex", height: 32, borderRadius: 8, overflow: "hidden",
-                    background: "rgba(255,255,255,0.04)",
-                  }}>
-                    {activeBkts.map((bucket) => {
-                      const bucketCents = bucket.quotes.reduce((s, q) => s + q.amount_cents, 0);
-                      const widthPct = activeTotalCents > 0 ? (bucketCents / activeTotalCents) * 100 : 0;
-                      if (widthPct === 0) return null;
-                      return (
-                        <div
-                          key={bucket.key}
-                          style={{
-                            width: `${widthPct}%`,
-                            minWidth: widthPct > 0 ? 2 : 0,
-                            background: bucket.color,
-                            opacity: 0.85,
-                            transition: "width 0.3s ease",
-                            position: "relative",
-                          }}
-                          title={`${bucket.label}: ${bucket.quotes.length} quotes — ${money(bucketCents)}`}
-                        />
-                      );
-                    })}
-                  </div>
-
-                  {/* Bucket legend */}
-                  <div style={{
-                    display: "grid",
-                    gridTemplateColumns: `repeat(${ageBuckets.length}, 1fr)`,
-                    gap: 10,
-                    marginTop: 12,
-                  }}>
-                    {ageBuckets.map((bucket) => {
-                      const bucketCents = bucket.quotes.reduce((s, q) => s + q.amount_cents, 0);
-                      const allCents = followUpQuotes.reduce((s, q) => s + q.amount_cents, 0);
-                      const pctOfTotal = allCents > 0 ? Math.round((bucketCents / allCents) * 100) : 0;
-                      return (
-                        <div key={bucket.key} style={{
-                          padding: "12px 14px",
-                          borderRadius: 10,
-                          background: bucket.quotes.length > 0 ? bucket.bg : "transparent",
-                          borderLeft: `3px solid ${bucket.quotes.length > 0 ? bucket.color : 'rgba(255,255,255,0.06)'}`,
-                          opacity: bucket.quotes.length > 0 ? 1 : 0.4,
-                        }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: bucket.color }}>
-                              {bucket.label}
-                            </span>
-                            {bucket.quotes.length > 0 && (
-                              <span className="text-muted" style={{ fontSize: 11 }}>
-                                {pctOfTotal}%
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ fontSize: 18, fontWeight: 800, color: bucket.quotes.length > 0 ? bucket.color : 'rgba(255,255,255,0.2)' }}>
-                            {bucket.quotes.length > 0 ? money(bucketCents) : "\u2014"}
-                          </div>
-                          <div className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
-                            {bucket.quotes.length.toLocaleString()} {bucket.quotes.length === 1 ? "quote" : "quotes"} &middot; {bucket.range}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Collapsible grouped detail table */}
+            {/* Collapsible grouped detail table (includes distribution bar) */}
             <QuoteFollowUpTable
               buckets={ageBuckets.map(b => ({
                 ...b,
@@ -473,14 +437,6 @@ export default async function SalesPage({
 
           </SalesActionTabs>
         </div>
-
-        {/* Sales Trends */}
-        <SalesTrendsSection
-          wonQuoteEvents={wonQuoteEvents}
-          allClosureEvents={allClosureEvents}
-          sentOpenEvents={sentOpenEvents}
-          currencyCode={currencyCode}
-        />
 
         {/* Bottom spacer */}
         <div style={{ height: 40 }} />

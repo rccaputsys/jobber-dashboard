@@ -1,18 +1,20 @@
 "use client";
 
+import { useIsLight } from "@/lib/hooks";
+
 type Stage = {
   label: string;
   count: number;
   value: string;
 };
 
-const stageColors: Record<string, { color: string; bg: string; border: string }> = {
-  Requests:    { color: "#5aa6ff", bg: "rgba(90,166,255,0.03)",  border: "rgba(90,166,255,0.15)" },
-  Draft:       { color: "#6b7280", bg: "rgba(107,114,128,0.03)", border: "rgba(107,114,128,0.15)" },
-  Sent:        { color: "#f59e0b", bg: "rgba(245,158,11,0.03)",  border: "rgba(245,158,11,0.15)" },
-  "Awaiting Response": { color: "#94a3b8", bg: "rgba(148,163,184,0.03)", border: "rgba(148,163,184,0.15)" },
-  "Changes Requested": { color: "#ef4444", bg: "rgba(239,68,68,0.03)", border: "rgba(239,68,68,0.15)" },
-  Approved:    { color: "#10b981", bg: "rgba(16,185,129,0.03)",  border: "rgba(16,185,129,0.15)" },
+const stageColors: Record<string, string> = {
+  Requests:    "#5aa6ff",
+  Draft:       "#6b7280",
+  Sent:        "#f59e0b",
+  "Awaiting Response": "#94a3b8",
+  "Changes Requested": "#ef4444",
+  Approved:    "#10b981",
 };
 
 export function QuotePipeline({
@@ -29,12 +31,13 @@ export function QuotePipeline({
   onSelect?: (label: string | null) => void;
 }) {
   const clickable = !!onSelect;
+  const isLight = useIsLight();
 
   return (
     <div style={{ width: "100%" }}>
       <div className="quote-pipeline-bar" style={{ display: "flex", alignItems: "stretch", width: "100%", overflowX: "auto", gap: 3 }}>
         {stages.map((stage, i) => {
-          const sc = stageColors[stage.label] || { color: "#5aa6ff", bg: "rgba(90,166,255,0.03)", border: "rgba(90,166,255,0.15)" };
+          const accent = stageColors[stage.label] || "#5aa6ff";
           const isActive = selected === stage.label;
           const hasSelection = selected != null;
 
@@ -42,37 +45,34 @@ export function QuotePipeline({
             <div key={stage.label} style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}>
               <button
                 onClick={() => onSelect?.(isActive ? null : stage.label)}
+                className="hover-lift"
                 style={{
                   flex: 1,
                   padding: "10px 10px",
                   minWidth: 0,
-                  background: isActive ? `${sc.color}12` : sc.bg,
+                  background: isActive
+                    ? (isLight ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.03)")
+                    : "transparent",
                   borderRadius: 8,
-                  border: isActive ? `2px solid ${sc.color}` : "2px solid transparent",
-                  borderLeft: `3px solid ${sc.color}`,
+                  border: isActive
+                    ? `1.5px solid ${accent}50`
+                    : `1.5px solid ${accent}20`,
+                  borderLeft: `3px solid ${isActive ? accent : `${accent}40`}`,
                   textAlign: "center",
                   cursor: clickable ? "pointer" : "default",
                   transition: "all 0.15s ease",
-                  opacity: hasSelection && !isActive ? 0.45 : 1,
+                  opacity: hasSelection && !isActive ? 0.6 : 1,
                 }}
               >
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.3, marginBottom: 4, color: sc.color }}>
-                  {stage.label === "Changes Requested" ? "\u26A0\uFE0F " : ""}{stage.label}
+                <div className="text-muted" style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.3, marginBottom: 4 }}>
+                  {stage.label}
                 </div>
-                {stage.value ? (
-                  <>
-                    <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5, color: sc.color }}>
-                      {stage.value}
-                    </div>
-                    <div className="text-primary" style={{ fontSize: 13, fontWeight: 500 }}>
-                      {stage.count.toLocaleString()} quotes
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: -1, color: sc.color }}>
-                    {stage.count.toLocaleString()}
-                  </div>
-                )}
+                <div className="text-primary" style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5 }}>
+                  {stage.value || stage.count.toLocaleString()}
+                </div>
+                <div className="text-muted" style={{ fontSize: 13, fontWeight: 500 }}>
+                  {stage.value ? `${stage.count.toLocaleString()} quotes` : "new leads"}
+                </div>
               </button>
               {i < stages.length - 1 && (
                 <div className="funnel-arrow" style={{ fontSize: 16, padding: "0 2px", flexShrink: 0 }}>&rarr;</div>

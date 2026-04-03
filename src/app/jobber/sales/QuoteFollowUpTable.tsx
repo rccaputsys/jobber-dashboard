@@ -101,7 +101,39 @@ export function QuoteFollowUpTable({
     });
   }
 
+  // Distribution bar
+  const activeBkts = buckets.filter(b => b.key !== "inactive");
+  const activeTotal = activeBkts.reduce((s, b) => s + b.quotes.length, 0);
+
   return (
+    <div>
+      {activeTotal > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ display: "flex", height: 22, borderRadius: 6, overflow: "visible", background: "rgba(255,255,255,0.04)", position: "relative" }}>
+            {activeBkts.map(b => {
+              const pct = (b.quotes.length / activeTotal) * 100;
+              const bucketCents = b.quotes.reduce((s, q) => s + q.amount_cents, 0);
+              if (pct === 0) return null;
+              return (
+                <div key={b.key} className="chart-bar-hover"
+                  onClick={() => toggle(b.key)}
+                  style={{ width: `${pct}%`, minWidth: 2, background: b.color, opacity: 0.85, transition: "width 0.3s ease", position: "relative", cursor: "pointer" }}>
+                  <div className="chart-bar-tooltip" style={{
+                    position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)",
+                    padding: "6px 10px", borderRadius: 6, whiteSpace: "nowrap",
+                    background: "rgba(0,0,0,0.9)", color: "#fff", fontSize: 12, lineHeight: 1.5,
+                    pointerEvents: "none", transition: "opacity 0.15s ease",
+                    zIndex: 10, marginBottom: 4, boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                  }}>
+                    <div style={{ fontWeight: 700, color: b.color }}>{b.label}</div>
+                    <div>{b.quotes.length.toLocaleString()} quotes &middot; {money(bucketCents)}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     <div className="table-container">
       <table className="data-table">
         <thead>
@@ -124,22 +156,22 @@ export function QuoteFollowUpTable({
                 style={{ cursor: "pointer" }}
               >
                 <td colSpan={5} style={{
-                  padding: "12px 16px",
+                  padding: "10px 16px",
                   background: bucket.bg,
                   borderLeft: `3px solid ${bucket.color}`,
                   borderBottom: "1px solid rgba(255,255,255,0.06)",
                   userSelect: "none",
                 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{
                         display: "inline-flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        width: 20,
-                        height: 20,
-                        borderRadius: 5,
-                        fontSize: 12,
+                        width: 18,
+                        height: 18,
+                        borderRadius: 4,
+                        fontSize: 11,
                         fontWeight: 700,
                         color: bucket.color,
                         background: `${bucket.color}20`,
@@ -149,21 +181,21 @@ export function QuoteFollowUpTable({
                         &#9662;
                       </span>
                       <span style={{
-                        width: 10, height: 10, borderRadius: "50%",
+                        width: 8, height: 8, borderRadius: "50%",
                         background: bucket.color, display: "inline-block",
                       }} />
-                      <span style={{ fontWeight: 800, fontSize: 15, color: bucket.color }}>
+                      <span style={{ fontWeight: 800, fontSize: 14, color: bucket.color }}>
                         {bucket.label}
                       </span>
-                      <span className="text-muted" style={{ fontSize: 13 }}>
+                      <span className="text-muted" style={{ fontSize: 11 }}>
                         {bucket.range}
                       </span>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                      <span className="text-muted" style={{ fontSize: 13, fontWeight: 600 }}>
-                        {bucket.quotes.length} {bucket.quotes.length === 1 ? "quote" : "quotes"}
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <span className="text-muted" style={{ fontSize: 11, fontWeight: 600 }}>
+                        {bucket.quotes.length} quotes
                       </span>
-                      <span style={{ fontSize: 16, fontWeight: 800, color: bucket.color }}>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: bucket.color }}>
                         {money(bucketTotal)}
                       </span>
                     </div>
@@ -227,6 +259,7 @@ export function QuoteFollowUpTable({
           );
         })}
       </table>
+    </div>
     </div>
   );
 }

@@ -56,8 +56,8 @@ export function SparkLine(props: {
   const vbH = props.height || 190;
   const padL = hasTarget ? 72 : 54;
   const padR = 14;
-  const padT = 24;
-  const padB = 50;
+  const padT = 20;
+  const padB = 38;
 
   // When a target is set, use a refined neutral for lines so only dots/bars show target performance
   const chartColor = hasTarget ? "rgba(165,180,210,0.7)" : (props.color || "#5aa6ff");
@@ -97,7 +97,10 @@ export function SparkLine(props: {
   };
   const xOf = (i: number) => padL + i * xStep;
 
-  // Smooth catmull-rom spline for line charts
+  // Smooth catmull-rom spline for line charts, clamped to chart bounds
+  const yMin = padT;
+  const yMax = vbH - padB;
+  function clampY(v: number) { return Math.max(yMin, Math.min(yMax, v)); }
   function smoothPath(pts: { x: number; y: number }[]): string {
     if (pts.length < 2) return pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
     const tension = 0.3;
@@ -108,9 +111,9 @@ export function SparkLine(props: {
       const p2 = pts[i + 1];
       const p3 = pts[Math.min(i + 2, pts.length - 1)];
       const cp1x = p1.x + (p2.x - p0.x) * tension;
-      const cp1y = p1.y + (p2.y - p0.y) * tension;
+      const cp1y = clampY(p1.y + (p2.y - p0.y) * tension);
       const cp2x = p2.x - (p3.x - p1.x) * tension;
-      const cp2y = p2.y - (p3.y - p1.y) * tension;
+      const cp2y = clampY(p2.y - (p3.y - p1.y) * tension);
       path += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
     }
     return path;
@@ -252,7 +255,7 @@ export function SparkLine(props: {
     <div
       ref={containerRef}
       className="panel hover-lift"
-      style={{ padding: 16, height: "100%", position: "relative", overflow: "visible" }}
+      style={{ padding: "10px 14px", height: "100%", position: "relative", overflow: "visible" }}
       onMouseLeave={() => setHoveredIndex(null)}
     >
       {/* Loading Overlay */}
@@ -282,7 +285,7 @@ export function SparkLine(props: {
         </div>
       )}
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
         <div>
           <div className="chart-title" style={{ fontWeight: 700, fontSize: 14 }}>{props.title}</div>
           <div className="chart-subtitle" style={{ fontSize: 11, marginTop: 2 }}>
@@ -411,7 +414,7 @@ export function SparkLine(props: {
         {showDataLabels && (() => {
           const dotRadius = 6; // largest dot size
           const labelOffset = 16; // distance from data point center
-          const minLabelGap = 13;
+          const minLabelGap = 10;
           const chartBottom = vbH - padB;
 
           const barLabelGap = 12; // fixed distance above bar top
@@ -467,18 +470,10 @@ export function SparkLine(props: {
             const bgW = label.length * 4.8 + 6;
             return (
               <g key={`dl-${pos.i}`} style={{ pointerEvents: "none" }}>
-                <rect
-                  x={pos.x - bgW / 2}
-                  y={finalY - 6.5}
-                  width={bgW}
-                  height={9}
-                  rx={2.5}
-                  className="chart-label-pill"
-                />
                 <text
                   x={pos.x}
                   y={finalY + 0.5}
-                  fontSize="7"
+                  fontSize="8"
                   fontWeight="700"
                   textAnchor="middle"
                   fill={pos.color}

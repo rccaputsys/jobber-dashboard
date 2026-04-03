@@ -43,7 +43,7 @@ export default async function InvoicesPage({
       .maybeSingle();
     if (!adminConn) {
       return (
-        <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100vh", background: "#060811" }}>
+        <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100%", background: "#060811" }}>
           <h2>Connection not found</h2>
           <p style={{ marginTop: 8, color: theme.sub }}>The specified connection ID does not exist.</p>
           <a href="/admin" style={{ color: "#5aa6ff", marginTop: 16, display: "inline-block" }}>&larr; Back to Admin</a>
@@ -59,7 +59,7 @@ export default async function InvoicesPage({
       .maybeSingle();
     if (!connection) {
       return (
-        <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100vh", background: "#060811" }}>
+        <div style={{ padding: 24, color: "#EAF1FF", minHeight: "100%", background: "#060811" }}>
           <h2>No Jobber account connected</h2>
           <p style={{ marginTop: 8, color: theme.sub }}>See Your Numbers Now.</p>
           <a href="/jobber" style={{ color: "#5aa6ff", marginTop: 16, display: "inline-block" }}>Connect Jobber &rarr;</a>
@@ -104,7 +104,7 @@ export default async function InvoicesPage({
   if (!hasAccess) {
     return (
       <main style={{
-        minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+        minHeight: "100%", display: "flex", alignItems: "center", justifyContent: "center",
         background: "linear-gradient(180deg, #060811 0%, #0A1222 100%)", padding: 24,
       }}>
         <style>{globalStyles}</style>
@@ -278,7 +278,7 @@ export default async function InvoicesPage({
   /* ------------------------------------------------------------------ */
   return (
     <main className="dashboard-main" style={{
-      minHeight: "100vh",
+      minHeight: "100%",
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       background: `
         radial-gradient(ellipse 80% 60% at 50% -20%, rgba(124,92,255,0.15), transparent),
@@ -292,39 +292,6 @@ export default async function InvoicesPage({
       <ErrorBoundary>
       <div className="dashboard-container">
 
-        {/* Priority Actions */}
-        {(() => {
-          const adminQs = adminConnectionId ? `?admin_connection_id=${adminConnectionId}` : "";
-          const over30 = outstanding.filter(i => i.days_overdue >= 30);
-          const over30Cents = over30.reduce((s, i) => s + i.balance_cents, 0);
-          const needsInvCents = needsInvoicing.reduce((s: number, j: any) => s + j.total_amount_cents, 0);
-
-          const actions: { text: string; href?: string; color: string }[] = [];
-          if (over30.length > 0) actions.push({ text: `Collect ${money(over30Cents)} in overdue cash (${over30.length.toLocaleString()} invoices 30+ days late)`, color: "#ef4444" });
-          if (pastDueCount > 0 && over30.length === 0) actions.push({ text: `${pastDueCount.toLocaleString()} invoices past due — ${money(pastDueBalance)} outstanding`, color: "#f59e0b" });
-          if (draftCount > 0) actions.push({ text: `Send ${draftCount.toLocaleString()} draft invoices (${money(draftCents)}) — work is done, just needs billing`, color: "#5aa6ff" });
-          if (needsInvoicing.length > 0) actions.push({ text: `Invoice ${needsInvoicing.length.toLocaleString()} completed jobs (${money(needsInvCents)}) — you haven\u2019t billed yet`, color: "#10b981" });
-
-          const headlineCents = over30Cents > 0 ? over30Cents : pastDueBalance;
-          const headline = headlineCents > 0
-            ? `${money(headlineCents)} needs collecting`
-            : draftCount > 0
-            ? `${money(draftCents)} in unsent invoices`
-            : needsInvoicing.length > 0
-            ? `${money(needsInvCents)} in completed work not yet invoiced`
-            : "Invoices are in good shape";
-
-          return actions.length > 0 ? (
-            <div className="animate-in delay-1" style={{ marginTop: 16 }}>
-              <ActionStrip
-                headline={headline}
-                subline={headlineCents > 0 ? `${money(outstandingBalance)} total outstanding across ${outstanding.length.toLocaleString()} invoices` : undefined}
-                actions={actions}
-                borderColor={actions[0]?.color}
-              />
-            </div>
-          ) : null;
-        })()}
 
         {/* Trends */}
         <div data-tour="invoice-chart">
@@ -339,7 +306,7 @@ export default async function InvoicesPage({
         />
         </div>
 
-        {/* Outstanding Invoices */}
+        {/* Invoice Action List */}
         <OutstandingInvoices
           invoices={outstanding}
           needsInvoicing={needsInvoicing}

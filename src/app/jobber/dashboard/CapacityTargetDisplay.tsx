@@ -40,50 +40,42 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
   const isLight = useIsLight();
   const money = (c: number) => moneyFmt(c, currencyCode);
   const [weekIdx, setWeekIdx] = useState(defaultWeek);
-  const [hovered, setHovered] = useState<string | null>(null);
   const hiddenDays = new Set(
     ALL_DAYS.filter(d => !(initialWorkDays || ["Mon", "Tue", "Wed", "Thu", "Fri"]).includes(d))
   );
 
   const week = weeks[weekIdx] || weeks[0];
-  const visibleDays = week.days.filter(d => !hiddenDays.has(d.day));
+  const isMultiWeek = week.label.includes("6 Weeks") || week.label.includes("Month");
+  const visibleDays = isMultiWeek ? week.days : week.days.filter(d => !hiddenDays.has(d.day));
   const booked = visibleDays.reduce((s, d) => s + d.scheduledCents, 0);
-  const targetForPeriod = weeklyTargetCents > 0 ? (week.label === "This Month" ? weeklyTargetCents * Math.ceil(week.days.length) : weeklyTargetCents) : 0;
+  const numWeeksInPeriod = isMultiWeek ? week.days.length : 1;
+  const targetForPeriod = weeklyTargetCents > 0 ? weeklyTargetCents * numWeeksInPeriod : 0;
   const fillPct = targetForPeriod > 0 ? Math.round((booked / targetForPeriod) * 100) : 0;
 
-  // Mellow blue palette for fill gauge
-  const fillGrad = "linear-gradient(90deg, rgba(90,166,255,0.6), rgba(56,189,248,0.5))";
+  // Navy-blue palette for fill gauge
+  const fillGrad = isLight
+    ? "linear-gradient(90deg, #3b6daa, #2d5a8e)"
+    : "linear-gradient(90deg, rgba(59,109,170,0.75), rgba(45,90,142,0.65))";
   const trackBg = isLight ? "linear-gradient(180deg, #e2e8f0, #eef2f7)" : "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))";
   const trackShadow = isLight ? "inset 0 1px 3px rgba(0,0,0,0.06)" : "inset 0 1px 3px rgba(0,0,0,0.2)";
 
-  const pillBg = isLight ? "#f1f5f9" : "rgba(255,255,255,0.05)";
-  const btnStyle = (active: boolean, h: boolean): React.CSSProperties => ({
-    padding: "5px 12px", borderRadius: 7, border: "none",
-    background: active ? "#5aa6ff" : h ? (isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)") : "transparent",
-    color: active ? "#fff" : isLight ? "#334155" : "rgba(255,255,255,0.85)",
-    fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all 0.15s ease", whiteSpace: "nowrap",
-  });
-
-  const periodLabel = week.label === "This Month" ? "this month" : week.label === "Next Week" ? "next week" : "this week";
+  const periodLabel = week.label.includes("6 Weeks") ? "next 6 weeks" : week.label === "This Month" ? "this month" : week.label === "Next Week" ? "next week" : "this week";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-      {/* Big number + toggle on right */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10, gap: 8 }}>
-        <div>
-          <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -1.5, lineHeight: 1 }} className="text-primary">{money(booked)}</div>
-          <div className="text-muted" style={{ fontSize: 11, marginTop: 3 }}>
-            booked {periodLabel}
-            {weeklyTargetCents > 0 && <> &middot; {fillPct}% of capacity</>}
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 2, background: pillBg, borderRadius: 8, padding: 2, flexShrink: 0 }}>
-          {weeks.map((w, i) => (
-            <button key={i} onClick={() => setWeekIdx(i)} onMouseEnter={() => setHovered(`w${i}`)} onMouseLeave={() => setHovered(null)} style={btnStyle(weekIdx === i, hovered === `w${i}`)}>
-              {w.label}
-            </button>
-          ))}
-        </div>
+      {/* Headline */}
+      <div style={{ marginBottom: 10 }}>
+        {weeklyTargetCents > 0 ? (
+          <>
+            <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -1.5, lineHeight: 1, color: fillPct >= 100 ? "#10b981" : fillPct >= 70 ? (isLight ? "#1e293b" : "#EAF1FF") : "#f59e0b" }}>{fillPct}% capacity</div>
+            <div className="text-muted" style={{ fontSize: 12, marginTop: 3, fontWeight: 600 }}>{money(booked)} booked {periodLabel}</div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -1.5, lineHeight: 1 }} className="text-primary">{money(booked)}</div>
+            <div className="text-muted" style={{ fontSize: 11, marginTop: 3 }}>booked {periodLabel}</div>
+          </>
+        )}
       </div>
 
       {/* Day/week bars — flex to fill remaining card space */}
@@ -103,15 +95,15 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
               display: "flex", alignItems: "center", gap: 6, flex: 1,
               padding: d.isToday ? "2px 6px" : "2px 6px",
               borderRadius: 6,
-              background: d.isToday ? (isLight ? "rgba(90,166,255,0.05)" : "rgba(90,166,255,0.04)") : "transparent",
-              border: d.isToday ? `1.5px solid ${isLight ? "rgba(90,166,255,0.15)" : "rgba(90,166,255,0.1)"}` : "1.5px solid transparent",
+              background: d.isToday ? (isLight ? "rgba(59,109,170,0.04)" : "rgba(59,109,170,0.06)") : "transparent",
+              border: d.isToday ? `1.5px solid ${isLight ? "rgba(59,109,170,0.15)" : "rgba(59,109,170,0.15)"}` : "1.5px solid transparent",
               minHeight: 28,
             }}>
               {/* Day label */}
               <div style={{
                 width: 34, flexShrink: 0, textAlign: "center",
                 fontSize: 12, fontWeight: d.isToday ? 800 : 600,
-                color: d.isToday ? "#5aa6ff" : (isLight ? "#475569" : "rgba(255,255,255,0.65)"),
+                color: d.isToday ? (isLight ? "#1e293b" : "#e2e8f0") : (isLight ? "#475569" : "rgba(255,255,255,0.65)"),
               }}>
                 {d.day}
               </div>
@@ -126,7 +118,7 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
                   position: "absolute", top: 2, left: 2, bottom: 2,
                   width: effectiveWidth > 0 ? `calc(${effectiveWidth}% - 4px)` : "0%",
                   borderRadius: 3, background: fillGrad,
-                  boxShadow: effectiveWidth > 0 ? "0 0 4px rgba(90,166,255,0.12)" : "none",
+                  boxShadow: effectiveWidth > 0 ? "0 0 4px rgba(59,109,170,0.15)" : "none",
                   transition: "width 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
                 }}>
                   <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "45%", borderRadius: "3px 3px 0 0", background: "linear-gradient(180deg, rgba(255,255,255,0.2), transparent)" }} />
@@ -166,6 +158,32 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
           <span className="text-muted" style={{ fontSize: 9 }}>$0</span>
           <span className="text-muted" style={{ fontSize: 9 }}>50%</span>
           <span className="text-muted" style={{ fontSize: 9 }}>Target</span>
+        </div>
+      )}
+
+      {/* Period toggles at bottom */}
+      {weeks.length > 1 && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          paddingTop: 4, marginTop: "auto",
+          borderTop: `1px solid ${isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.04)"}`,
+        }}>
+          {weeks.map((w, i) => (
+            <button
+              key={i}
+              className="toggle-btn"
+              onClick={() => setWeekIdx(i)}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                padding: "4px 6px", fontSize: 11, fontWeight: weekIdx === i ? 700 : 500,
+                color: weekIdx === i ? (isLight ? "#1e293b" : "#EAF1FF") : (isLight ? "#94a3b8" : "rgba(255,255,255,0.3)"),
+                borderBottom: weekIdx === i ? `2px solid ${isLight ? "#1e293b" : "#EAF1FF"}` : "2px solid transparent",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {w.label}
+            </button>
+          ))}
         </div>
       )}
     </div>

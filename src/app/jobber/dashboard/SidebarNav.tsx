@@ -9,9 +9,9 @@ import { SubscriptionStatus, LogoutButton } from "./HeaderButtons";
 
 const tabs = [
   { label: "Overview", href: "/jobber/dashboard", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4" },
-  { label: "Sales", href: "/jobber/sales", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
-  { label: "Capacity", href: "/jobber/capacity", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
-  { label: "Invoices", href: "/jobber/invoices", icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
+  { label: "Sell", href: "/jobber/sales", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
+  { label: "Book", href: "/jobber/capacity", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
+  { label: "Collect", href: "/jobber/invoices", icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
 ];
 
 // Bullseye/target icon paths
@@ -145,6 +145,18 @@ export function SidebarNav({ adminConnectionId, companyName, connectionId, lastS
             <SubscriptionStatus billingStatus={billingStatus} trialEndsAt={trialEndsAt} subscriptionActive={subscriptionActive} />
           </div>
         )}
+
+        {/* Footer */}
+        <div className="text-muted" style={{ marginTop: 12, paddingTop: 8, borderTop: `1px solid ${isLight ? "#e2e8f0" : "rgba(255,255,255,0.06)"}`, fontSize: 9, lineHeight: 1.5, textAlign: "center" }}>
+          <div>&copy; {new Date().getFullYear()} OwnerView</div>
+          <div style={{ marginTop: 2 }}>
+            <a href="/terms" className="text-muted" style={{ textDecoration: "none" }}>Terms</a>
+            {" · "}
+            <a href="/privacy" className="text-muted" style={{ textDecoration: "none" }}>Privacy</a>
+            {" · "}
+            <a href="https://ownerview.io/accuinsight-faq" target="_blank" rel="noreferrer" className="text-muted" style={{ textDecoration: "none" }}>FAQ</a>
+          </div>
+        </div>
       </div>
     </nav>
   );

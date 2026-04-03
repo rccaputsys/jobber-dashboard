@@ -269,49 +269,27 @@ export function InvoiceTrendsSection({ events, agingBuckets, totalOutstandingCen
   }, [paymentTimings, range]);
 
   return (
-    <div className="panel animate-in delay-2" style={{ padding: 0, marginTop: 16, overflow: "visible" }}>
-      <div style={{ padding: "12px 16px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
-              Collections & Aging
-            </h2>
-            <span className="info-tooltip">?<span className="tooltip-text">How fast you&apos;re collecting money. The chart shows cash invoiced vs collected each period. The donut shows how old your unpaid invoices are. Avg days to pay = time from due date to payment.</span></span>
-            {avgDaysToPay > 0 && (
-              <>
-                <div style={{ width: 1, height: 18, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)" }} />
-                <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                  <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5, color: avgDaysToPay <= 7 ? "#10b981" : avgDaysToPay <= 14 ? "#f59e0b" : "#ef4444" }}>
-                    {avgDaysToPay} days
-                  </span>
-                  <span className="text-muted" style={{ fontSize: 11, fontWeight: 600 }}>avg to pay</span>
-                </div>
-              </>
-            )}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={labelStyle}>Range</span>
-            <div style={pillGroup}>
-              {rangeOptions.map((o) => (
-                <button key={o.key} onClick={() => setRange(o.key)} onMouseEnter={() => setHovered(`r-${o.key}`)} onMouseLeave={() => setHovered(null)} style={btnStyle(range === o.key, hovered === `r-${o.key}`)}>{o.label}</button>
-              ))}
-            </div>
-            <div style={{ width: 1, height: 22, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)", flexShrink: 0 }} />
-            <span style={labelStyle}>Group</span>
-            <div style={pillGroup}>
-              {gOptions.map((o) => (
-                <button key={o.key} onClick={() => setG(o.key)} onMouseEnter={() => setHovered(`g-${o.key}`)} onMouseLeave={() => setHovered(null)} style={btnStyle(g === o.key, hovered === `g-${o.key}`)}>{o.label}</button>
-              ))}
-            </div>
-          </div>
+    <div className="panel animate-in delay-2" style={{ padding: 0, marginTop: 8, overflow: "visible" }}>
+      <div style={{ padding: "8px 14px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Collections</h2>
+        <div style={pillGroup}>
+          <button onClick={() => { setG("week"); setRange("8w"); }} onMouseEnter={() => setHovered("weekly")} onMouseLeave={() => setHovered(null)} style={btnStyle(g === "week", hovered === "weekly")}>Weekly</button>
+          <button onClick={() => { setG("month"); setRange("t12m"); }} onMouseEnter={() => setHovered("monthly")} onMouseLeave={() => setHovered(null)} style={btnStyle(g === "month", hovered === "monthly")}>Monthly</button>
         </div>
+        {avgDaysToPay > 0 && (
+          <>
+            <div style={{ width: 1, height: 16, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)" }} />
+            <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+              <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: -0.5, color: avgDaysToPay <= 7 ? "#10b981" : avgDaysToPay <= 14 ? "#f59e0b" : "#ef4444" }}>
+                {avgDaysToPay} days
+              </span>
+              <span className="text-muted" style={{ fontSize: 11, fontWeight: 600 }}>avg to pay</span>
+            </div>
+          </>
+        )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16, padding: "0 12px 16px" }} className="invoice-trends-grid">
-        <style>{`@media (min-width: 768px) { .invoice-trends-grid { grid-template-columns: minmax(0, 1fr) 260px !important; padding: 0 16px 20px !important; } }`}</style>
-
-        {/* Left: Collection Chart */}
-        <div style={{ minWidth: 0, overflow: "hidden" }}>
+      <div style={{ padding: "0 14px 10px" }}>
         {events.length > 0 ? (
           <CollectionChart
             periods={periodData}
@@ -321,21 +299,10 @@ export function InvoiceTrendsSection({ events, agingBuckets, totalOutstandingCen
             draftCents={draftCents}
           />
         ) : (
-          <div className="panel" style={{ padding: 32, textAlign: "center" }}>
-            <span className="text-muted">No invoice data yet</span>
+          <div className="text-muted" style={{ padding: 24, textAlign: "center", fontSize: 14 }}>
+            No invoice data yet
           </div>
         )}
-        </div>
-
-        {/* Right: Aging Donut */}
-        <div style={{ minWidth: 0 }}>
-          <AgingDonutPanel
-            buckets={agingBuckets}
-            totalCents={totalOutstandingCents}
-            currencyCode={currencyCode}
-            isLight={isLight}
-          />
-        </div>
       </div>
     </div>
   );

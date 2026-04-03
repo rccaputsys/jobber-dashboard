@@ -2,16 +2,16 @@
 import React, { useState, useEffect } from "react";
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">("light");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     const saved = localStorage.getItem("dashboard-theme") as "dark" | "light" | null;
-    if (saved) {
-      setTheme(saved);
-      document.documentElement.setAttribute("data-theme", saved);
-    }
+    const initial = saved || "light";
+    setTheme(initial);
+    document.documentElement.setAttribute("data-theme", initial);
+    if (!saved) localStorage.setItem("dashboard-theme", "light");
   }, []);
 
   const toggleTheme = () => {
@@ -21,7 +21,7 @@ export function ThemeToggle() {
     document.documentElement.setAttribute("data-theme", newTheme);
   };
 
-  const isDark = !mounted || theme === "dark";
+  const isDark = mounted ? theme === "dark" : false;
 
   return (
     <button

@@ -193,7 +193,7 @@ function InlineControls({
   ];
 
   const btnStyle = (active: boolean, h: boolean): React.CSSProperties => ({
-    padding: "8px 12px", borderRadius: 8, border: "none",
+    padding: "5px 10px", borderRadius: 7, border: "none",
     background: active ? "linear-gradient(135deg, #7c5cff, #5aa6ff)" : h ? (isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)") : "transparent",
     color: active ? "#fff" : isLight ? "#334155" : "rgba(255,255,255,0.85)",
     fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.15s ease",
@@ -203,51 +203,19 @@ function InlineControls({
   const pillGroup: React.CSSProperties = { display: "flex", gap: 2, background: isLight ? "#f1f5f9" : "rgba(255,255,255,0.05)", borderRadius: 10, padding: 3 };
 
   return (
-    <div>
-      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: isMobile ? 8 : 12, flexWrap: "wrap" }}>
-        {/* Week nav */}
-        <div style={{ display: "flex", alignItems: "center", gap: 0, justifyContent: isMobile ? "space-between" : "flex-start" }}>
-          <div style={pillGroup}>
-            {weekOptions.map((o) => (
-              <button key={o.key} onClick={() => {
-                if (weekOffset === o.key) { setWeekOffset(null); }
-                else { setWeekOffset(o.key); }
-              }} onMouseEnter={() => setHovered(`w-${o.key}`)} onMouseLeave={() => setHovered(null)} style={btnStyle(weekOffset === o.key, hovered === `w-${o.key}`)}>{o.label}</button>
-            ))}
-          </div>
-        </div>
-        {!isMobile && <div style={{ width: 1, height: 28, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)", flexShrink: 0 }} />}
-        {/* Range */}
-        <div style={{ display: "flex", alignItems: "center", gap: 0, justifyContent: isMobile ? "space-between" : "flex-start" }}>
-          <span style={labelStyle}>Range</span>
-          <div style={pillGroup}>
-            {rangeOptions.map((o) => (
-              <button key={o.key} onClick={() => { setRange(o.key); setWeekOffset(null); }} onMouseEnter={() => setHovered(`r-${o.key}`)} onMouseLeave={() => setHovered(null)} style={btnStyle(weekOffset === null && range === o.key, hovered === `r-${o.key}`)}>{o.label}</button>
-            ))}
-          </div>
-        </div>
-        {!isMobile && <div style={{ width: 1, height: 28, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)", flexShrink: 0 }} />}
-        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 12 : 12, justifyContent: isMobile ? "space-between" : "flex-start" }}>
-          {/* Group */}
-          <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
-            <span style={labelStyle}>Group</span>
-            <div style={pillGroup}>
-              {bucketOptions.map((o) => (
-                <button key={o.key} onClick={() => { setG(o.key); if (weekOffset !== null) setWeekOffset(null); }} onMouseEnter={() => setHovered(`g-${o.key}`)} onMouseLeave={() => setHovered(null)} style={btnStyle(weekOffset === null && g === o.key, hovered === `g-${o.key}`)}>{isMobile ? o.mobileLabel : o.desktopLabel}</button>
-              ))}
-            </div>
-          </div>
-          {!isMobile && <div style={{ width: 1, height: 28, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)", flexShrink: 0 }} />}
-          {/* Chart */}
-          <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
-            <span style={labelStyle}>Chart</span>
-            <div style={pillGroup}>
-              {chartOptions.map((o) => (
-                <button key={o.key} onClick={() => setChart(o.key)} onMouseEnter={() => setHovered(`c-${o.key}`)} onMouseLeave={() => setHovered(null)} style={btnStyle(chart === o.key, hovered === `c-${o.key}`)}>{isMobile ? o.mobileLabel : o.desktopLabel}</button>
-              ))}
-            </div>
-          </div>
-        </div>
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={pillGroup}>
+        <button onClick={() => { setG("week"); setRange("8w"); setWeekOffset(null); }} onMouseEnter={() => setHovered("weekly")} onMouseLeave={() => setHovered(null)} style={btnStyle(g === "week", hovered === "weekly")}>Weekly</button>
+        <button onClick={() => { setG("month"); setRange("t12m"); setWeekOffset(null); }} onMouseEnter={() => setHovered("monthly")} onMouseLeave={() => setHovered(null)} style={btnStyle(g === "month", hovered === "monthly")}>Monthly</button>
+      </div>
+      <div style={{ width: 1, height: 20, background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)", flexShrink: 0 }} />
+      <div style={pillGroup}>
+        <button onClick={() => setChart("line")} onMouseEnter={() => setHovered("line")} onMouseLeave={() => setHovered(null)} style={btnStyle(chart === "line", hovered === "line")}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 8 13 14 8 10 2 16" /></svg>
+        </button>
+        <button onClick={() => setChart("bar")} onMouseEnter={() => setHovered("bar")} onMouseLeave={() => setHovered(null)} style={btnStyle(chart === "bar", hovered === "bar")}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="12" width="4" height="9" /><rect x="10" y="7" width="4" height="14" /><rect x="17" y="3" width="4" height="18" /></svg>
+        </button>
       </div>
     </div>
   );
@@ -259,7 +227,7 @@ export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, sentOpenE
   const [weekOffset, setWeekOffsetRaw] = useState<number | null>(null);
   const [range, setRangeRaw] = useState("8w");
   const [g, setGRaw] = useState<Granularity>("week");
-  const [chart, setChartRaw] = useState<ChartType>("bar");
+  const [chart, setChartRaw] = useState<ChartType>("line");
 
   // Persisted targets — weekly and monthly
   const [weeklyRevTarget, setWeeklyRevTarget] = usePersistedTarget("accuinsight_weekly_rev_target", 0);
@@ -404,17 +372,11 @@ export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, sentOpenE
   const revTargetCents = activeRevTarget > 0 ? activeRevTarget * 100 : 0;
 
   return (
-    <div ref={chartRef} className="panel animate-in delay-2" style={{ padding: 0, marginTop: 10, overflow: "visible", position: "relative", zIndex: 10 }}>
-      <div style={{ padding: "12px 16px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
-              Sales Trends
-            </h2>
-            <span className="info-tooltip">?<span className="tooltip-text">Sales won and win rate over time. Set weekly and monthly targets — the chart automatically uses the right one based on your selected view.</span></span>
-          </div>
-          <div />
-        </div>
+    <div ref={chartRef} className="panel animate-in delay-2" style={{ padding: 0, marginTop: 8, overflow: "visible", position: "relative", zIndex: 10 }}>
+      <div style={{ padding: "8px 14px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
+          Sales Trends
+        </h2>
         <InlineControls
           weekOffset={weekOffset} setWeekOffset={setWeekOffset}
           range={range} setRange={setRange}
@@ -428,8 +390,8 @@ export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, sentOpenE
           No data yet — sync to populate
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12, padding: "0 16px 16px" }} className="sales-chart-grid">
-          <style>{`@media (min-width: 768px) { .sales-chart-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 16px !important; } }`}</style>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 6, padding: "0 14px 8px" }} className="sales-chart-grid">
+          <style>{`@media (min-width: 768px) { .sales-chart-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; } }`}</style>
           <SparkLine
             title="Sales Won"
             subtitle={`Sales from won quotes \u00B7 ${activeRevTargetLabel} target`}
@@ -439,7 +401,7 @@ export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, sentOpenE
             color="#10b981"
             invertChangeColor={false}
             targetValue={undefined}
-            height={140}
+            height={115}
           />
           <SparkLine
             title="Win Rate"
@@ -451,7 +413,7 @@ export function SalesTrendsSection({ wonQuoteEvents, allClosureEvents, sentOpenE
             invertChangeColor={false}
             targetValue={winRateTarget > 0 ? winRateTarget : undefined}
             overrideAvg={weightedWinRate}
-            height={140}
+            height={115}
           />
         </div>
       )}
