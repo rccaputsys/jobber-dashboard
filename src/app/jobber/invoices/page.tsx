@@ -280,11 +280,7 @@ export default async function InvoicesPage({
     <main className="dashboard-main" style={{
       minHeight: "100%",
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      background: `
-        radial-gradient(ellipse 80% 60% at 50% -20%, rgba(124,92,255,0.15), transparent),
-        radial-gradient(ellipse 60% 40% at 100% 0%, rgba(90,166,255,0.1), transparent),
-        linear-gradient(180deg, #060811 0%, #0a1020 100%)
-      `,
+      background: "linear-gradient(180deg, #0b0e14 0%, #0f1219 100%)",
     }}>
       <DashboardLayout adminConnectionId={adminConnectionId} companyName={companyName} connectionId={connectionId} lastSyncPretty={lastSyncPretty} billingStatus={billingStatus} trialEndsAt={trialEndsAt} subscriptionActive={subscriptionActive}>
       <style>{globalStyles}</style>
