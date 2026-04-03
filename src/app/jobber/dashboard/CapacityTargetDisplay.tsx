@@ -36,136 +36,209 @@ function moneyFmt(cents: number, code: string): string {
   catch { return `$${Math.round(cents / 100).toLocaleString()}`; }
 }
 
+/* ---- RPM Gauge (tachometer style) ---- */
+function RPMGauge({ pct, money, label, size = 180, isLight, mini }: {
+  pct: number;
+  money: string;
+  label?: string;
+  size?: number;
+  isLight: boolean;
+  mini?: boolean;
+}) {
+  const strokeW = mini ? 8 : 14;
+  const r = (size - strokeW) / 2;
+  const cx = size / 2;
+  const cy = size / 2 + (mini ? 2 : 4);
+  const halfCirc = Math.PI * r;
+
+  // Clamp to 0-120%
+  const clampedPct = Math.max(0, Math.min(pct, 120));
+  const fillLen = halfCirc * clampedPct / 100;
+
+  // Color zones on the arc: red (0-50%) → yellow (50-80%) → green (80-100%+)
+  const arcColor = clampedPct >= 80 ? "#10b981" : clampedPct >= 50 ? "#f59e0b" : "#ef4444";
+  const arcD = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`;
+
+  // Tick marks at 25, 50, 75, 100%
+  const ticks = [25, 50, 75, 100];
+  const tickMarks = ticks.map(t => {
+    const angle = Math.PI - (t / 100) * Math.PI;
+    const inner = r - strokeW / 2 - 3;
+    const outer = r + strokeW / 2 + 2;
+    return {
+      pct: t,
+      x1: cx + inner * Math.cos(angle),
+      y1: cy - inner * Math.sin(angle),
+      x2: cx + outer * Math.cos(angle),
+      y2: cy - outer * Math.sin(angle),
+    };
+  });
+
+  // Needle position
+  const needleAngle = Math.PI - (clampedPct / 100) * Math.PI;
+  const needleLen = r - strokeW / 2 - (mini ? 4 : 8);
+  const nx = cx + needleLen * Math.cos(needleAngle);
+  const ny = cy - needleLen * Math.sin(needleAngle);
+
+  const svgH = cy + (mini ? 6 : 8);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <svg width={size} height={svgH} viewBox={`0 0 ${size} ${svgH}`}>
+        {/* Zone gradient — draw 3 colored track segments */}
+        {/* Red zone: 0-50% */}
+        <path d={arcD} fill="none" stroke={isLight ? "rgba(239,68,68,0.12)" : "rgba(239,68,68,0.15)"} strokeWidth={strokeW} strokeLinecap="round"
+          strokeDasharray={`${halfCirc * 0.5} ${halfCirc * 0.5}`} />
+        {/* Yellow zone: 50-80% */}
+        <path d={arcD} fill="none" stroke={isLight ? "rgba(245,158,11,0.12)" : "rgba(245,158,11,0.15)"} strokeWidth={strokeW} strokeLinecap="butt"
+          strokeDasharray={`${halfCirc * 0.3} ${halfCirc * 0.7}`} strokeDashoffset={`${-halfCirc * 0.5}`} />
+        {/* Green zone: 80-100%+ */}
+        <path d={arcD} fill="none" stroke={isLight ? "rgba(16,185,129,0.12)" : "rgba(16,185,129,0.15)"} strokeWidth={strokeW} strokeLinecap="round"
+          strokeDasharray={`${halfCirc * 0.2} ${halfCirc * 0.8}`} strokeDashoffset={`${-halfCirc * 0.8}`} />
+
+        {/* Active fill arc */}
+        {clampedPct > 0 && (
+          <path d={arcD} fill="none" stroke={arcColor} strokeWidth={strokeW - 2} strokeLinecap="round"
+            strokeDasharray={`${fillLen} ${halfCirc - fillLen}`}
+            style={{ transition: "stroke-dasharray 0.8s cubic-bezier(0.4,0,0.2,1), stroke 0.3s ease", filter: `drop-shadow(0 0 ${mini ? 3 : 6}px ${arcColor}60)` }} />
+        )}
+
+        {/* Tick marks */}
+        {!mini && tickMarks.map(t => (
+          <line key={t.pct} x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2}
+            stroke={isLight ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.15)"} strokeWidth={1.5} />
+        ))}
+
+        {/* Needle */}
+        <line x1={cx} y1={cy} x2={nx} y2={ny}
+          stroke={isLight ? "#1e293b" : "#e8ecf4"} strokeWidth={mini ? 1.5 : 2.5} strokeLinecap="round"
+          style={{ transition: "x2 0.8s cubic-bezier(0.4,0,0.2,1), y2 0.8s cubic-bezier(0.4,0,0.2,1)" }} />
+        {/* Center dot */}
+        <circle cx={cx} cy={cy} r={mini ? 3 : 5} fill={arcColor} />
+
+        {/* Center text */}
+        {!mini && (
+          <>
+            <text x={cx} y={cy - 40} textAnchor="middle" dominantBaseline="middle"
+              style={{ fontSize: 34, fontWeight: 800, fill: arcColor, letterSpacing: -1.5 }}>
+              {pct}%
+            </text>
+            <text x={cx} y={cy - 14} textAnchor="middle" dominantBaseline="middle"
+              style={{ fontSize: 15, fontWeight: 700, fill: isLight ? "#0f1729" : "#e8ecf4" }}>
+              {money}
+            </text>
+          </>
+        )}
+        {mini && (
+          <text x={cx} y={cy - 8} textAnchor="middle" dominantBaseline="middle"
+            style={{ fontSize: 13, fontWeight: 800, fill: arcColor }}>
+            {pct}%
+          </text>
+        )}
+      </svg>
+      {label && (
+        <div style={{ marginTop: mini ? -2 : 4, textAlign: "center" }}>
+          {mini && <div style={{ fontSize: 11, fontWeight: 700, color: isLight ? "#0f1729" : "#e8ecf4" }}>{money}</div>}
+          <div style={{ fontSize: mini ? 10 : 12, fontWeight: 600, color: isLight ? "#9ca3af" : "#5a6375" }}>{label}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---- Day bars with % and label ---- */
+function DayBars({ days, isLight, money }: { days: DayData[]; isLight: boolean; money: (c: number) => string }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
+      {days.map(d => {
+        const filled = d.scheduledCents > 0;
+        const pct = d.targetCents > 0 ? Math.round((d.scheduledCents / d.targetCents) * 100) : 0;
+        const color = pct >= 80 ? "#10b981" : pct >= 50 ? "#f59e0b" : filled ? "#ef4444" : (isLight ? "#e2e5ea" : "rgba(255,255,255,0.08)");
+        return (
+          <div key={d.day} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flex: 1 }}>
+            {/* % above the bar */}
+            <span style={{
+              fontSize: 11, fontWeight: 700,
+              color: filled ? color : (isLight ? "#d1d5db" : "rgba(255,255,255,0.15)"),
+            }}>
+              {filled ? `${pct}%` : "—"}
+            </span>
+            {/* Bar */}
+            <div style={{
+              width: "100%", height: 10, borderRadius: 5,
+              background: isLight ? "#eef0f3" : "rgba(255,255,255,0.06)",
+              overflow: "hidden",
+            }}>
+              <div style={{
+                height: "100%", borderRadius: 5,
+                width: `${Math.min(pct, 100)}%`,
+                background: color,
+                transition: "width 0.5s ease",
+              }} />
+            </div>
+            {/* Day label */}
+            <span style={{
+              fontSize: 11, fontWeight: d.isToday ? 800 : 600,
+              color: d.isToday ? (isLight ? "#0f1729" : "#e8ecf4") : (isLight ? "#6b7280" : "#5a6375"),
+            }}>
+              {d.day}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 0, currencyCode, workDays: initialWorkDays }: Props) {
   const isLight = useIsLight();
-  const money = (c: number) => moneyFmt(c, currencyCode);
+  const moneyFn = (c: number) => moneyFmt(c, currencyCode);
   const [weekIdx, setWeekIdx] = useState(defaultWeek);
   const hiddenDays = new Set(
     ALL_DAYS.filter(d => !(initialWorkDays || ["Mon", "Tue", "Wed", "Thu", "Fri"]).includes(d))
   );
 
   const week = weeks[weekIdx] || weeks[0];
-  const isMultiWeek = week.label.includes("6 Weeks") || week.label.includes("Month");
-  const visibleDays = isMultiWeek ? week.days : week.days.filter(d => !hiddenDays.has(d.day));
+  const visibleDays = week.days.filter(d => !hiddenDays.has(d.day));
   const booked = visibleDays.reduce((s, d) => s + d.scheduledCents, 0);
-  const numWeeksInPeriod = isMultiWeek ? week.days.length : 1;
-  const targetForPeriod = weeklyTargetCents > 0 ? weeklyTargetCents * numWeeksInPeriod : 0;
+  const targetForPeriod = weeklyTargetCents > 0 ? weeklyTargetCents : 0;
   const fillPct = targetForPeriod > 0 ? Math.round((booked / targetForPeriod) * 100) : 0;
 
-  // Navy-blue palette for fill gauge
-  const fillGrad = isLight
-    ? "linear-gradient(90deg, #3b6daa, #2d5a8e)"
-    : "linear-gradient(90deg, rgba(59,109,170,0.75), rgba(45,90,142,0.65))";
-  const trackBg = isLight ? "linear-gradient(180deg, #e2e8f0, #eef2f7)" : "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))";
-  const trackShadow = isLight ? "inset 0 1px 3px rgba(0,0,0,0.06)" : "inset 0 1px 3px rgba(0,0,0,0.2)";
-
-  const periodLabel = week.label.includes("6 Weeks") ? "next 6 weeks" : week.label === "This Month" ? "this month" : week.label === "Next Week" ? "next week" : "this week";
+  const periodLabel = week.label === "Next Week" ? "next week" : "this week";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-      {/* Headline */}
-      <div style={{ marginBottom: 10 }}>
-        {weeklyTargetCents > 0 ? (
-          <>
-            <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -1.5, lineHeight: 1, color: fillPct >= 100 ? "#10b981" : fillPct >= 70 ? (isLight ? "#1e293b" : "#EAF1FF") : "#f59e0b" }}>{fillPct}% of your goal</div>
-            <div className="text-muted" style={{ fontSize: 12, marginTop: 3, fontWeight: 600 }}>{money(booked)} booked {periodLabel}</div>
-          </>
-        ) : (
-          <>
-            <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -1.5, lineHeight: 1 }} className="text-primary">{money(booked)}</div>
-            <div className="text-muted" style={{ fontSize: 11, marginTop: 3 }}>booked {periodLabel}</div>
-          </>
-        )}
-      </div>
-
-      {/* Day/week bars — flex to fill remaining card space */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minHeight: 0 }}>
-        {week.days.map(d => {
-          const hidden = hiddenDays.has(d.day);
-          if (hidden) return null;
-
-          const dayFill = d.targetCents > 0 ? Math.round((d.scheduledCents / d.targetCents) * 100) : 0;
-          const scaleMax = d.targetCents > 0 ? d.targetCents : Math.max(...visibleDays.map(x => x.scheduledCents), 1);
-          const barWidthPct = scaleMax > 0 ? Math.min((d.scheduledCents / scaleMax) * 100, 100) : 0;
-          const zero = d.scheduledCents === 0;
-          const effectiveWidth = zero ? 0 : Math.max(barWidthPct, 3);
-
-          return (
-            <div key={d.day} style={{
-              display: "flex", alignItems: "center", gap: 6, flex: 1,
-              padding: d.isToday ? "2px 6px" : "2px 6px",
-              borderRadius: 6,
-              background: d.isToday ? (isLight ? "rgba(59,109,170,0.04)" : "rgba(59,109,170,0.06)") : "transparent",
-              border: d.isToday ? `1.5px solid ${isLight ? "rgba(59,109,170,0.15)" : "rgba(59,109,170,0.15)"}` : "1.5px solid transparent",
-              minHeight: 28,
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, alignItems: "center" }}>
+        <>
+          {/* Guidance line */}
+          <div style={{ alignSelf: "flex-start", marginBottom: 2, width: "100%" }}>
+            <span style={{
+              fontSize: 13, fontWeight: 700,
+              color: fillPct >= 100 ? "#10b981" : fillPct >= 80 ? (isLight ? "#0f1729" : "#e8ecf4") : fillPct >= 50 ? "#f59e0b" : "#ef4444",
             }}>
-              {/* Day label */}
-              <div style={{
-                width: 34, flexShrink: 0, textAlign: "center",
-                fontSize: 12, fontWeight: d.isToday ? 800 : 600,
-                color: d.isToday ? (isLight ? "#1e293b" : "#e2e8f0") : (isLight ? "#475569" : "rgba(255,255,255,0.65)"),
-              }}>
-                {d.day}
-              </div>
-
-              {/* Bar track */}
-              <div style={{
-                flex: 1, position: "relative", minHeight: 24, borderRadius: 5,
-                background: trackBg, boxShadow: trackShadow, overflow: "hidden",
-                alignSelf: "stretch",
-              }}>
-                <div style={{
-                  position: "absolute", top: 2, left: 2, bottom: 2,
-                  width: effectiveWidth > 0 ? `calc(${effectiveWidth}% - 4px)` : "0%",
-                  borderRadius: 3, background: fillGrad,
-                  boxShadow: effectiveWidth > 0 ? "0 0 4px rgba(59,109,170,0.15)" : "none",
-                  transition: "width 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
-                }}>
-                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "45%", borderRadius: "3px 3px 0 0", background: "linear-gradient(180deg, rgba(255,255,255,0.2), transparent)" }} />
-                </div>
-                {d.targetCents > 0 && (
-                  <div style={{ position: "absolute", top: 2, bottom: 2, left: "calc(100% - 2px)", width: 2, borderRadius: 1, background: isLight ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.12)" }} />
-                )}
-                {d.targetCents > 0 && !zero && (
-                  <div style={{ position: "absolute", top: 0, bottom: 0, left: 10, display: "flex", alignItems: "center", fontSize: 13, fontWeight: 800, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.5)", pointerEvents: "none" }}>
-                    {dayFill}%
-                  </div>
-                )}
-                {zero && (
-                  <div className="text-muted" style={{ position: "absolute", top: 0, bottom: 0, left: 10, display: "flex", alignItems: "center", fontSize: 12, fontWeight: 600, pointerEvents: "none" }}>
-                    {d.isToday ? "Open — schedule work today" : "Open"}
-                  </div>
-                )}
-              </div>
-
-              {/* Amount + jobs */}
-              <div style={{ width: 62, textAlign: "right", flexShrink: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: -0.3, color: zero ? (isLight ? "#cbd5e1" : "rgba(255,255,255,0.2)") : (isLight ? "#1e293b" : "#EAF1FF") }}>
-                  {zero ? "$0" : money(d.scheduledCents)}
-                </div>
-                {d.jobCount > 0 && (
-                  <div className="text-muted" style={{ fontSize: 11 }}>{d.jobCount} job{d.jobCount !== 1 ? "s" : ""}</div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* X-axis scale */}
-      {weeklyTargetCents > 0 && (
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, paddingLeft: 40, paddingRight: 68 }}>
-          <span className="text-muted" style={{ fontSize: 9 }}>$0</span>
-          <span className="text-muted" style={{ fontSize: 9 }}>50%</span>
-          <span className="text-muted" style={{ fontSize: 9 }}>Target</span>
-        </div>
-      )}
+              {fillPct >= 100 ? "You're fully booked" : fillPct >= 80 ? "Almost full — nice work" : fillPct >= 50 ? "Getting there — a few more jobs fills you up" : weeklyTargetCents > 0 ? "You have room for more work" : `${moneyFn(booked)} booked`}
+            </span>
+          </div>
+          {/* Big gauge */}
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }}>
+            <RPMGauge
+              pct={fillPct}
+              money={moneyFn(booked)}
+              label={weeklyTargetCents > 0 ? `of ${moneyFn(targetForPeriod)} goal` : periodLabel}
+              size={220}
+              isLight={isLight}
+            />
+          </div>
+          {/* Day bars */}
+          <div style={{ width: "100%", marginTop: 2 }}>
+            <DayBars days={visibleDays} isLight={isLight} money={moneyFn} />
+          </div>
+        </>
 
       {/* Period toggles at bottom */}
       {weeks.length > 1 && (
         <div style={{
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-          paddingTop: 4, marginTop: "auto",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          paddingTop: 6, marginTop: "auto", width: "100%",
           borderTop: `1px solid ${isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.04)"}`,
         }}>
           {weeks.map((w, i) => (
@@ -176,8 +249,8 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
               style={{
                 background: "none", border: "none", cursor: "pointer",
                 padding: "4px 6px", fontSize: 11, fontWeight: weekIdx === i ? 700 : 500,
-                color: weekIdx === i ? (isLight ? "#1e293b" : "#EAF1FF") : (isLight ? "#94a3b8" : "rgba(255,255,255,0.3)"),
-                borderBottom: weekIdx === i ? `2px solid ${isLight ? "#1e293b" : "#EAF1FF"}` : "2px solid transparent",
+                color: weekIdx === i ? (isLight ? "#0f1729" : "#e8ecf4") : (isLight ? "#9ca3af" : "rgba(255,255,255,0.3)"),
+                borderBottom: weekIdx === i ? `2px solid ${isLight ? "#0f1729" : "#e8ecf4"}` : "2px solid transparent",
                 transition: "all 0.15s ease",
               }}
             >

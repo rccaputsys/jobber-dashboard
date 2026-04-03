@@ -1762,184 +1762,54 @@ const quoteWonPct = quotesInLast30Days.length > 0
           return (
             <div className="animate-in" style={{ marginTop: 12, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
 
-              {/* Revenue Goal Bar */}
-              {yearlyGoal > 0 && (
-                <div className="panel" style={{ padding: "18px 24px", marginBottom: 14, overflow: "hidden" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <h2 className="text-primary" style={{ fontSize: 18, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        {isAutoGoal ? `You're on track for ${money(yearlyGoal)} this year` : `${todayUTC.getUTCFullYear()} Revenue Goal`}
-                      </h2>
-                      {isAutoGoal && (
-                        <span className="text-muted" style={{ fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4, background: "rgba(90,166,255,0.1)" }}>based on what you've been doing</span>
-                      )}
-                    </div>
-                    <div style={{ padding: "3px 10px", borderRadius: 12, background: `${paceColor}12`, border: `1px solid ${paceColor}20` }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: paceColor }}>{money(Math.abs(aheadByCents))} {isAhead ? "ahead of pace" : "behind pace"}</span>
-                    </div>
-                  </div>
-                  <div style={{ position: "relative" }}>
-                    <div style={{ height: 18, borderRadius: 9, background: "rgba(255,255,255,0.05)", boxShadow: "inset 0 1px 2px rgba(0,0,0,0.1)", overflow: "hidden", position: "relative" }}>
-                      {/* Scheduled (striped, behind) */}
-                      {projectedCents > 0 && (
-                        <div style={{
-                          position: "absolute", top: 1, left: 1, bottom: 1,
-                          width: `calc(${Math.min(projectedPct, 100)}% - 2px)`, minWidth: 4,
-                          borderRadius: 5,
-                          background: `repeating-linear-gradient(115deg, ${paceColor}35, ${paceColor}35 3px, ${paceColor}12 3px, ${paceColor}12 6px)`,
-                          transition: "width 0.8s cubic-bezier(0.4,0,0.2,1)",
-                        }} />
-                      )}
-                      {/* Completed (solid, front) */}
-                      <div style={{
-                        position: "absolute", top: 1, left: 1, bottom: 1,
-                        width: `calc(${Math.min(yearPct, 100)}% - 2px)`, minWidth: yearPct > 0 ? 4 : 0,
-                        borderRadius: 5, background: paceGrad,
-                        boxShadow: `0 0 8px ${paceColor}30`,
-                        transition: "width 0.8s cubic-bezier(0.4,0,0.2,1)",
-                      }}>
-                        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "45%", borderRadius: "5px 5px 0 0", background: "linear-gradient(180deg, rgba(255,255,255,0.3), transparent)" }} />
-                      </div>
-                      {/* Quarter ticks */}
-                      {[25, 50, 75].map(pct => (
-                        <div key={pct} style={{ position: "absolute", top: 0, bottom: 0, left: `${pct}%`, width: 1, background: "rgba(255,255,255,0.08)" }} />
-                      ))}
-                      {/* Pace marker */}
-                      <div style={{ position: "absolute", top: -2, bottom: -2, left: `${expectedPct}%`, width: 2, borderRadius: 1, background: "rgba(255,255,255,0.2)" }} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
-                      <span className="text-muted" style={{ fontSize: 11 }}>$0</span>
-                      {[25, 50, 75].map(pct => (
-                        <span key={pct} className="text-muted" style={{ fontSize: 11 }}>{money(Math.round(yearlyGoal * pct / 100))}</span>
-                      ))}
-                      <span className="text-muted" style={{ fontSize: 11 }}>{money(yearlyGoal)}</span>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "center", marginTop: 8, gap: 16, flexWrap: "wrap" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ width: 12, height: 10, borderRadius: 3, background: paceGrad, flexShrink: 0 }} />
-                      <span style={{ fontSize: 14, fontWeight: 600, color: paceColor }}>{money(yearRevenue)} earned so far</span>
-                    </div>
-                    {projectedCents > 0 && (<>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: paceColor }}>+</span>
-                        <span style={{ width: 12, height: 10, borderRadius: 3, flexShrink: 0, background: `repeating-linear-gradient(115deg, ${paceColor}60, ${paceColor}60 2px, ${paceColor}15 2px, ${paceColor}15 4px)` }} />
-                        <span className="text-muted" style={{ fontSize: 14, fontWeight: 600 }}>{money(projectedCents)} scheduled</span>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: paceColor }}>=</span>
-                        <span className="text-primary" style={{ fontSize: 14, fontWeight: 800 }}>{money(yearRevenue + projectedCents)} on track for</span>
-                      </div>
-                    </>)}
-                  </div>
-                </div>
-              )}
-
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, alignItems: "stretch", flex: 1 }}>
 
-              {/* ═══ SALES CARD ═══ */}
-              {(() => {
-                // Mini bar chart: won revenue by month (last 6 months)
-                const monthBars: { label: string; cents: number; count: number; isCurrent: boolean }[] = [];
-                for (let m = -5; m <= 0; m++) {
-                  const mStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() + m, 1));
-                  const mEnd = new Date(Date.UTC(mStart.getUTCFullYear(), mStart.getUTCMonth() + 1, 1));
-                  const wonInMonth = quotes.filter((q: any) => {
-                    if (!statusLooksWon(String(q.quote_status ?? "").toLowerCase().trim())) return false;
-                    const d = safeDate(q.updated_at_jobber);
-                    return d && d >= mStart && d < mEnd;
-                  });
-                  monthBars.push({
-                    label: mStart.toLocaleString(undefined, { month: "short", timeZone: "UTC" }),
-                    cents: sumCents(wonInMonth),
-                    count: wonInMonth.length,
-                    isCurrent: m === 0,
-                  });
-                }
-                const maxBar = Math.max(...monthBars.map(b => b.cents), 1);
+              {/* ═══ INVOICES CARD ═══ */}
+              <div className="panel" style={{ padding: "20px 20px 16px", display: "flex", flexDirection: "column" }}>
+                <a href={`/jobber/invoices${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                  <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 3 2V2l-3 2-3-2-3 2-3-2-3 2Z"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg>
+                    Who Owes You?
+                  </h2>
+                  <span className="text-muted" style={{ fontSize: 11, fontWeight: 600 }}>Details &#8594;</span>
+                </a>
 
-                const healthBuckets = [
-                  ...(openRequestsCount > 0 ? [{ label: "Requests", days: "new", count: openRequestsCount, cents: 0, color: "#5aa6ff", hideValue: true }] : []),
-                  { label: "Customers are interested", days: "< 14d", count: hotQuotes.length, cents: sumCents(hotQuotes), color: "#10b981", hideValue: false },
-                  { label: "Follow up soon", days: "14–30d", count: warmQuotes.length, cents: sumCents(warmQuotes), color: "#f59e0b", hideValue: false },
-                  { label: "Call today or lose them", days: "30–45d", count: goingColdQuotes.length, cents: sumCents(goingColdQuotes), color: "#ef4444", hideValue: false },
-                  ...(inactiveQuotes.length > 0 ? [{ label: "Probably lost", days: "45+d", count: inactiveQuotes.length, cents: sumCents(inactiveQuotes), color: "#6b7280", hideValue: false }] : []),
-                ];
-                const healthTotal = healthBuckets.filter(b => b.label !== "Probably lost").reduce((s, b) => s + b.count, 0) || 1;
-
-                return (
-                  <div className="panel" style={{ padding: "20px 20px 16px", display: "flex", flexDirection: "column" }}>
-                    <a href={`/jobber/sales${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                      <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 6v0a2 2 0 0 1-2 2"/><path d="M18 6v0a2 2 0 0 0 2 2"/><path d="M6 18v0a2 2 0 0 0-2-2"/><path d="M18 18v0a2 2 0 0 1 2-2"/></svg>
-                        How Are Sales?
-                      </h2>
-                      <span className="text-muted" style={{ fontSize: 11, fontWeight: 600 }}>Details &#8594;</span>
-                    </a>
-
-                    {/* Won this month */}
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 10 }}>
-                      <div>
-                        <div style={{ fontSize: 22, fontWeight: 800, color: "#10b981", letterSpacing: -1.5, lineHeight: 1 }}>{money(wonThisMonthCents)}</div>
-                        <div className="text-muted" style={{ fontSize: 11, marginTop: 3 }}>won this month</div>
-                      </div>
-                      <div style={{ borderLeft: "1px solid rgba(255,255,255,0.06)", paddingLeft: 12 }}>
-                        <div className="text-primary" style={{ fontSize: 15, fontWeight: 800, letterSpacing: -0.5, lineHeight: 1 }}>{money(monthBars.reduce((s, b) => s + b.cents, 0))}</div>
-                        <div className="text-muted" style={{ fontSize: 10, marginTop: 2 }}>last 6 months</div>
-                      </div>
-                    </div>
-
-                    {/* Mini bar chart */}
-                    <div style={{ marginBottom: 10, flex: 1, display: "flex", flexDirection: "column" }}>
-                      <div style={{ display: "flex", alignItems: "flex-end", gap: 4, flex: 1, minHeight: 60 }}>
-                        {monthBars.map((b, i) => {
-                          const prev = i > 0 ? monthBars[i - 1] : null;
-                          const change = prev && prev.cents > 0 ? Math.round(((b.cents - prev.cents) / prev.cents) * 100) : null;
-                          const barH = maxBar > 0 ? Math.max((b.cents / maxBar) * 100, b.cents > 0 ? 4 : 1) : 1;
-                          return (
-                            <div key={i} className="chart-bar-hover" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", height: "100%", borderRadius: 4, outline: b.isCurrent ? "2px solid rgba(16,185,129,0.35)" : "none", outlineOffset: 2, cursor: "default", position: "relative" }}>
-                              <div className="chart-bar-tooltip" style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", padding: "8px 12px", borderRadius: 8, whiteSpace: "nowrap", background: "rgba(0,0,0,0.9)", color: "#fff", fontSize: 12, lineHeight: 1.6, pointerEvents: "none", transition: "opacity 0.15s ease", zIndex: 10, marginBottom: 4, boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
-                                <div style={{ fontWeight: 800 }}>{money(b.cents)}</div>
-                                <div style={{ color: "rgba(255,255,255,0.6)" }}>{b.count.toLocaleString()} quotes won</div>
-                                {change !== null && prev && (<div style={{ color: change >= 0 ? "#34d399" : "#fca5a5", fontWeight: 700, marginTop: 2 }}>{change >= 0 ? "+" : ""}{change}% vs {prev.label} ({money(prev.cents)})</div>)}
-                              </div>
-                              <div className="text-primary" style={{ fontSize: 9, fontWeight: 700, marginBottom: 1, whiteSpace: "nowrap" }}>{b.cents > 0 ? money(b.cents) : "$0"}</div>
-                              <div style={{ width: "80%", borderRadius: "3px 3px 0 0", height: `${barH}%`, background: b.isCurrent ? "linear-gradient(180deg, #10b981, #34d399)" : "linear-gradient(180deg, #10b981a0, #34d399a0)", transition: "height 0.5s ease" }} />
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <div style={{ display: "flex", gap: 4, marginTop: 3 }}>
-                        {monthBars.map((b, i) => (<div key={i} className="text-muted" style={{ flex: 1, textAlign: "center", fontSize: 10, fontWeight: b.isCurrent ? 700 : 500 }}>{b.label}</div>))}
-                      </div>
-                    </div>
-
-                    {/* Quote Status */}
-                    <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                      <div className="text-primary" style={{ fontSize: 13, fontWeight: 800, marginBottom: 6 }}>Your Open Quotes</div>
-                      {/* Stacked bar */}
-                      <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", background: "rgba(255,255,255,0.04)", marginBottom: 6 }}>
-                        {healthBuckets.filter(b => b.label !== "Probably lost").map(b => { const pct = (b.count / healthTotal) * 100; if (pct === 0) return null; return <div key={b.label} style={{ width: `${pct}%`, minWidth: b.count > 0 ? 4 : 0, background: b.color, transition: "width 0.5s ease" }} />; })}
-                      </div>
-                      {/* Labels — flex to fill */}
-                      <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-                        {healthBuckets.map(b => (
-                          <div key={b.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flex: 1, opacity: b.label === "Probably lost" ? 0.5 : 1 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                              <span style={{ width: 8, height: 8, borderRadius: 2, background: b.label === "Probably lost" ? "rgba(107,114,128,0.3)" : b.color, flexShrink: 0 }} />
-                              <span className="text-primary" style={{ fontSize: 13, fontWeight: 800 }}>{b.count.toLocaleString()}</span>
-                              <span className="text-primary" style={{ fontSize: 12, fontWeight: 600 }}>{b.label}</span>
-                              <span className="text-muted" style={{ fontSize: 10 }}>{b.days}</span>
-                            </div>
-                            {!b.hideValue && <span style={{ fontSize: 12, fontWeight: 700, color: b.label === "Probably lost" ? undefined : b.color }} className={b.label === "Probably lost" ? "text-muted" : ""}>{money(b.cents)}</span>}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                {/* Outstanding */}
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -1.5, lineHeight: 1, color: totalOutstandingCard > 0 ? (b15p > totalOutstandingCard * 0.5 ? "#ef4444" : "#f59e0b") : "#10b981" }}>
+                    {totalOutstandingCard > 0 ? money(totalOutstandingCard) : "$0"}
                   </div>
-                );
-              })()}
+                  <div className="text-muted" style={{ fontSize: 11, marginTop: 3 }}>
+                    {totalOutstandingCard > 0 ? "owed to you" : "you're all caught up"}
+                  </div>
+                </div>
+
+                {/* Donut */}
+                {totalOutstandingCard > 0 && (
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
+                    <AgingDonutWrapper
+                      buckets={[
+                        { label: "Current", color: "#10b981", balanceCents: currentCents, count: currentCount },
+                        { label: "1\u20137 Days", color: "#fbbf24", balanceCents: b0_7, count: b0_7Count },
+                        { label: "8\u201330 Days", color: "#f59e0b", balanceCents: b8_14, count: b8_14Count },
+                        { label: "30+ Days", color: "#ef4444", balanceCents: b15p, count: b15pCount },
+                      ]}
+                      totalCents={totalOutstandingCard}
+                      currencyCode={currencyCode}
+                      compact
+                      donutSize={180}
+                    />
+                  </div>
+                )}
+
+                {/* Recommendation */}
+                <a href={`/jobber/invoices${adminQs}`} style={{ marginTop: "auto", paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, textDecoration: "none" }}>
+                  <span className="text-primary" style={{ fontSize: 12, fontWeight: 700 }}>
+                    {b15p > 0 ? `Collect ${money(b15p)} in overdue invoices` : needsInvoiceCount > 0 ? `Invoice ${needsInvoiceCount.toLocaleString()} completed jobs` : totalOutstandingCard > 0 ? `${money(totalOutstandingCard)} still outstanding` : "All invoices collected"}
+                  </span>
+                  <span className="text-primary" style={{ fontSize: 14, fontWeight: 800 }}>&#8594;</span>
+                </a>
+              </div>
 
               {/* ═══ SCHEDULE CARD ═══ */}
               {(() => {
@@ -2039,53 +1909,239 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 );
               })()}
 
-              {/* ═══ INVOICES CARD ═══ */}
-              <div className="panel" style={{ padding: "20px 20px 16px", display: "flex", flexDirection: "column" }}>
-                <a href={`/jobber/invoices${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                  <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 3 2V2l-3 2-3-2-3 2-3-2-3 2Z"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg>
-                    Who Owes You?
-                  </h2>
-                  <span className="text-muted" style={{ fontSize: 11, fontWeight: 600 }}>Details &#8594;</span>
-                </a>
+              {/* ═══ SALES CARD ═══ */}
+              {(() => {
+                // Mini bar chart: won revenue by month (last 6 months)
+                const monthBars: { label: string; cents: number; count: number; isCurrent: boolean }[] = [];
+                for (let m = -5; m <= 0; m++) {
+                  const mStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() + m, 1));
+                  const mEnd = new Date(Date.UTC(mStart.getUTCFullYear(), mStart.getUTCMonth() + 1, 1));
+                  const wonInMonth = quotes.filter((q: any) => {
+                    if (!statusLooksWon(String(q.quote_status ?? "").toLowerCase().trim())) return false;
+                    const d = safeDate(q.updated_at_jobber);
+                    return d && d >= mStart && d < mEnd;
+                  });
+                  monthBars.push({
+                    label: mStart.toLocaleString(undefined, { month: "short", timeZone: "UTC" }),
+                    cents: sumCents(wonInMonth),
+                    count: wonInMonth.length,
+                    isCurrent: m === 0,
+                  });
+                }
+                const maxBar = Math.max(...monthBars.map(b => b.cents), 1);
 
-                {/* Outstanding */}
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -1.5, lineHeight: 1, color: totalOutstandingCard > 0 ? (b15p > totalOutstandingCard * 0.5 ? "#ef4444" : "#f59e0b") : "#10b981" }}>
-                    {totalOutstandingCard > 0 ? money(totalOutstandingCard) : "$0"}
+                const healthBuckets = [
+                  ...(openRequestsCount > 0 ? [{ label: "Requests", days: "new", count: openRequestsCount, cents: 0, color: "#5aa6ff", hideValue: true }] : []),
+                  { label: "Customers are interested", days: "< 14d", count: hotQuotes.length, cents: sumCents(hotQuotes), color: "#10b981", hideValue: false },
+                  { label: "Follow up soon", days: "14–30d", count: warmQuotes.length, cents: sumCents(warmQuotes), color: "#f59e0b", hideValue: false },
+                  { label: "Call today or lose them", days: "30–45d", count: goingColdQuotes.length, cents: sumCents(goingColdQuotes), color: "#ef4444", hideValue: false },
+                  ...(inactiveQuotes.length > 0 ? [{ label: "Probably lost", days: "45+d", count: inactiveQuotes.length, cents: sumCents(inactiveQuotes), color: "#6b7280", hideValue: false }] : []),
+                ];
+                const healthTotal = healthBuckets.filter(b => b.label !== "Probably lost").reduce((s, b) => s + b.count, 0) || 1;
+
+                // SVG donut for quote health
+                const donutSize = 240;
+                const donutR = 88;
+                const donutStroke = 26;
+                const donutCirc = 2 * Math.PI * donutR;
+                const activeBuckets = healthBuckets.filter(b => b.label !== "Probably lost" && b.count > 0);
+                const activeTotal = activeBuckets.reduce((s, b) => s + b.count, 0) || 1;
+                let donutOffset = 0;
+
+                const page1 = (
+                  <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+                    {/* Won this month */}
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: "#10b981", letterSpacing: -1.5, lineHeight: 1 }}>{money(wonThisMonthCents)}</div>
+                        <div className="text-muted" style={{ fontSize: 11, marginTop: 3 }}>won this month</div>
+                      </div>
+                      <div style={{ borderLeft: "1px solid rgba(255,255,255,0.06)", paddingLeft: 12 }}>
+                        <div className="text-primary" style={{ fontSize: 15, fontWeight: 800, letterSpacing: -0.5, lineHeight: 1 }}>{money(monthBars.reduce((s, b) => s + b.cents, 0))}</div>
+                        <div className="text-muted" style={{ fontSize: 10, marginTop: 2 }}>last 6 months</div>
+                      </div>
+                    </div>
+                    {/* Mini bar chart */}
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                      <div style={{ display: "flex", alignItems: "flex-end", gap: 4, flex: 1, minHeight: 60 }}>
+                        {monthBars.map((b, i) => {
+                          const prev = i > 0 ? monthBars[i - 1] : null;
+                          const change = prev && prev.cents > 0 ? Math.round(((b.cents - prev.cents) / prev.cents) * 100) : null;
+                          const barH = maxBar > 0 ? Math.max((b.cents / maxBar) * 100, b.cents > 0 ? 4 : 1) : 1;
+                          return (
+                            <div key={i} className="chart-bar-hover" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", height: "100%", borderRadius: 4, outline: b.isCurrent ? "2px solid rgba(16,185,129,0.35)" : "none", outlineOffset: 2, cursor: "default", position: "relative" }}>
+                              <div className="chart-bar-tooltip" style={{ position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)", padding: "8px 12px", borderRadius: 8, whiteSpace: "nowrap", background: "rgba(0,0,0,0.9)", color: "#fff", fontSize: 12, lineHeight: 1.6, pointerEvents: "none", transition: "opacity 0.15s ease", zIndex: 10, marginBottom: 4, boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+                                <div style={{ fontWeight: 800 }}>{money(b.cents)}</div>
+                                <div style={{ color: "rgba(255,255,255,0.6)" }}>{b.count.toLocaleString()} quotes won</div>
+                                {change !== null && prev && (<div style={{ color: change >= 0 ? "#34d399" : "#fca5a5", fontWeight: 700, marginTop: 2 }}>{change >= 0 ? "+" : ""}{change}% vs {prev.label} ({money(prev.cents)})</div>)}
+                              </div>
+                              <div className="text-primary" style={{ fontSize: 9, fontWeight: 700, marginBottom: 1, whiteSpace: "nowrap" }}>{b.cents > 0 ? money(b.cents) : "$0"}</div>
+                              <div style={{ width: "80%", borderRadius: "3px 3px 0 0", height: `${barH}%`, background: b.isCurrent ? "linear-gradient(180deg, #10b981, #34d399)" : "linear-gradient(180deg, #10b981a0, #34d399a0)", transition: "height 0.5s ease" }} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div style={{ display: "flex", gap: 4, marginTop: 3 }}>
+                        {monthBars.map((b, i) => (<div key={i} className="text-muted" style={{ flex: 1, textAlign: "center", fontSize: 10, fontWeight: b.isCurrent ? 700 : 500 }}>{b.label}</div>))}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-muted" style={{ fontSize: 11, marginTop: 3 }}>
-                    {totalOutstandingCard > 0 ? "owed to you" : "you're all caught up"}
+                );
+
+                const page2 = (
+                  <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+                    {/* Guidance line */}
+                    <div style={{ marginBottom: 6 }}>
+                      <span style={{
+                        fontSize: 13, fontWeight: 700,
+                        color: goingColdQuotes.length > 0 ? "#ef4444" : warmQuotes.length > 5 ? "#f59e0b" : "#10b981",
+                      }}>
+                        {goingColdQuotes.length > 0
+                          ? `${goingColdQuotes.length} quote${goingColdQuotes.length !== 1 ? "s" : ""} going stale — follow up today`
+                          : warmQuotes.length > 5
+                          ? `${warmQuotes.length} quotes need a follow-up soon`
+                          : activeTotal > 0
+                          ? "Your pipeline looks healthy"
+                          : "No open quotes right now"}
+                      </span>
+                    </div>
+                    {/* Donut + center count */}
+                    <div style={{ display: "flex", justifyContent: "center", flex: 1, alignItems: "center" }}>
+                      <svg width={donutSize} height={donutSize} viewBox={`0 0 ${donutSize} ${donutSize}`}>
+                        {/* Track */}
+                        <circle cx={donutSize/2} cy={donutSize/2} r={donutR} fill="none" strokeWidth={donutStroke} stroke="rgba(255,255,255,0.04)" />
+                        {/* Segments */}
+                        {activeBuckets.map(b => {
+                          const segLen = (b.count / activeTotal) * donutCirc;
+                          const gap = activeBuckets.length > 1 ? 3 : 0;
+                          const el = (
+                            <circle key={b.label} cx={donutSize/2} cy={donutSize/2} r={donutR} fill="none"
+                              strokeWidth={donutStroke} stroke={b.color}
+                              strokeDasharray={`${Math.max(segLen - gap, 1)} ${donutCirc - Math.max(segLen - gap, 1)}`}
+                              strokeDashoffset={-donutOffset}
+                              strokeLinecap="butt"
+                              style={{ transform: "rotate(-90deg)", transformOrigin: "center", transition: "all 0.5s ease" }}
+                            />
+                          );
+                          donutOffset += segLen;
+                          return el;
+                        })}
+                        {/* Center text */}
+                        <text x={donutSize/2} y={donutSize/2 - 10} textAnchor="middle" dominantBaseline="middle"
+                          style={{ fontSize: 40, fontWeight: 800, fill: "currentColor", letterSpacing: -2 }} className="text-primary">
+                          {activeTotal}
+                        </text>
+                        <text x={donutSize/2} y={donutSize/2 + 18} textAnchor="middle" dominantBaseline="middle"
+                          style={{ fontSize: 14, fontWeight: 600 }} className="text-muted">
+                          open quotes
+                        </text>
+                      </svg>
+                    </div>
+                    {/* Labels */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+                      {healthBuckets.map(b => (
+                        <div key={b.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", opacity: b.label === "Probably lost" ? 0.5 : 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ width: 10, height: 10, borderRadius: 3, background: b.label === "Probably lost" ? "rgba(107,114,128,0.3)" : b.color, flexShrink: 0 }} />
+                            <span className="text-primary" style={{ fontSize: 15, fontWeight: 800 }}>{b.count.toLocaleString()}</span>
+                            <span className="text-primary" style={{ fontSize: 14, fontWeight: 600 }}>{b.label}</span>
+                          </div>
+                          {!b.hideValue && <span style={{ fontSize: 14, fontWeight: 700, color: b.label === "Probably lost" ? undefined : b.color }} className={b.label === "Probably lost" ? "text-muted" : ""}>{money(b.cents)}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+
+                return (
+                  <div className="panel" style={{ padding: "20px 20px 12px", display: "flex", flexDirection: "column" }}>
+                    <a href={`/jobber/sales${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                      <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 6v0a2 2 0 0 1-2 2"/><path d="M18 6v0a2 2 0 0 0 2 2"/><path d="M6 18v0a2 2 0 0 0-2-2"/><path d="M18 18v0a2 2 0 0 1 2-2"/></svg>
+                        How Are Sales?
+                      </h2>
+                      <span className="text-muted" style={{ fontSize: 11, fontWeight: 600 }}>Details &#8594;</span>
+                    </a>
+                    <FlipCard pages={[page1, page2]} labels={["Revenue", "Your Open Quotes"]} />
+                  </div>
+                );
+              })()}
+            </div>
+
+              {/* Revenue Goal Bar */}
+              {yearlyGoal > 0 && (
+                <div className="panel" style={{ padding: "18px 24px", marginTop: 14, overflow: "hidden" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <h2 className="text-primary" style={{ fontSize: 18, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        {isAutoGoal ? `You're on track for ${money(yearlyGoal)} this year` : `${todayUTC.getUTCFullYear()} Revenue Goal`}
+                      </h2>
+                      {isAutoGoal && (
+                        <span className="text-muted" style={{ fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4, background: "rgba(90,166,255,0.1)" }}>based on what you've been doing</span>
+                      )}
+                    </div>
+                    <div style={{ padding: "3px 10px", borderRadius: 12, background: `${paceColor}12`, border: `1px solid ${paceColor}20` }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: paceColor }}>{money(Math.abs(aheadByCents))} {isAhead ? "ahead of pace" : "behind pace"}</span>
+                    </div>
+                  </div>
+                  <div style={{ position: "relative" }}>
+                    <div style={{ height: 18, borderRadius: 9, background: "rgba(255,255,255,0.05)", boxShadow: "inset 0 1px 2px rgba(0,0,0,0.1)", overflow: "hidden", position: "relative" }}>
+                      {/* Scheduled (striped, behind) */}
+                      {projectedCents > 0 && (
+                        <div style={{
+                          position: "absolute", top: 1, left: 1, bottom: 1,
+                          width: `calc(${Math.min(projectedPct, 100)}% - 2px)`, minWidth: 4,
+                          borderRadius: 5,
+                          background: `repeating-linear-gradient(115deg, ${paceColor}35, ${paceColor}35 3px, ${paceColor}12 3px, ${paceColor}12 6px)`,
+                          transition: "width 0.8s cubic-bezier(0.4,0,0.2,1)",
+                        }} />
+                      )}
+                      {/* Completed (solid, front) */}
+                      <div style={{
+                        position: "absolute", top: 1, left: 1, bottom: 1,
+                        width: `calc(${Math.min(yearPct, 100)}% - 2px)`, minWidth: yearPct > 0 ? 4 : 0,
+                        borderRadius: 5, background: paceGrad,
+                        boxShadow: `0 0 8px ${paceColor}30`,
+                        transition: "width 0.8s cubic-bezier(0.4,0,0.2,1)",
+                      }}>
+                        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "45%", borderRadius: "5px 5px 0 0", background: "linear-gradient(180deg, rgba(255,255,255,0.3), transparent)" }} />
+                      </div>
+                      {/* Quarter ticks */}
+                      {[25, 50, 75].map(pct => (
+                        <div key={pct} style={{ position: "absolute", top: 0, bottom: 0, left: `${pct}%`, width: 1, background: "rgba(255,255,255,0.08)" }} />
+                      ))}
+                      {/* Pace marker */}
+                      <div style={{ position: "absolute", top: -2, bottom: -2, left: `${expectedPct}%`, width: 2, borderRadius: 1, background: "rgba(255,255,255,0.2)" }} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
+                      <span className="text-muted" style={{ fontSize: 11 }}>$0</span>
+                      {[25, 50, 75].map(pct => (
+                        <span key={pct} className="text-muted" style={{ fontSize: 11 }}>{money(Math.round(yearlyGoal * pct / 100))}</span>
+                      ))}
+                      <span className="text-muted" style={{ fontSize: 11 }}>{money(yearlyGoal)}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "center", marginTop: 8, gap: 16, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ width: 12, height: 10, borderRadius: 3, background: paceGrad, flexShrink: 0 }} />
+                      <span style={{ fontSize: 14, fontWeight: 600, color: paceColor }}>{money(yearRevenue)} earned so far</span>
+                    </div>
+                    {projectedCents > 0 && (<>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: paceColor }}>+</span>
+                        <span style={{ width: 12, height: 10, borderRadius: 3, flexShrink: 0, background: `repeating-linear-gradient(115deg, ${paceColor}60, ${paceColor}60 2px, ${paceColor}15 2px, ${paceColor}15 4px)` }} />
+                        <span className="text-muted" style={{ fontSize: 14, fontWeight: 600 }}>{money(projectedCents)} scheduled</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: paceColor }}>=</span>
+                        <span className="text-primary" style={{ fontSize: 14, fontWeight: 800 }}>{money(yearRevenue + projectedCents)} on track for</span>
+                      </div>
+                    </>)}
                   </div>
                 </div>
+              )}
 
-                {/* Donut */}
-                {totalOutstandingCard > 0 && (
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
-                    <AgingDonutWrapper
-                      buckets={[
-                        { label: "Current", color: "#10b981", balanceCents: currentCents, count: currentCount },
-                        { label: "1\u20137 Days", color: "#fbbf24", balanceCents: b0_7, count: b0_7Count },
-                        { label: "8\u201330 Days", color: "#f59e0b", balanceCents: b8_14, count: b8_14Count },
-                        { label: "30+ Days", color: "#ef4444", balanceCents: b15p, count: b15pCount },
-                      ]}
-                      totalCents={totalOutstandingCard}
-                      currencyCode={currencyCode}
-                      compact
-                      donutSize={180}
-                    />
-                  </div>
-                )}
-
-                {/* Recommendation */}
-                <a href={`/jobber/invoices${adminQs}`} style={{ marginTop: "auto", paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, textDecoration: "none" }}>
-                  <span className="text-primary" style={{ fontSize: 12, fontWeight: 700 }}>
-                    {b15p > 0 ? `Collect ${money(b15p)} in overdue invoices` : needsInvoiceCount > 0 ? `Invoice ${needsInvoiceCount.toLocaleString()} completed jobs` : totalOutstandingCard > 0 ? `${money(totalOutstandingCard)} still outstanding` : "All invoices collected"}
-                  </span>
-                  <span className="text-primary" style={{ fontSize: 14, fontWeight: 800 }}>&#8594;</span>
-                </a>
-              </div>
-            </div>
             </div>
           );
         })()}
