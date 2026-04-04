@@ -7,6 +7,14 @@ import { getUser } from "@/lib/supabaseAuth";
 
 export const maxDuration = 300; // Tell Vercel this route needs full 300s
 
+type VisitLineItem = {
+  name?: string | null;
+  description?: string | null;
+  quantity?: number | null;
+  unitPrice?: number | null;
+  totalPrice?: number | null;
+};
+
 type VisitNode = {
   id: string;
   title?: string | null;
@@ -17,6 +25,7 @@ type VisitNode = {
   isComplete?: boolean | null;
   duration?: number | null;
   createdAt?: string | null;
+  lineItems?: { nodes?: VisitLineItem[] } | null;
 };
 
 type JobNode = {
@@ -327,7 +336,16 @@ async function handleSyncJobsStep(
      isComplete
      duration
      createdAt
-     job { id jobNumber }`,
+     job { id jobNumber }
+     lineItems(first: 100) {
+       nodes {
+         name
+         description
+         quantity
+         unitPrice
+         totalPrice
+       }
+     }`,
     lastSyncAt
   );
 
@@ -338,7 +356,14 @@ async function handleSyncJobsStep(
   const visits = visitResult.nodes;
   let visitCount = 0;
   if (visits.length > 0) {
-    const visitRows = visits.map((v: any) => ({
+    const visitRows = visits.map((v: any) => {
+      // Sum line item revenue if available (dollars → cents)
+      const lineItems = v.lineItems?.nodes || [];
+      const lineItemRevenueCents = lineItems.length > 0
+        ? Math.round(lineItems.reduce((s: number, li: any) => s + (Number(li.totalPrice ?? 0) * 100), 0))
+        : null;
+
+      return {
       connection_id: connectionId,
       jobber_visit_id: v.id,
       jobber_job_id: v.job?.id ?? null,
@@ -351,7 +376,8 @@ async function handleSyncJobsStep(
       completed_at: v.completedAt ?? null,
       duration_minutes: v.duration ?? null,
       created_at_jobber: v.createdAt ?? null,
-    }));
+      visit_revenue_cents: lineItemRevenueCents,
+    }; });
 
     const chunkSize = 1000;
     for (let i = 0; i < visitRows.length; i += chunkSize) {

@@ -633,7 +633,7 @@ export default async function DashboardPage({
     ),
     fetchAllRows(
       "fact_visits",
-      "jobber_visit_id,jobber_job_id,title,visit_status,is_complete,start_at,completed_at,duration_minutes",
+      "jobber_visit_id,jobber_job_id,title,visit_status,is_complete,start_at,completed_at,duration_minutes,visit_revenue_cents",
       connectionId,
     ),
   ]);
@@ -692,6 +692,11 @@ export default async function DashboardPage({
   const ninetyDaysAgoMs = ninetyDaysAgo.getTime();
 
   // Unscheduled count & value (only jobs created in last 6 months)
+  // Draft invoices (unsent)
+  const draftInvoices = invoices.filter((inv: any) => (inv.status || '').toLowerCase() === 'draft');
+  const draftInvoiceCount = draftInvoices.length;
+  const draftInvoiceCents = draftInvoices.reduce((s: number, inv: any) => s + Number(inv.total_amount_cents ?? 0), 0);
+
   const unscheduledJobs = jobs.filter((j) => {
     if (j.scheduled_start_at) return false;
     const created = safeDate(j.created_at_jobber);
@@ -993,13 +998,25 @@ const quoteWonPct = quotesInLast30Days.length > 0
       return s && s.getTime() >= wStartMs && s.getTime() < wEndMs;
     });
 
-    // Revenue: visit revenue (job total / visit count) + visitless job totals
+    // Revenue: prefer visit line item revenue, fall back to duration-weighted, then equal split
     let scheduledRevenue = 0;
     for (const v of scheduledVisits) {
-      const jid = (v as any).jobber_job_id;
-      const jobTotal = jobTotalMap.get(jid) || 0;
-      const visitCount = jobVisitCountMap.get(jid) || 1;
-      scheduledRevenue += Math.round(jobTotal / visitCount);
+      const visitRev = Number((v as any).visit_revenue_cents ?? 0);
+      if (visitRev > 0) {
+        scheduledRevenue += visitRev;
+      } else {
+        const jid = (v as any).jobber_job_id;
+        const jobTotal = jobTotalMap.get(jid) || 0;
+        const visitCount = jobVisitCountMap.get(jid) || 1;
+        // Duration-weighted if available, else equal split
+        const vDuration = Number((v as any).duration_minutes ?? 0);
+        const totalDuration = scheduledVisits.filter((sv: any) => sv.jobber_job_id === jid).reduce((s: number, sv: any) => s + Number(sv.duration_minutes ?? 0), 0);
+        if (vDuration > 0 && totalDuration > 0) {
+          scheduledRevenue += Math.round(jobTotal * (vDuration / totalDuration));
+        } else {
+          scheduledRevenue += Math.round(jobTotal / visitCount);
+        }
+      }
     }
     for (const j of scheduledVisitlessJobs) {
       scheduledRevenue += Number((j as any).total_amount_cents ?? 0);
@@ -1028,6 +1045,11 @@ const quoteWonPct = quotesInLast30Days.length > 0
 
     let completedRevenue = 0;
     for (const v of completedVisits) {
+      const visitRev = Number((v as any).visit_revenue_cents ?? 0);
+      if (visitRev > 0) {
+        completedRevenue += visitRev;
+        continue;
+      }
       const jid = (v as any).jobber_job_id;
       const jobTotal = jobTotalMap.get(jid) || 0;
       const visitCount = jobVisitCountMap.get(jid) || 1;
@@ -1164,10 +1186,15 @@ const quoteWonPct = quotesInLast30Days.length > 0
     if (!c) continue;
     const key = _monthKey(c);
     const entry = _monthRevCache.get(key) || { revenue: 0, count: 0 };
-    const jid = (v as any).jobber_job_id;
-    const jobTotal = jobTotalMap.get(jid) || 0;
-    const vCount = jobVisitCountMap.get(jid) || 1;
-    entry.revenue += Math.round(jobTotal / vCount);
+    const visitRev = Number((v as any).visit_revenue_cents ?? 0);
+    if (visitRev > 0) {
+      entry.revenue += visitRev;
+    } else {
+      const jid = (v as any).jobber_job_id;
+      const jobTotal = jobTotalMap.get(jid) || 0;
+      const vCount = jobVisitCountMap.get(jid) || 1;
+      entry.revenue += Math.round(jobTotal / vCount);
+    }
     entry.count++;
     _monthRevCache.set(key, entry);
   }
@@ -1762,54 +1789,283 @@ const quoteWonPct = quotesInLast30Days.length > 0
           return (
             <div className="animate-in" style={{ marginTop: 12, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, alignItems: "stretch", flex: 1 }}>
-
-              {/* ═══ INVOICES CARD ═══ */}
-              <div className="panel" style={{ padding: "20px 20px 16px", display: "flex", flexDirection: "column" }}>
-                <a href={`/jobber/invoices${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                  <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 3 2V2l-3 2-3-2-3 2-3-2-3 2Z"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg>
-                    Who Owes You?
-                  </h2>
-                  <span className="text-muted" style={{ fontSize: 11, fontWeight: 600 }}>Details &#8594;</span>
-                </a>
-
-                {/* Outstanding */}
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -1.5, lineHeight: 1, color: totalOutstandingCard > 0 ? (b15p > totalOutstandingCard * 0.5 ? "#ef4444" : "#f59e0b") : "#10b981" }}>
-                    {totalOutstandingCard > 0 ? money(totalOutstandingCard) : "$0"}
+              {/* Revenue Goal Bar */}
+              {yearlyGoal > 0 && (
+                <div className="panel" style={{ padding: "12px 20px", marginBottom: 10, overflow: "hidden" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <h2 className="text-primary" style={{ fontSize: 18, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        {isAutoGoal ? `You're on track for ${money(yearlyGoal)} this year` : `${todayUTC.getUTCFullYear()} Revenue Goal`}
+                      </h2>
+                      {isAutoGoal && (
+                        <span className="text-muted" style={{ fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4, background: "rgba(90,166,255,0.1)" }}>based on what you've been doing</span>
+                      )}
+                    </div>
+                    <div style={{ padding: "3px 10px", borderRadius: 12, background: `${paceColor}12`, border: `1px solid ${paceColor}20` }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: paceColor }}>{money(Math.abs(aheadByCents))} {isAhead ? "ahead of pace" : "behind pace"}</span>
+                    </div>
                   </div>
-                  <div className="text-muted" style={{ fontSize: 11, marginTop: 3 }}>
-                    {totalOutstandingCard > 0 ? "owed to you" : "you're all caught up"}
+                  <div style={{ position: "relative" }}>
+                    <div style={{ height: 14, borderRadius: 7, background: "rgba(255,255,255,0.05)", boxShadow: "inset 0 1px 2px rgba(0,0,0,0.1)", overflow: "hidden", position: "relative" }}>
+                      {projectedCents > 0 && (
+                        <div style={{ position: "absolute", top: 1, left: 1, bottom: 1, width: `calc(${Math.min(projectedPct, 100)}% - 2px)`, minWidth: 4, borderRadius: 5, background: `repeating-linear-gradient(115deg, ${paceColor}35, ${paceColor}35 3px, ${paceColor}12 3px, ${paceColor}12 6px)`, transition: "width 0.8s cubic-bezier(0.4,0,0.2,1)" }} />
+                      )}
+                      <div style={{ position: "absolute", top: 1, left: 1, bottom: 1, width: `calc(${Math.min(yearPct, 100)}% - 2px)`, minWidth: yearPct > 0 ? 4 : 0, borderRadius: 5, background: paceGrad, boxShadow: `0 0 8px ${paceColor}30`, transition: "width 0.8s cubic-bezier(0.4,0,0.2,1)" }}>
+                        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "45%", borderRadius: "5px 5px 0 0", background: "linear-gradient(180deg, rgba(255,255,255,0.3), transparent)" }} />
+                      </div>
+                      {[25, 50, 75].map(pct => (
+                        <div key={pct} style={{ position: "absolute", top: 0, bottom: 0, left: `${pct}%`, width: 1, background: "rgba(255,255,255,0.08)" }} />
+                      ))}
+                      <div style={{ position: "absolute", top: -2, bottom: -2, left: `${expectedPct}%`, width: 2, borderRadius: 1, background: "rgba(255,255,255,0.2)" }} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
+                      <span className="text-muted" style={{ fontSize: 11 }}>$0</span>
+                      {[25, 50, 75].map(pct => (
+                        <span key={pct} className="text-muted" style={{ fontSize: 11 }}>{money(Math.round(yearlyGoal * pct / 100))}</span>
+                      ))}
+                      <span className="text-muted" style={{ fontSize: 11 }}>{money(yearlyGoal)}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "center", marginTop: 4, gap: 12, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <span style={{ width: 10, height: 8, borderRadius: 2, background: paceGrad, flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, fontWeight: 600, color: paceColor }}>{money(yearRevenue)} earned</span>
+                    </div>
+                    {projectedCents > 0 && (<>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: paceColor }}>+</span>
+                        <span style={{ width: 10, height: 8, borderRadius: 2, flexShrink: 0, background: `repeating-linear-gradient(115deg, ${paceColor}60, ${paceColor}60 2px, ${paceColor}15 2px, ${paceColor}15 4px)` }} />
+                        <span className="text-muted" style={{ fontSize: 12, fontWeight: 600 }}>{money(projectedCents)} scheduled</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: paceColor }}>=</span>
+                        <span className="text-primary" style={{ fontSize: 12, fontWeight: 700 }}>{money(yearRevenue + projectedCents)} projected</span>
+                      </div>
+                    </>)}
                   </div>
                 </div>
+              )}
 
-                {/* Donut */}
-                {totalOutstandingCard > 0 && (
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
-                    <AgingDonutWrapper
-                      buckets={[
-                        { label: "Current", color: "#10b981", balanceCents: currentCents, count: currentCount },
-                        { label: "1\u20137 Days", color: "#fbbf24", balanceCents: b0_7, count: b0_7Count },
-                        { label: "8\u201330 Days", color: "#f59e0b", balanceCents: b8_14, count: b8_14Count },
-                        { label: "30+ Days", color: "#ef4444", balanceCents: b15p, count: b15pCount },
-                      ]}
-                      totalCents={totalOutstandingCard}
-                      currencyCode={currencyCode}
-                      compact
-                      donutSize={180}
-                    />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, alignItems: "stretch", flex: 1 }}>
+
+              {/* ═══ INVOICES CARD ═══ */}
+              {(() => {
+                const thirtyDaysAgo = addDaysUTC(todayUTC, -30);
+
+                // Invoiced last 30 days (by due date as proxy for issue date)
+                const invoiced30 = invoices.filter((inv: any) => {
+                  const d = safeDate(inv.due_at);
+                  return d && d >= thirtyDaysAgo;
+                });
+                const invoiced30Cents = invoiced30.reduce((s: number, inv: any) => s + Number(inv.total_amount_cents ?? 0), 0);
+
+                // Collected last 30 days
+                const collected30 = invoices.filter((inv: any) => {
+                  const pd = safeDate(inv.paid_at);
+                  return pd && pd >= thirtyDaysAgo;
+                });
+                const collected30Cents = collected30.reduce((s: number, inv: any) => s + Number(inv.total_amount_cents ?? 0), 0);
+
+                // Avg days to pay
+                const recentPaid = invoices.filter((inv: any) => {
+                  const pd = safeDate(inv.paid_at);
+                  const due = safeDate(inv.due_at);
+                  return pd && due && pd >= thirtyDaysAgo;
+                });
+                const avgDaysToPay = recentPaid.length > 0
+                  ? Math.round(recentPaid.reduce((s: number, inv: any) => {
+                      const pd = safeDate(inv.paid_at)!;
+                      const due = safeDate(inv.due_at)!;
+                      return s + Math.max(0, (pd.getTime() - due.getTime()) / 86400000);
+                    }, 0) / recentPaid.length)
+                  : null;
+
+                // Collection rate
+                const collectionRate = invoiced30Cents > 0 ? Math.round((collected30Cents / invoiced30Cents) * 100) : null;
+
+                const agingRows = [
+                  { label: "30+ days late", color: "#dc2626", cents: b15p, count: b15pCount },
+                  { label: "8–30 days late", color: "#ef4444", cents: b8_14, count: b8_14Count },
+                  { label: "1–7 days late", color: "#f59e0b", cents: b0_7, count: b0_7Count },
+                  { label: "Not due yet", color: "#10b981", cents: currentCents, count: currentCount },
+                ].filter(b => b.count > 0);
+                const agingTotal = agingRows.reduce((s, b) => s + b.count, 0) || 1;
+
+                // 6-month invoiced vs collected bars
+                const cashFlowMonths: { label: string; invoicedCents: number; collectedCents: number; avgDays: number | null; isCurrent: boolean }[] = [];
+                for (let m = -5; m <= 0; m++) {
+                  const mStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() + m, 1));
+                  const mEnd = new Date(Date.UTC(mStart.getUTCFullYear(), mStart.getUTCMonth() + 1, 1));
+                  const mInvoiced = invoices.filter((inv: any) => { const d = safeDate(inv.due_at); return d && d >= mStart && d < mEnd; });
+                  const mCollected = invoices.filter((inv: any) => { const pd = safeDate(inv.paid_at); return pd && pd >= mStart && pd < mEnd; });
+                  const mInvoicedCents = mInvoiced.reduce((s: number, inv: any) => s + Number(inv.total_amount_cents ?? 0), 0);
+                  const mCollectedCents = mCollected.reduce((s: number, inv: any) => s + Number(inv.total_amount_cents ?? 0), 0);
+                  // Avg days to pay for invoices paid this month
+                  const mPaid = mCollected.filter((inv: any) => safeDate(inv.due_at));
+                  const mAvgDays = mPaid.length > 0
+                    ? Math.round(mPaid.reduce((s: number, inv: any) => s + Math.max(0, (safeDate(inv.paid_at)!.getTime() - safeDate(inv.due_at)!.getTime()) / 86400000), 0) / mPaid.length)
+                    : null;
+                  cashFlowMonths.push({
+                    label: mStart.toLocaleString(undefined, { month: "short", timeZone: "UTC" }),
+                    invoicedCents: mInvoicedCents,
+                    collectedCents: mCollectedCents,
+                    avgDays: mAvgDays,
+                    isCurrent: m === 0,
+                  });
+                }
+                const cfMax = Math.max(...cashFlowMonths.flatMap(m => [m.invoicedCents, m.collectedCents]), 1);
+
+                const invPage1 = (
+                  <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+                    {/* Legend */}
+                    <div style={{ display: "flex", gap: 16, marginBottom: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ width: 14, height: 14, borderRadius: 3, background: "rgba(90,166,255,0.15)", border: "2px solid rgba(90,166,255,0.5)", flexShrink: 0 }} />
+                        <span className="text-primary" style={{ fontSize: 12, fontWeight: 700 }}>Invoiced</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ width: 14, height: 14, borderRadius: 3, background: "#10b981", flexShrink: 0 }} />
+                        <span className="text-primary" style={{ fontSize: 12, fontWeight: 700 }}>Collected</span>
+                      </div>
+                    </div>
+                    {/* Fill-style bar chart — invoiced is container, collected fills it */}
+                    <div style={{ display: "flex", alignItems: "flex-end", gap: 4, flex: 1, minHeight: 60 }}>
+                      {cashFlowMonths.map((m, i) => {
+                        const barH = cfMax > 0 ? Math.max((m.invoicedCents / cfMax) * 100, m.invoicedCents > 0 ? 6 : 1) : 1;
+                        const fillPct = m.invoicedCents > 0 ? Math.min((m.collectedCents / m.invoicedCents) * 100, 100) : 0;
+                        const prev = i > 0 ? cashFlowMonths[i - 1] : null;
+                        const invChange = prev && prev.invoicedCents > 0 ? Math.round(((m.invoicedCents - prev.invoicedCents) / prev.invoicedCents) * 100) : null;
+                        const colChange = prev && prev.collectedCents > 0 ? Math.round(((m.collectedCents - prev.collectedCents) / prev.collectedCents) * 100) : null;
+                        return (
+                          <div key={i} className="chart-bar-hover" style={{
+                            flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end",
+                            height: "100%", cursor: "default", position: "relative",
+                            borderRadius: 4,
+                          }}>
+                            {/* Tooltip — inside chart area */}
+                            <div className="chart-bar-tooltip" style={{
+                              position: "absolute", top: 4, left: "50%", transform: "translateX(-50%)",
+                              padding: "6px 10px", borderRadius: 6, whiteSpace: "nowrap",
+                              background: "rgba(0,0,0,0.92)", color: "#fff", fontSize: 10, lineHeight: 1.5,
+                              pointerEvents: "none", zIndex: 10, opacity: 0,
+                              boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                            }}>
+                              <div style={{ fontWeight: 800, marginBottom: 2 }}>{m.label}</div>
+                              <div>Invoiced: <span style={{ color: "rgba(90,166,255,0.9)", fontWeight: 700 }}>{money(m.invoicedCents)}</span>
+                                {invChange !== null && <span style={{ color: invChange >= 0 ? "#34d399" : "#fca5a5", marginLeft: 4 }}>{invChange >= 0 ? "+" : ""}{invChange}%</span>}
+                              </div>
+                              <div>Collected: <span style={{ color: "#10b981", fontWeight: 700 }}>{money(m.collectedCents)}</span>
+                                {colChange !== null && <span style={{ color: colChange >= 0 ? "#34d399" : "#fca5a5", marginLeft: 4 }}>{colChange >= 0 ? "+" : ""}{colChange}%</span>}
+                              </div>
+                              {m.avgDays !== null && <div>Avg to pay: <span style={{ fontWeight: 700 }}>{m.avgDays}d</span></div>}
+                            </div>
+                            {/* Collection % above bar */}
+                            <div style={{ fontSize: 10, fontWeight: 800, marginBottom: 2, whiteSpace: "nowrap", color: fillPct > 100 ? "#10b981" : fillPct >= 70 ? "#f59e0b" : m.invoicedCents > 0 ? "#ef4444" : "transparent" }}>
+                              {m.invoicedCents > 0 ? `${Math.round(fillPct)}%` : ""}
+                            </div>
+                            {/* Bar: solid green, scales to collected amount */}
+                            {(() => {
+                              const collH = cfMax > 0 ? Math.max((m.collectedCents / cfMax) * 100, m.collectedCents > 0 ? 4 : 1) : 1;
+                              const over = m.collectedCents > m.invoicedCents && m.invoicedCents > 0;
+                              return (
+                                <div style={{
+                                  width: "80%", borderRadius: "5px 5px 3px 3px",
+                                  height: `${collH}%`,
+                                  background: over ? "linear-gradient(0deg, #10b981, #34d399)" : "linear-gradient(0deg, #10b981a0, #34d399a0)",
+                                  border: over ? "1.5px solid #10b981" : "none",
+                                  boxShadow: over ? "0 0 8px rgba(16,185,129,0.3)" : "none",
+                                  position: "relative",
+                                  transition: "height 0.5s ease",
+                                }}>
+                                  {/* Invoiced line marker when under-collected */}
+                                  {!over && m.invoicedCents > 0 && m.collectedCents > 0 && (
+                                    <div style={{
+                                      position: "absolute", top: -2, left: -4, right: -4,
+                                      height: 0, borderTop: "2px dashed rgba(90,166,255,0.5)",
+                                    }} />
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Month labels + data under each bar */}
+                    <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+                      {cashFlowMonths.map((m, i) => (
+                        <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                          <div className="text-muted" style={{ fontSize: 10, fontWeight: m.isCurrent ? 700 : 500 }}>{m.label}</div>
+                          <div className="text-primary" style={{ fontSize: 9, fontWeight: 700, marginTop: 2 }}>{m.invoicedCents > 0 ? money(m.invoicedCents) : "—"}</div>
+                          <div style={{ fontSize: 9, fontWeight: 700, color: "#10b981" }}>{m.collectedCents > 0 ? money(m.collectedCents) : "—"}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                )}
+                );
 
-                {/* Recommendation */}
-                <a href={`/jobber/invoices${adminQs}`} style={{ marginTop: "auto", paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, textDecoration: "none" }}>
-                  <span className="text-primary" style={{ fontSize: 12, fontWeight: 700 }}>
-                    {b15p > 0 ? `Collect ${money(b15p)} in overdue invoices` : needsInvoiceCount > 0 ? `Invoice ${needsInvoiceCount.toLocaleString()} completed jobs` : totalOutstandingCard > 0 ? `${money(totalOutstandingCard)} still outstanding` : "All invoices collected"}
-                  </span>
-                  <span className="text-primary" style={{ fontSize: 14, fontWeight: 800 }}>&#8594;</span>
-                </a>
-              </div>
+                const invPage2 = (
+                  <div style={{ display: "flex", flex: 1, padding: "4px 0" }}>
+                    {agingRows.length > 0 ? (
+                      <div style={{ display: "flex", flexDirection: "column", width: "100%", flex: 1 }}>
+                        {/* Total due top right */}
+                        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
+                          <div style={{ textAlign: "right" }}>
+                            <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5, color: b15p > totalOutstandingCard * 0.3 ? "#ef4444" : "#f59e0b" }}>{money(totalOutstandingCard)}</span>
+                            <span className="text-muted" style={{ fontSize: 11, marginLeft: 6, fontWeight: 600 }}>total due</span>
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", flex: 1 }}>
+                          {/* Labels on left — flex matches bar segments */}
+                          <div style={{ display: "flex", flexDirection: "column", paddingRight: 14, textAlign: "right", flex: 1 }}>
+                            {agingRows.map(b => (
+                              <div key={b.label} style={{ flex: Math.max(b.cents, 1), display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "flex-end" }}>
+                                <div style={{ fontSize: 17, fontWeight: 800, color: b.color }}>{money(b.cents)}</div>
+                                <div className="text-muted" style={{ fontSize: 11 }}>{b.count} invoices</div>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Vertical stacked bar */}
+                          <div style={{ width: 64, borderRadius: 10, overflow: "hidden", display: "flex", flexDirection: "column", flexShrink: 0, background: "rgba(255,255,255,0.03)" }}>
+                            {agingRows.map(b => (
+                              <div key={b.label} className="aging-bar-seg" style={{
+                                flex: Math.max(b.cents, 1), minHeight: 6,
+                                background: b.color,
+                              }} />
+                            ))}
+                          </div>
+                          {/* Labels on right — flex matches bar segments */}
+                          <div style={{ display: "flex", flexDirection: "column", paddingLeft: 14, flex: 1 }}>
+                            {agingRows.map(b => (
+                              <div key={b.label} style={{ flex: Math.max(b.cents, 1), display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                                <div className="text-primary" style={{ fontSize: 14, fontWeight: 700 }}>{b.label}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <span className="text-muted" style={{ fontSize: 14 }}>Everyone's paid up</span>
+                      </div>
+                    )}
+                  </div>
+                );
+
+                return (
+                  <div className="panel" style={{ padding: "20px 20px 12px", display: "flex", flexDirection: "column" }}>
+                    <a href={`/jobber/invoices${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                      <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 3 2V2l-3 2-3-2-3 2-3-2-3 2Z"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg>
+                        What Are You Owed?
+                      </h2>
+                      <span className="btn" style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px" }}>Collect What You're Owed &#8594;</span>
+                    </a>
+                    <FlipCard pages={[invPage2, invPage1]} labels={["What's Late", "Cash Flow"]} />
+                  </div>
+                );
+              })()}
 
               {/* ═══ SCHEDULE CARD ═══ */}
               {(() => {
@@ -1862,28 +2118,19 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 }
                 const monthBooked = monthWeeks.reduce((s, w) => s + w.scheduledCents, 0);
 
-                // Next 6 weeks: weekly bars
-                const next6Weeks: typeof thisWeekDays = [];
+                // Next 6 weeks: build daily data per week for heatmap
+                const heatmapData: { label: string; isCurrent: boolean; days: typeof thisWeekDays }[] = [];
                 for (let w = 0; w < 6; w++) {
                   const wStart = addDaysUTC(thisWeekStart, w * 7);
-                  const wEnd = addDaysUTC(wStart, 7);
-                  const { rev, count } = capacityPeriodRevenue(wStart, wEnd);
                   const wLabel = `${wStart.toLocaleString(undefined, { month: "short", timeZone: "UTC" })} ${wStart.getUTCDate()}`;
-                  next6Weeks.push({
-                    day: wLabel,
-                    scheduledCents: rev,
-                    targetCents: effectiveWeeklyTarget || 0,
-                    isToday: w === 0,
-                    isWorkDay: true,
-                    jobCount: count,
-                  });
+                  const wDays = buildWeekDays(wStart).map(d => ({ ...d, isToday: w === 0 && d.isToday }));
+                  heatmapData.push({ label: wLabel, isCurrent: w === 0, days: wDays });
                 }
-                const next6Booked = next6Weeks.reduce((s, w) => s + w.scheduledCents, 0);
+                const next6Booked = heatmapData.reduce((s, w) => s + w.days.reduce((ds, d) => ds + d.scheduledCents, 0), 0);
 
                 const weekSets = [
                   { label: "This Week", days: thisWeekDays, bookedCents: thisWeekSnap.scheduledRevenue },
                   { label: "Next Week", days: nextWeekDays.map(d => ({ ...d, isToday: false })), bookedCents: nextWeekDays.reduce((s, d) => s + d.scheduledCents, 0) },
-                  { label: "Next 6 Weeks", days: next6Weeks, bookedCents: next6Booked },
                 ];
 
                 return (
@@ -1893,7 +2140,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><rect x="7" y="14" width="3" height="3" rx="0.5" fill="currentColor" stroke="none" opacity="0.35"/><rect x="14" y="14" width="3" height="3" rx="0.5" fill="currentColor" stroke="none" opacity="0.35"/></svg>
                         How Full Is Your Week?
                       </h2>
-                      <span className="text-muted" style={{ fontSize: 11, fontWeight: 600 }}>Details &#8594;</span>
+                      <span className="btn" style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px" }}>Book Work &#8594;</span>
                     </a>
 
                     <CapacityTargetDisplay
@@ -1904,6 +2151,8 @@ const quoteWonPct = quotesInLast30Days.length > 0
                       settingsHref={`/jobber/capacity${adminQs}`}
                       workDays={workDaysList}
                       dailyTargets={dailyTargets}
+                      heatmapWeeks={heatmapData}
+                      heatmapTotalBooked={next6Booked}
                     />
                   </div>
                 );
@@ -1940,9 +2189,9 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 const healthTotal = healthBuckets.filter(b => b.label !== "Probably lost").reduce((s, b) => s + b.count, 0) || 1;
 
                 // SVG donut for quote health
-                const donutSize = 240;
-                const donutR = 88;
-                const donutStroke = 26;
+                const donutSize = 260;
+                const donutR = 96;
+                const donutStroke = 28;
                 const donutCirc = 2 * Math.PI * donutR;
                 const activeBuckets = healthBuckets.filter(b => b.label !== "Probably lost" && b.count > 0);
                 const activeTotal = activeBuckets.reduce((s, b) => s + b.count, 0) || 1;
@@ -2005,17 +2254,19 @@ const quoteWonPct = quotesInLast30Days.length > 0
                           : "No open quotes right now"}
                       </span>
                     </div>
+                    <div className="donut-group" style={{ display: "flex", flexDirection: "column", flex: 1 }}>
                     {/* Donut + center count */}
-                    <div style={{ display: "flex", justifyContent: "center", flex: 1, alignItems: "center" }}>
+                    <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", marginTop: "5%" }}>
                       <svg width={donutSize} height={donutSize} viewBox={`0 0 ${donutSize} ${donutSize}`}>
                         {/* Track */}
                         <circle cx={donutSize/2} cy={donutSize/2} r={donutR} fill="none" strokeWidth={donutStroke} stroke="rgba(255,255,255,0.04)" />
                         {/* Segments */}
-                        {activeBuckets.map(b => {
+                        {activeBuckets.map((b, bi) => {
                           const segLen = (b.count / activeTotal) * donutCirc;
                           const gap = activeBuckets.length > 1 ? 3 : 0;
                           const el = (
-                            <circle key={b.label} cx={donutSize/2} cy={donutSize/2} r={donutR} fill="none"
+                            <circle key={b.label} className={`donut-seg di${bi}`}
+                              cx={donutSize/2} cy={donutSize/2} r={donutR} fill="none"
                               strokeWidth={donutStroke} stroke={b.color}
                               strokeDasharray={`${Math.max(segLen - gap, 1)} ${donutCirc - Math.max(segLen - gap, 1)}`}
                               strokeDashoffset={-donutOffset}
@@ -2027,8 +2278,8 @@ const quoteWonPct = quotesInLast30Days.length > 0
                           return el;
                         })}
                         {/* Center text */}
-                        <text x={donutSize/2} y={donutSize/2 - 10} textAnchor="middle" dominantBaseline="middle"
-                          style={{ fontSize: 40, fontWeight: 800, fill: "currentColor", letterSpacing: -2 }} className="text-primary">
+                        <text x={donutSize/2} y={donutSize/2 - 12} textAnchor="middle" dominantBaseline="middle"
+                          style={{ fontSize: 44, fontWeight: 800, fill: "currentColor", letterSpacing: -2 }} className="text-primary">
                           {activeTotal}
                         </text>
                         <text x={donutSize/2} y={donutSize/2 + 18} textAnchor="middle" dominantBaseline="middle"
@@ -2038,17 +2289,19 @@ const quoteWonPct = quotesInLast30Days.length > 0
                       </svg>
                     </div>
                     {/* Labels */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
-                      {healthBuckets.map(b => (
-                        <div key={b.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", opacity: b.label === "Probably lost" ? 0.5 : 1 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: "auto", paddingTop: 8 }}>
+                      {healthBuckets.map((b, bi) => (
+                        <div key={b.label} className={`donut-label di${bi}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", opacity: b.label === "Probably lost" ? 0.5 : 1 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             <span style={{ width: 10, height: 10, borderRadius: 3, background: b.label === "Probably lost" ? "rgba(107,114,128,0.3)" : b.color, flexShrink: 0 }} />
                             <span className="text-primary" style={{ fontSize: 15, fontWeight: 800 }}>{b.count.toLocaleString()}</span>
                             <span className="text-primary" style={{ fontSize: 14, fontWeight: 600 }}>{b.label}</span>
+                            <span className="text-muted" style={{ fontSize: 11 }}>({b.days})</span>
                           </div>
                           {!b.hideValue && <span style={{ fontSize: 14, fontWeight: 700, color: b.label === "Probably lost" ? undefined : b.color }} className={b.label === "Probably lost" ? "text-muted" : ""}>{money(b.cents)}</span>}
                         </div>
                       ))}
+                    </div>
                     </div>
                   </div>
                 );
@@ -2060,16 +2313,79 @@ const quoteWonPct = quotesInLast30Days.length > 0
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 6v0a2 2 0 0 1-2 2"/><path d="M18 6v0a2 2 0 0 0 2 2"/><path d="M6 18v0a2 2 0 0 0-2-2"/><path d="M18 18v0a2 2 0 0 1 2-2"/></svg>
                         How Are Sales?
                       </h2>
-                      <span className="text-muted" style={{ fontSize: 11, fontWeight: 600 }}>Details &#8594;</span>
+                      <span className="btn" style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px" }}>Win Business &#8594;</span>
                     </a>
-                    <FlipCard pages={[page1, page2]} labels={["Revenue", "Your Open Quotes"]} />
+                    <FlipCard pages={[page2, page1]} labels={["Your Open Quotes", "Revenue"]} />
                   </div>
                 );
               })()}
             </div>
 
-              {/* Revenue Goal Bar */}
-              {yearlyGoal > 0 && (
+              {/* What to Do Today */}
+              {(() => {
+                const adminQs = adminConnectionId ? `?admin_connection_id=${adminConnectionId}` : "";
+                const todayActions: { text: string; href: string; color: string; priority: number }[] = [];
+
+                // Invoices: overdue money
+                if (b15p > 0) todayActions.push({ text: `Call on ${money(b15p)} in overdue invoices (30+ days)`, href: `/jobber/invoices${adminQs}`, color: "#ef4444", priority: 1 });
+                else if (b8_14 > 0) todayActions.push({ text: `Follow up on ${money(b8_14)} in late invoices`, href: `/jobber/invoices${adminQs}`, color: "#f59e0b", priority: 2 });
+
+                // Quotes: going cold
+                if (goingColdQuotes.length > 0) todayActions.push({ text: `Follow up on ${goingColdQuotes.length} quote${goingColdQuotes.length !== 1 ? "s" : ""} before they go stale (${money(sumCents(goingColdQuotes))})`, href: `/jobber/sales${adminQs}`, color: "#ef4444", priority: 1 });
+                else if (warmQuotes.length > 3) todayActions.push({ text: `Check in on ${warmQuotes.length} warm quotes (${money(sumCents(warmQuotes))})`, href: `/jobber/sales${adminQs}`, color: "#f59e0b", priority: 3 });
+
+                // Capacity: open slots
+                if (effectiveWeeklyTarget > 0 && thisWeekSnap.scheduledRevenue < effectiveWeeklyTarget * 0.7) {
+                  const gap = effectiveWeeklyTarget - thisWeekSnap.scheduledRevenue;
+                  todayActions.push({ text: `You have ${money(gap)} in open capacity this week — schedule more work`, href: `/jobber/capacity${adminQs}`, color: "#f59e0b", priority: 2 });
+                }
+
+                // Needs invoicing
+                if (needsInvoiceCount > 0) todayActions.push({ text: `Send invoices for ${needsInvoiceCount} completed job${needsInvoiceCount !== 1 ? "s" : ""} (${money(needsInvoiceCents)})`, href: `/jobber/invoices${adminQs}`, color: "#5aa6ff", priority: 3 });
+
+                // Draft invoices unsent
+                if (draftInvoiceCount > 0) todayActions.push({ text: `Send ${draftInvoiceCount} draft invoice${draftInvoiceCount !== 1 ? "s" : ""} (${money(draftInvoiceCents)})`, href: `/jobber/invoices${adminQs}`, color: "#5aa6ff", priority: 3 });
+
+                // Approved quotes ready to book
+                if (approvedNoJobCount > 0) todayActions.push({ text: `Book ${approvedNoJobCount} approved quote${approvedNoJobCount !== 1 ? "s" : ""} (${money(approvedNoJobCents)})`, href: `/jobber/capacity${adminQs}`, color: "#10b981", priority: 2 });
+
+                // Unscheduled jobs
+                if (unscheduledCount > 3) todayActions.push({ text: `Schedule ${unscheduledCount} unscheduled jobs`, href: `/jobber/capacity${adminQs}`, color: "#5aa6ff", priority: 4 });
+
+                // Open requests
+                if (openRequestsCount > 0) todayActions.push({ text: `Respond to ${openRequestsCount} new request${openRequestsCount !== 1 ? "s" : ""}`, href: `/jobber/sales${adminQs}`, color: "#10b981", priority: 3 });
+
+                // Sort by priority
+                todayActions.sort((a, b) => a.priority - b.priority);
+                const topActions = todayActions.slice(0, 4);
+
+                return topActions.length > 0 ? (
+                  <div className="panel" style={{ padding: "12px 16px", marginTop: 10 }}>
+                    <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 800, margin: "0 0 8px", display: "flex", alignItems: "center", gap: 6 }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                      What to Do Today
+                    </h2>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      {topActions.map((action, i) => (
+                        <a key={i} href={action.href} style={{
+                          display: "flex", alignItems: "center", gap: 8,
+                          padding: "8px 10px", borderRadius: 6, textDecoration: "none",
+                          borderLeft: `3px solid ${action.color}`,
+                          background: `${action.color}08`,
+                          transition: "all 0.15s ease",
+                        }} className="hover-lift">
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: action.color, flexShrink: 0 }} />
+                          <span className="text-primary" style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{action.text}</span>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: action.color, flexShrink: 0 }}>&#8594;</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
+              {/* Revenue Goal Bar — moved to top */}
+              {false && yearlyGoal > 0 && (
                 <div className="panel" style={{ padding: "18px 24px", marginTop: 14, overflow: "hidden" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -2086,7 +2402,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
                     </div>
                   </div>
                   <div style={{ position: "relative" }}>
-                    <div style={{ height: 18, borderRadius: 9, background: "rgba(255,255,255,0.05)", boxShadow: "inset 0 1px 2px rgba(0,0,0,0.1)", overflow: "hidden", position: "relative" }}>
+                    <div style={{ height: 14, borderRadius: 7, background: "rgba(255,255,255,0.05)", boxShadow: "inset 0 1px 2px rgba(0,0,0,0.1)", overflow: "hidden", position: "relative" }}>
                       {/* Scheduled (striped, behind) */}
                       {projectedCents > 0 && (
                         <div style={{
@@ -2122,20 +2438,20 @@ const quoteWonPct = quotesInLast30Days.length > 0
                       <span className="text-muted" style={{ fontSize: 11 }}>{money(yearlyGoal)}</span>
                     </div>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "center", marginTop: 8, gap: 16, flexWrap: "wrap" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ width: 12, height: 10, borderRadius: 3, background: paceGrad, flexShrink: 0 }} />
-                      <span style={{ fontSize: 14, fontWeight: 600, color: paceColor }}>{money(yearRevenue)} earned so far</span>
+                  <div style={{ display: "flex", justifyContent: "center", marginTop: 4, gap: 12, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <span style={{ width: 10, height: 8, borderRadius: 2, background: paceGrad, flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, fontWeight: 600, color: paceColor }}>{money(yearRevenue)} earned</span>
                     </div>
                     {projectedCents > 0 && (<>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: paceColor }}>+</span>
-                        <span style={{ width: 12, height: 10, borderRadius: 3, flexShrink: 0, background: `repeating-linear-gradient(115deg, ${paceColor}60, ${paceColor}60 2px, ${paceColor}15 2px, ${paceColor}15 4px)` }} />
-                        <span className="text-muted" style={{ fontSize: 14, fontWeight: 600 }}>{money(projectedCents)} scheduled</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: paceColor }}>+</span>
+                        <span style={{ width: 10, height: 8, borderRadius: 2, flexShrink: 0, background: `repeating-linear-gradient(115deg, ${paceColor}60, ${paceColor}60 2px, ${paceColor}15 2px, ${paceColor}15 4px)` }} />
+                        <span className="text-muted" style={{ fontSize: 12, fontWeight: 600 }}>{money(projectedCents)} scheduled</span>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: paceColor }}>=</span>
-                        <span className="text-primary" style={{ fontSize: 14, fontWeight: 800 }}>{money(yearRevenue + projectedCents)} on track for</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: paceColor }}>=</span>
+                        <span className="text-primary" style={{ fontSize: 12, fontWeight: 700 }}>{money(yearRevenue + projectedCents)} projected</span>
                       </div>
                     </>)}
                   </div>

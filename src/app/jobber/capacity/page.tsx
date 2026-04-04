@@ -88,7 +88,7 @@ export default async function CapacityPage({
       .maybeSingle()
       .then((r) => r.data),
     fetchAllRows("fact_jobs", "jobber_job_id,total_amount_cents,job_title,job_number,scheduled_start_at,scheduled_end_at,status,jobber_url,created_at_jobber,created_at", connectionId),
-    fetchAllRows("fact_visits", "jobber_visit_id,jobber_job_id,title,job_number,start_at,end_at,completed_at,visit_status,created_at_jobber,duration_minutes,is_complete", connectionId),
+    fetchAllRows("fact_visits", "jobber_visit_id,jobber_job_id,title,job_number,start_at,end_at,completed_at,visit_status,created_at_jobber,duration_minutes,is_complete,visit_revenue_cents", connectionId),
     supabaseAdmin
       .from("fact_quotes")
       .select("jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,updated_at_jobber")
@@ -131,7 +131,7 @@ export default async function CapacityPage({
       endAt: v.end_at ?? null,
       completedAt: v.completed_at ?? null,
       status: v.visit_status || "",
-      amountCents: 0, // visits don't have individual amounts — we'll use job total / visit count
+      amountCents: Number(v.visit_revenue_cents ?? 0), // from line items if available, else 0 (filled below)
       jobberUrl: "",
       createdAt: v.created_at_jobber ?? null,
       durationMinutes: v.duration_minutes ?? null,
@@ -173,14 +173,26 @@ export default async function CapacityPage({
     const vid = v.jobber_visit_id || v.id;
     if (vid && v.jobber_job_id) visitToJobId.set(vid, v.jobber_job_id);
   }
-  // Assign per-visit revenue: job total / number of visits for that job
+  // Assign per-visit revenue: prefer line item data, fall back to duration-weighted, then equal split
+  // Build duration totals per job for weighted fallback
+  const jobDurationTotals = new Map<string, number>();
+  for (const v of visits) {
+    const jid = v.jobber_job_id;
+    if (jid) jobDurationTotals.set(jid, (jobDurationTotals.get(jid) || 0) + Number(v.duration_minutes ?? 0));
+  }
   for (const item of scheduleItems) {
-    if (item.type === "visit") {
+    if (item.type === "visit" && item.amountCents === 0) {
       const jobId = visitToJobId.get(item.id);
       if (jobId) {
         const total = jobTotals.get(jobId) || 0;
         const count = jobVisitCounts.get(jobId) || 1;
-        item.amountCents = Math.round(total / count);
+        const vDuration = item.durationMinutes ?? 0;
+        const totalDuration = jobDurationTotals.get(jobId) || 0;
+        if (vDuration > 0 && totalDuration > 0) {
+          item.amountCents = Math.round(total * (vDuration / totalDuration));
+        } else {
+          item.amountCents = Math.round(total / count);
+        }
       }
     }
   }

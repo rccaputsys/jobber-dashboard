@@ -18,6 +18,12 @@ type WeekSet = {
   bookedCents: number;
 };
 
+type HeatmapWeek = {
+  label: string;
+  isCurrent: boolean;
+  days: DayData[];
+};
+
 type Props = {
   weeklyTargetCents: number;
   weeks: WeekSet[];
@@ -27,6 +33,8 @@ type Props = {
   adminConnectionId?: string;
   workDays?: string[];
   dailyTargets?: Record<string, number>;
+  heatmapWeeks?: HeatmapWeek[];
+  heatmapTotalBooked?: number;
 };
 
 const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -59,8 +67,8 @@ function RPMGauge({ pct, money, label, size = 180, isLight, mini }: {
   const arcColor = clampedPct >= 80 ? "#10b981" : clampedPct >= 50 ? "#f59e0b" : "#ef4444";
   const arcD = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`;
 
-  // Tick marks at 25, 50, 75, 100%
-  const ticks = [25, 50, 75, 100];
+  // Tick marks at zone boundaries: 50%, 80%, 100%
+  const ticks = [50, 80, 100];
   const tickMarks = ticks.map(t => {
     const angle = Math.PI - (t / 100) * Math.PI;
     const inner = r - strokeW / 2 - 3;
@@ -83,18 +91,28 @@ function RPMGauge({ pct, money, label, size = 180, isLight, mini }: {
   const svgH = cy + (mini ? 6 : 8);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+    <div className="rpm-gauge" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <svg width={size} height={svgH} viewBox={`0 0 ${size} ${svgH}`}>
-        {/* Zone gradient — draw 3 colored track segments */}
-        {/* Red zone: 0-50% */}
-        <path d={arcD} fill="none" stroke={isLight ? "rgba(239,68,68,0.12)" : "rgba(239,68,68,0.15)"} strokeWidth={strokeW} strokeLinecap="round"
-          strokeDasharray={`${halfCirc * 0.5} ${halfCirc * 0.5}`} />
-        {/* Yellow zone: 50-80% */}
-        <path d={arcD} fill="none" stroke={isLight ? "rgba(245,158,11,0.12)" : "rgba(245,158,11,0.15)"} strokeWidth={strokeW} strokeLinecap="butt"
-          strokeDasharray={`${halfCirc * 0.3} ${halfCirc * 0.7}`} strokeDashoffset={`${-halfCirc * 0.5}`} />
-        {/* Green zone: 80-100%+ */}
-        <path d={arcD} fill="none" stroke={isLight ? "rgba(16,185,129,0.12)" : "rgba(16,185,129,0.15)"} strokeWidth={strokeW} strokeLinecap="round"
-          strokeDasharray={`${halfCirc * 0.2} ${halfCirc * 0.8}`} strokeDashoffset={`${-halfCirc * 0.8}`} />
+        {/* Zone track segments with gaps between zones */}
+        {(() => {
+          const gap = 3;
+          const redLen = halfCirc * 0.5 - gap;
+          const yellowLen = halfCirc * 0.3 - gap;
+          const greenLen = halfCirc * 0.2;
+          return (
+            <>
+              {/* Red zone: 0-50% */}
+              <path d={arcD} fill="none" stroke={isLight ? "rgba(239,68,68,0.15)" : "rgba(239,68,68,0.18)"} strokeWidth={strokeW} strokeLinecap="butt"
+                strokeDasharray={`${redLen} ${halfCirc - redLen}`} />
+              {/* Yellow zone: 50-80% */}
+              <path d={arcD} fill="none" stroke={isLight ? "rgba(245,158,11,0.15)" : "rgba(245,158,11,0.18)"} strokeWidth={strokeW} strokeLinecap="butt"
+                strokeDasharray={`${yellowLen} ${halfCirc - yellowLen}`} strokeDashoffset={`${-(halfCirc * 0.5 + gap / 2)}`} />
+              {/* Green zone: 80-100% */}
+              <path d={arcD} fill="none" stroke={isLight ? "rgba(16,185,129,0.15)" : "rgba(16,185,129,0.18)"} strokeWidth={strokeW} strokeLinecap="butt"
+                strokeDasharray={`${greenLen} ${halfCirc - greenLen}`} strokeDashoffset={`${-(halfCirc * 0.8 + gap / 2)}`} />
+            </>
+          );
+        })()}
 
         {/* Active fill arc */}
         {clampedPct > 0 && (
@@ -106,7 +124,7 @@ function RPMGauge({ pct, money, label, size = 180, isLight, mini }: {
         {/* Tick marks */}
         {!mini && tickMarks.map(t => (
           <line key={t.pct} x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2}
-            stroke={isLight ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.15)"} strokeWidth={1.5} />
+            stroke={isLight ? "rgba(0,0,0,0.15)" : "#8590a2"} strokeWidth={1.5} />
         ))}
 
         {/* Needle */}
@@ -119,12 +137,12 @@ function RPMGauge({ pct, money, label, size = 180, isLight, mini }: {
         {/* Center text */}
         {!mini && (
           <>
-            <text x={cx} y={cy - 40} textAnchor="middle" dominantBaseline="middle"
-              style={{ fontSize: 34, fontWeight: 800, fill: arcColor, letterSpacing: -1.5 }}>
+            <text x={cx} y={cy - 48} textAnchor="middle" dominantBaseline="middle"
+              style={{ fontSize: 40, fontWeight: 800, fill: arcColor, letterSpacing: -2 }}>
               {pct}%
             </text>
-            <text x={cx} y={cy - 14} textAnchor="middle" dominantBaseline="middle"
-              style={{ fontSize: 15, fontWeight: 700, fill: isLight ? "#0f1729" : "#e8ecf4" }}>
+            <text x={cx} y={cy - 18} textAnchor="middle" dominantBaseline="middle"
+              style={{ fontSize: 17, fontWeight: 700, fill: isLight ? "#0f1729" : "#ffffff" }}>
               {money}
             </text>
           </>
@@ -139,7 +157,7 @@ function RPMGauge({ pct, money, label, size = 180, isLight, mini }: {
       {label && (
         <div style={{ marginTop: mini ? -2 : 4, textAlign: "center" }}>
           {mini && <div style={{ fontSize: 11, fontWeight: 700, color: isLight ? "#0f1729" : "#e8ecf4" }}>{money}</div>}
-          <div style={{ fontSize: mini ? 10 : 12, fontWeight: 600, color: isLight ? "#9ca3af" : "#5a6375" }}>{label}</div>
+          <div style={{ fontSize: mini ? 10 : 12, fontWeight: 600, color: isLight ? "#9ca3af" : "#8590a2" }}>{label}</div>
         </div>
       )}
     </div>
@@ -155,11 +173,17 @@ function DayBars({ days, isLight, money }: { days: DayData[]; isLight: boolean; 
         const pct = d.targetCents > 0 ? Math.round((d.scheduledCents / d.targetCents) * 100) : 0;
         const color = pct >= 80 ? "#10b981" : pct >= 50 ? "#f59e0b" : filled ? "#ef4444" : (isLight ? "#e2e5ea" : "rgba(255,255,255,0.08)");
         return (
-          <div key={d.day} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flex: 1 }}>
+          <div key={d.day} className="day-bar-wrap" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flex: 1 }}>
+            {/* Hover tooltip */}
+            {filled && (
+              <div className="day-tip">
+                {money(d.scheduledCents)} &middot; {d.jobCount} job{d.jobCount !== 1 ? "s" : ""}
+              </div>
+            )}
             {/* % above the bar */}
             <span style={{
-              fontSize: 11, fontWeight: 700,
-              color: filled ? color : (isLight ? "#d1d5db" : "rgba(255,255,255,0.15)"),
+              fontSize: 13, fontWeight: 800,
+              color: filled ? color : (isLight ? "#d1d5db" : "#8590a2"),
             }}>
               {filled ? `${pct}%` : "—"}
             </span>
@@ -169,17 +193,17 @@ function DayBars({ days, isLight, money }: { days: DayData[]; isLight: boolean; 
               background: isLight ? "#eef0f3" : "rgba(255,255,255,0.06)",
               overflow: "hidden",
             }}>
-              <div style={{
+              <div className="day-bar-fill" style={{
                 height: "100%", borderRadius: 5,
                 width: `${Math.min(pct, 100)}%`,
                 background: color,
-                transition: "width 0.5s ease",
+                transition: "width 0.5s ease, filter 0.15s ease",
               }} />
             </div>
             {/* Day label */}
             <span style={{
-              fontSize: 11, fontWeight: d.isToday ? 800 : 600,
-              color: d.isToday ? (isLight ? "#0f1729" : "#e8ecf4") : (isLight ? "#6b7280" : "#5a6375"),
+              fontSize: 12, fontWeight: d.isToday ? 800 : 600,
+              color: d.isToday ? (isLight ? "#0f1729" : "#e8ecf4") : (isLight ? "#6b7280" : "#8590a2"),
             }}>
               {d.day}
             </span>
@@ -190,13 +214,14 @@ function DayBars({ days, isLight, money }: { days: DayData[]; isLight: boolean; 
   );
 }
 
-export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 0, currencyCode, workDays: initialWorkDays }: Props) {
+export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 0, currencyCode, workDays: initialWorkDays, heatmapWeeks, heatmapTotalBooked }: Props) {
   const isLight = useIsLight();
   const moneyFn = (c: number) => moneyFmt(c, currencyCode);
+  type ViewMode = "week" | "heatmap";
+  const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [weekIdx, setWeekIdx] = useState(defaultWeek);
-  const hiddenDays = new Set(
-    ALL_DAYS.filter(d => !(initialWorkDays || ["Mon", "Tue", "Wed", "Thu", "Fri"]).includes(d))
-  );
+  const workDayList = initialWorkDays || ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  const hiddenDays = new Set(ALL_DAYS.filter(d => !workDayList.includes(d)));
 
   const week = weeks[weekIdx] || weeks[0];
   const visibleDays = week.days.filter(d => !hiddenDays.has(d.day));
@@ -206,8 +231,30 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
 
   const periodLabel = week.label === "Next Week" ? "next week" : "this week";
 
+  // Heatmap totals
+  const heatmap6wTarget = weeklyTargetCents > 0 ? weeklyTargetCents * 6 : 0;
+  const heatmap6wPct = heatmap6wTarget > 0 ? Math.round(((heatmapTotalBooked || 0) / heatmap6wTarget) * 100) : 0;
+
+  // Cell color helper
+  function cellColor(pct: number, filled: boolean) {
+    if (!filled) return isLight ? "#f0f1f3" : "rgba(255,255,255,0.03)";
+    if (pct >= 80) return isLight ? "rgba(16,185,129,0.5)" : "rgba(16,185,129,0.45)";
+    if (pct >= 50) return isLight ? "rgba(245,158,11,0.45)" : "rgba(245,158,11,0.4)";
+    return isLight ? "rgba(239,68,68,0.35)" : "rgba(239,68,68,0.3)";
+  }
+
+  const toggleLabels = [...weeks.map(w => w.label), ...(heatmapWeeks ? ["6 Weeks"] : [])];
+
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, alignItems: "center" }}>
+      <div style={{
+        flex: 1, width: "100%", display: "flex", flexDirection: "column", alignItems: "center",
+        padding: "6px 0",
+        borderTop: `1px solid ${isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.04)"}`,
+        borderBottom: `1px solid ${isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.04)"}`,
+        marginBottom: 6,
+      }}>
+      {viewMode === "week" ? (
         <>
           {/* Guidance line */}
           <div style={{ alignSelf: "flex-start", marginBottom: 2, width: "100%" }}>
@@ -219,12 +266,12 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
             </span>
           </div>
           {/* Big gauge */}
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }}>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", width: "100%", marginTop: "-20%" }}>
             <RPMGauge
               pct={fillPct}
               money={moneyFn(booked)}
               label={weeklyTargetCents > 0 ? `of ${moneyFn(targetForPeriod)} goal` : periodLabel}
-              size={220}
+              size={300}
               isLight={isLight}
             />
           </div>
@@ -233,32 +280,112 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
             <DayBars days={visibleDays} isLight={isLight} money={moneyFn} />
           </div>
         </>
+      ) : (
+        /* 6-week mini heatmap */
+        <>
+          <div style={{ alignSelf: "flex-start", marginBottom: 6, width: "100%" }}>
+            <span style={{
+              fontSize: 13, fontWeight: 700,
+              color: heatmap6wPct >= 80 ? "#10b981" : heatmap6wPct >= 50 ? "#f59e0b" : heatmap6wTarget > 0 ? "#ef4444" : (isLight ? "#0f1729" : "#e8ecf4"),
+            }}>
+              {heatmap6wPct >= 80 ? "Looking good — mostly booked up" : heatmap6wPct >= 50 ? `${moneyFn((heatmap6wTarget) - (heatmapTotalBooked || 0))} in open slots` : heatmap6wTarget > 0 ? `${moneyFn(heatmap6wTarget - (heatmapTotalBooked || 0))} available to fill` : `${moneyFn(heatmapTotalBooked || 0)} booked`}
+            </span>
+            <div className="text-muted" style={{ fontSize: 11, marginTop: 1 }}>
+              {moneyFn(heatmapTotalBooked || 0)} booked{heatmap6wTarget > 0 && ` of ${moneyFn(heatmap6wTarget)} goal`}
+            </div>
+          </div>
+          {/* Day headers */}
+          <div style={{ display: "flex", gap: 4, width: "100%", marginBottom: 4, paddingLeft: 58 }}>
+            {workDayList.map(d => (
+              <div key={d} className="text-muted" style={{ flex: 1, textAlign: "center", fontSize: 13, fontWeight: 700 }}>{d.slice(0, 3)}</div>
+            ))}
+            <div style={{ width: 56 }} />
+          </div>
+          {/* Week rows */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, width: "100%", flex: 1 }}>
+            {(heatmapWeeks || []).map((hw, wi) => {
+              const weekDays = hw.days.filter(d => workDayList.includes(d.day));
+              const weekRev = weekDays.reduce((s, d) => s + d.scheduledCents, 0);
+              const weekPct = weeklyTargetCents > 0 ? Math.round((weekRev / weeklyTargetCents) * 100) : 0;
+              return (
+                <div key={wi} style={{
+                  display: "flex", alignItems: "center", gap: 4, flex: 1,
+                  padding: "3px 6px", borderRadius: 6,
+                  background: hw.isCurrent ? (isLight ? "rgba(59,109,170,0.05)" : "rgba(59,109,170,0.06)") : "transparent",
+                  border: hw.isCurrent ? `1.5px solid ${isLight ? "rgba(59,109,170,0.12)" : "rgba(59,109,170,0.12)"}` : "1.5px solid transparent",
+                }}>
+                  {/* Week label */}
+                  <div style={{
+                    width: 52, flexShrink: 0, fontSize: 13, fontWeight: hw.isCurrent ? 800 : 600,
+                    color: hw.isCurrent ? (isLight ? "#0f1729" : "#e8ecf4") : (isLight ? "#6b7280" : "#8590a2"),
+                  }}>
+                    {hw.label}
+                  </div>
+                  {/* Day cells */}
+                  {weekDays.map(d => {
+                    const pct = d.targetCents > 0 ? Math.round((d.scheduledCents / d.targetCents) * 100) : 0;
+                    const filled = d.scheduledCents > 0;
+                    return (
+                      <div key={d.day} style={{
+                        flex: 1, borderRadius: 5, minHeight: 36,
+                        background: cellColor(pct, filled),
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        transition: "background 0.2s ease",
+                      }}>
+                        {filled && (
+                          <span style={{ fontSize: 13, fontWeight: 800, color: pct >= 80 ? "#10b981" : pct >= 50 ? "#f59e0b" : "#ef4444" }}>
+                            {pct}%
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {/* Weekly total */}
+                  <div style={{
+                    width: 52, textAlign: "right", flexShrink: 0,
+                    fontSize: 14, fontWeight: 800,
+                    color: weekPct >= 80 ? "#10b981" : weekPct >= 50 ? "#f59e0b" : weekRev > 0 ? "#ef4444" : (isLight ? "#d1d5db" : "#8590a2"),
+                  }}>
+                    {weekRev > 0 ? `${weekPct}%` : "—"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+      </div>
 
-      {/* Period toggles at bottom */}
-      {weeks.length > 1 && (
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-          paddingTop: 6, marginTop: "auto", width: "100%",
-          borderTop: `1px solid ${isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.04)"}`,
-        }}>
-          {weeks.map((w, i) => (
+      {/* Toggles at bottom */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+        paddingTop: 6, marginTop: "auto", width: "100%",
+        borderTop: `1px solid ${isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.04)"}`,
+      }}>
+        {toggleLabels.map((label, i) => {
+          const isWeekToggle = i < weeks.length;
+          const isActive = isWeekToggle ? (viewMode === "week" && weekIdx === i) : viewMode === "heatmap";
+          return (
             <button
-              key={i}
+              key={label}
               className="toggle-btn"
-              onClick={() => setWeekIdx(i)}
+              onClick={() => {
+                if (isWeekToggle) { setViewMode("week"); setWeekIdx(i); }
+                else { setViewMode("heatmap"); }
+              }}
               style={{
                 background: "none", border: "none", cursor: "pointer",
-                padding: "4px 6px", fontSize: 11, fontWeight: weekIdx === i ? 700 : 500,
-                color: weekIdx === i ? (isLight ? "#0f1729" : "#e8ecf4") : (isLight ? "#9ca3af" : "rgba(255,255,255,0.3)"),
-                borderBottom: weekIdx === i ? `2px solid ${isLight ? "#0f1729" : "#e8ecf4"}` : "2px solid transparent",
+                padding: "5px 8px", fontSize: 12, fontWeight: isActive ? 700 : 500,
+                color: isActive ? (isLight ? "#0f1729" : "#e8ecf4") : (isLight ? "#9ca3af" : "#8590a2"),
+                borderBottom: isActive ? `2px solid ${isLight ? "#0f1729" : "#e8ecf4"}` : "2px solid transparent",
                 transition: "all 0.15s ease",
               }}
             >
-              {w.label}
+              {label}
             </button>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }

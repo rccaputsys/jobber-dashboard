@@ -157,10 +157,10 @@ export function statusLooksLost(status: string) {
 }
 
 export const theme = {
-  text: "#e8ecf4",
-  sub: "#8b95a8",
-  mut: "#5a6375",
-  faint: "#3a4150",
+  text: "#f1f4f9",
+  sub: "#a0aab8",
+  mut: "#8590a2",
+  faint: "#6b7585",
 };
 
 export function sevColor(sev: "critical" | "warning" | "good") {
@@ -229,9 +229,50 @@ export const globalStyles = `
   }
 
   .chart-bar-hover .chart-bar-tooltip { opacity: 0 !important; }
-  .chart-bar-hover { transition: opacity 0.15s ease, filter 0.15s ease; }
-  .chart-bar-hover:hover { opacity: 1 !important; filter: brightness(1.2); }
+  .chart-bar-hover { transition: opacity 0.15s ease, filter 0.15s ease, transform 0.15s ease; }
+  .chart-bar-hover:hover { opacity: 1 !important; filter: brightness(1.15); transform: scale(1.03); }
   .chart-bar-hover:hover .chart-bar-tooltip { opacity: 1 !important; }
+
+  /* Donut segment hover */
+  .donut-seg { transition: opacity 0.15s ease, filter 0.15s ease; cursor: pointer; }
+  .donut-seg:hover { filter: brightness(1.25); }
+
+  /* Donut labels hover — breathe */
+  .donut-label { transition: opacity 0.15s ease, transform 0.15s ease; cursor: pointer; }
+  .donut-label:hover { transform: scale(1.02); }
+
+  /* Cross-highlight: segment hover dims other labels, label hover dims other segments */
+  .donut-group:has(.donut-seg:hover) .donut-label { opacity: 0.35 !important; }
+  .donut-group:has(.donut-seg.di0:hover) .donut-label.di0,
+  .donut-group:has(.donut-seg.di1:hover) .donut-label.di1,
+  .donut-group:has(.donut-seg.di2:hover) .donut-label.di2,
+  .donut-group:has(.donut-seg.di3:hover) .donut-label.di3,
+  .donut-group:has(.donut-seg.di4:hover) .donut-label.di4 { opacity: 1 !important; transform: scale(1.02); }
+
+  .donut-group:has(.donut-label:hover) .donut-seg { opacity: 0.35 !important; }
+  .donut-group:has(.donut-label.di0:hover) .donut-seg.di0,
+  .donut-group:has(.donut-label.di1:hover) .donut-seg.di1,
+  .donut-group:has(.donut-label.di2:hover) .donut-seg.di2,
+  .donut-group:has(.donut-label.di3:hover) .donut-seg.di3,
+  .donut-group:has(.donut-label.di4:hover) .donut-seg.di4 { opacity: 1 !important; filter: brightness(1.25); }
+
+  /* Invoice aging bar segments breathe */
+  .aging-bar-seg { transition: filter 0.15s ease, transform 0.15s ease; cursor: default; }
+  .aging-bar-seg:hover { filter: brightness(1.15); transform: scaleX(1.03); }
+
+  /* RPM gauge breathe */
+  .rpm-gauge { transition: transform 0.2s ease, filter 0.2s ease; }
+  .rpm-gauge:hover { transform: scale(1.02); filter: brightness(1.05); }
+
+  /* Day bar hover tooltip */
+  .day-bar-wrap { position: relative; }
+  .day-bar-wrap .day-tip { opacity: 0; transition: opacity 0.15s ease; pointer-events: none;
+    position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    padding: 8px 12px; border-radius: 8px; white-space: nowrap; z-index: 10;
+    background: rgba(0,0,0,0.92); color: #fff; font-size: 13px; font-weight: 700;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3); line-height: 1.4; }
+  .day-bar-wrap:hover .day-tip { opacity: 1; }
+  .day-bar-wrap:hover .day-bar-fill { filter: brightness(1.2); }
 
   .hover-glow {
     transition: box-shadow 0.2s ease;
@@ -492,9 +533,9 @@ export const globalStyles = `
     vertical-align: middle;
     color: rgba(234,241,255,0.85);
   }
-  .cell-primary { color: #e8ecf4; }
-  .cell-secondary { color: #8b95a8; }
-  .cell-muted { color: #5a6375; }
+  .cell-primary { color: #f1f4f9; }
+  .cell-secondary { color: #a0aab8; }
+  .cell-muted { color: #8590a2; }
 
   @media (min-width: 640px) {
     .data-table td {
@@ -623,9 +664,9 @@ export const globalStyles = `
   }
 
   /* Theme-aware text classes — 3 tiers only */
-  .text-primary { color: #e8ecf4; }
-  .text-secondary { color: #8b95a8; }
-  .text-muted { color: #5a6375; }
+  .text-primary { color: #f1f4f9; }
+  .text-secondary { color: #a0aab8; }
+  .text-muted { color: #8590a2; }
 
   html[data-theme="light"] .text-primary { color: #0f1729 !important; }
   html[data-theme="light"] .text-secondary { color: #4b5563 !important; }
@@ -733,7 +774,7 @@ export const globalStyles = `
 
   /* SVG Charts */
   svg text {
-    fill: rgba(234,241,255,0.5);
+    fill: #8590a2;
   }
 
   svg line {
@@ -750,11 +791,11 @@ export const globalStyles = `
 
   /* Dark mode defaults */
   html[data-theme="dark"] .text-primary {
-    color: #e8ecf4 !important;
+    color: #f1f4f9 !important;
   }
 
   html[data-theme="dark"] svg text {
-    fill: #5a6375 !important;
+    fill: #8590a2 !important;
   }
 
   /* Hover micro-animations */
