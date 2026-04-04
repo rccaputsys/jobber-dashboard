@@ -183,9 +183,9 @@ function DayBars({ days, isLight, money }: { days: DayData[]; isLight: boolean; 
             {/* % above the bar */}
             <span style={{
               fontSize: 13, fontWeight: 800,
-              color: filled ? color : (isLight ? "#d1d5db" : "#8590a2"),
+              color: pct >= 80 ? "#10b981" : pct >= 50 ? (filled ? color : (isLight ? "#d1d5db" : "#8590a2")) : pct > 0 ? "#f59e0b" : (isLight ? "#d1d5db" : "#8590a2"),
             }}>
-              {filled ? `${pct}%` : "—"}
+              {pct >= 80 ? "Busy" : pct >= 50 ? `${pct}%` : pct > 0 ? "Light" : "Open"}
             </span>
             {/* Bar */}
             <div style={{
@@ -258,19 +258,31 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
         <>
           {/* Guidance line */}
           <div style={{ alignSelf: "flex-start", marginBottom: 2, width: "100%" }}>
-            <span style={{
-              fontSize: 13, fontWeight: 700,
-              color: fillPct >= 100 ? "#10b981" : fillPct >= 80 ? (isLight ? "#0f1729" : "#e8ecf4") : fillPct >= 50 ? "#f59e0b" : "#ef4444",
-            }}>
-              {fillPct >= 100 ? "You're fully booked" : fillPct >= 80 ? "Almost full — nice work" : fillPct >= 50 ? "Getting there — a few more jobs fills you up" : weeklyTargetCents > 0 ? "You have room for more work" : `${moneyFn(booked)} booked`}
-            </span>
+            {weeklyTargetCents > 0 && fillPct < 100 ? (
+              <>
+                <div style={{ fontSize: 13, fontWeight: 700, color: isLight ? "#3b6daa" : "#5aa6ff" }}>
+                  {moneyFn(targetForPeriod - booked)} still needs to be booked
+                </div>
+                <div className="text-muted" style={{ fontSize: 11, marginTop: 1 }}>
+                  You&apos;re {fillPct}% booked for the week — {moneyFn(booked)} of {moneyFn(targetForPeriod)}
+                </div>
+              </>
+            ) : weeklyTargetCents > 0 && fillPct >= 100 ? (
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#10b981" }}>
+                Fully booked — nice work
+              </span>
+            ) : (
+              <span style={{ fontSize: 13, fontWeight: 700, color: isLight ? "#0f1729" : "#e8ecf4" }}>
+                {moneyFn(booked)} booked {periodLabel}
+              </span>
+            )}
           </div>
           {/* Big gauge */}
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", width: "100%", marginTop: "-20%" }}>
             <RPMGauge
               pct={fillPct}
               money={moneyFn(booked)}
-              label={weeklyTargetCents > 0 ? `of ${moneyFn(targetForPeriod)} goal` : periodLabel}
+              label={weeklyTargetCents > 0 ? `of ${moneyFn(targetForPeriod)}` : periodLabel}
               size={300}
               isLight={isLight}
             />
@@ -278,6 +290,26 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
           {/* Day bars */}
           <div style={{ width: "100%", marginTop: 2 }}>
             <DayBars days={visibleDays} isLight={isLight} money={moneyFn} />
+          </div>
+          {/* Action line */}
+          <div style={{ width: "100%", marginTop: 6, textAlign: "center" }}>
+            {(() => {
+              const lowDays = visibleDays.filter(d => {
+                const p = d.targetCents > 0 ? Math.round((d.scheduledCents / d.targetCents) * 100) : (d.scheduledCents > 0 ? 100 : 0);
+                return p < 50;
+              });
+              const bookedDays = visibleDays.filter(d => d.scheduledCents > 0 && d.targetCents > 0 && (d.scheduledCents / d.targetCents) >= 0.5);
+              const revenuePerJob = bookedDays.length > 0
+                ? Math.round(bookedDays.reduce((s, d) => s + d.scheduledCents, 0) / bookedDays.reduce((s, d) => s + d.jobCount, 0))
+                : 0;
+              if (lowDays.length === 0) {
+                return <span style={{ fontSize: 12, fontWeight: 600, color: "#10b981" }}>Fully booked this week</span>;
+              }
+              const dayNames = lowDays.map(d => d.day).join(", ");
+              const totalGap = lowDays.reduce((s, d) => s + Math.max(0, d.targetCents - d.scheduledCents), 0);
+              const jobsNeeded = revenuePerJob > 0 ? Math.ceil(totalGap / revenuePerJob) : lowDays.length;
+              return <span className="text-muted" style={{ fontSize: 12, fontWeight: 600 }}>Focus on filling {dayNames} ({jobsNeeded} job{jobsNeeded !== 1 ? "s" : ""} needed)</span>;
+            })()}
           </div>
         </>
       ) : (

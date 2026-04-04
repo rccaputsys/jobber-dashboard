@@ -1794,16 +1794,12 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 <div className="panel" style={{ padding: "12px 20px", marginBottom: 10, overflow: "hidden" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <h2 className="text-primary" style={{ fontSize: 18, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        {isAutoGoal ? `You're on track for ${money(yearlyGoal)} this year` : `${todayUTC.getUTCFullYear()} Revenue Goal`}
+                      <h2 className="text-primary" style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>
+                        {todayUTC.getUTCFullYear()} Revenue Goal
                       </h2>
-                      {isAutoGoal && (
-                        <span className="text-muted" style={{ fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4, background: "rgba(90,166,255,0.1)" }}>based on what you've been doing</span>
-                      )}
                     </div>
                     <div style={{ padding: "3px 10px", borderRadius: 12, background: `${paceColor}12`, border: `1px solid ${paceColor}20` }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: paceColor }}>{money(Math.abs(aheadByCents))} {isAhead ? "ahead of pace" : "behind pace"}</span>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: paceColor }}>{money(Math.abs(aheadByCents))} {isAhead ? "ahead" : "behind"}</span>
                     </div>
                   </div>
                   <div style={{ position: "relative" }}>
@@ -1830,19 +1826,22 @@ const quoteWonPct = quotesInLast30Days.length > 0
                   <div style={{ display: "flex", justifyContent: "center", marginTop: 4, gap: 12, flexWrap: "wrap" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                       <span style={{ width: 10, height: 8, borderRadius: 2, background: paceGrad, flexShrink: 0 }} />
-                      <span style={{ fontSize: 12, fontWeight: 600, color: paceColor }}>{money(yearRevenue)} earned</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: paceColor }}>{money(yearRevenue)} collected</span>
                     </div>
-                    {projectedCents > 0 && (<>
+                    {projectedCents > 0 && (
                       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                         <span style={{ fontSize: 12, fontWeight: 600, color: paceColor }}>+</span>
                         <span style={{ width: 10, height: 8, borderRadius: 2, flexShrink: 0, background: `repeating-linear-gradient(115deg, ${paceColor}60, ${paceColor}60 2px, ${paceColor}15 2px, ${paceColor}15 4px)` }} />
-                        <span className="text-muted" style={{ fontSize: 12, fontWeight: 600 }}>{money(projectedCents)} scheduled</span>
+                        <span className="text-muted" style={{ fontSize: 12, fontWeight: 600 }}>{money(projectedCents)} booked</span>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: paceColor }}>=</span>
-                        <span className="text-primary" style={{ fontSize: 12, fontWeight: 700 }}>{money(yearRevenue + projectedCents)} projected</span>
-                      </div>
-                    </>)}
+                    )}
+                  </div>
+                  <div style={{ textAlign: "center", marginTop: 4 }}>
+                    {isAhead ? (
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "#10b981" }}>Keep it up — you&apos;re ahead of where you need to be</span>
+                    ) : (
+                      <span style={{ fontSize: 12, fontWeight: 600, color: paceColor }}>You need {money(Math.max(0, expectedRevenue - yearRevenue))} more booked to get back on track</span>
+                    )}
                   </div>
                 </div>
               )}
@@ -2006,16 +2005,9 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 );
 
                 const invPage2 = (
-                  <div style={{ display: "flex", flex: 1, padding: "4px 0" }}>
+                  <div style={{ display: "flex", flex: 1, padding: "4px 0", flexDirection: "column" }}>
                     {agingRows.length > 0 ? (
                       <div style={{ display: "flex", flexDirection: "column", width: "100%", flex: 1 }}>
-                        {/* Total due top right */}
-                        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
-                          <div style={{ textAlign: "right" }}>
-                            <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5, color: b15p > totalOutstandingCard * 0.3 ? "#ef4444" : "#f59e0b" }}>{money(totalOutstandingCard)}</span>
-                            <span className="text-muted" style={{ fontSize: 11, marginLeft: 6, fontWeight: 600 }}>total due</span>
-                          </div>
-                        </div>
                         <div style={{ display: "flex", flex: 1 }}>
                           {/* Labels on left — flex matches bar segments */}
                           <div style={{ display: "flex", flexDirection: "column", paddingRight: 14, textAlign: "right", flex: 1 }}>
@@ -2044,25 +2036,29 @@ const quoteWonPct = quotesInLast30Days.length > 0
                             ))}
                           </div>
                         </div>
+                        {b15p > 0 && (
+                          <a href={`/jobber/invoices${adminQs}`} style={{ display: "block", textAlign: "center", marginTop: 8, fontSize: 12, fontWeight: 700, color: "#ef4444", textDecoration: "none" }}>
+                            Collect your overdue invoices today
+                          </a>
+                        )}
                       </div>
                     ) : (
                       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <span className="text-muted" style={{ fontSize: 14 }}>Everyone's paid up</span>
+                        <span className="text-muted" style={{ fontSize: 14 }}>Everyone&apos;s paid up</span>
                       </div>
                     )}
                   </div>
                 );
 
                 return (
-                  <div className="panel" style={{ padding: "20px 20px 12px", display: "flex", flexDirection: "column" }}>
+                  <div className="panel" style={{ padding: "16px 16px 10px", display: "flex", flexDirection: "column" }}>
                     <a href={`/jobber/invoices${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 3 2V2l-3 2-3-2-3 2-3-2-3 2Z"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg>
-                        What Are You Owed?
+                      <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>
+                        Cash You Need to Collect
                       </h2>
-                      <span className="btn" style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px" }}>Collect What You're Owed &#8594;</span>
+                      <span className="btn" style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px" }}>Collect Payments &#8594;</span>
                     </a>
-                    <FlipCard pages={[invPage2, invPage1]} labels={["What's Late", "Cash Flow"]} />
+                    <FlipCard pages={[invPage2, invPage1]} labels={["What's Overdue", "Cash Flow"]} />
                   </div>
                 );
               })()}
@@ -2134,11 +2130,10 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 ];
 
                 return (
-                  <div className="panel" style={{ padding: "20px", display: "flex", flexDirection: "column" }}>
+                  <div className="panel" style={{ padding: "16px 16px 10px", display: "flex", flexDirection: "column" }}>
                     <a href={`/jobber/capacity${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><rect x="7" y="14" width="3" height="3" rx="0.5" fill="currentColor" stroke="none" opacity="0.35"/><rect x="14" y="14" width="3" height="3" rx="0.5" fill="currentColor" stroke="none" opacity="0.35"/></svg>
-                        How Full Is Your Week?
+                      <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>
+                        This Week&apos;s Schedule
                       </h2>
                       <span className="btn" style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px" }}>Book Work &#8594;</span>
                     </a>
@@ -2181,19 +2176,19 @@ const quoteWonPct = quotesInLast30Days.length > 0
 
                 const healthBuckets = [
                   ...(openRequestsCount > 0 ? [{ label: "Requests", days: "new", count: openRequestsCount, cents: 0, color: "#5aa6ff", hideValue: true }] : []),
-                  { label: "Customers are interested", days: "< 14d", count: hotQuotes.length, cents: sumCents(hotQuotes), color: "#10b981", hideValue: false },
+                  { label: "Active", days: "< 14d", count: hotQuotes.length, cents: sumCents(hotQuotes), color: "#10b981", hideValue: false },
                   { label: "Follow up soon", days: "14–30d", count: warmQuotes.length, cents: sumCents(warmQuotes), color: "#f59e0b", hideValue: false },
-                  { label: "Call today or lose them", days: "30–45d", count: goingColdQuotes.length, cents: sumCents(goingColdQuotes), color: "#ef4444", hideValue: false },
-                  ...(inactiveQuotes.length > 0 ? [{ label: "Probably lost", days: "45+d", count: inactiveQuotes.length, cents: sumCents(inactiveQuotes), color: "#6b7280", hideValue: false }] : []),
+                  { label: "At risk", days: "30–45d", count: goingColdQuotes.length, cents: sumCents(goingColdQuotes), color: "#ef4444", hideValue: false },
+                  ...(inactiveQuotes.length > 0 ? [{ label: "Stale", days: "45+d", count: inactiveQuotes.length, cents: sumCents(inactiveQuotes), color: "#6b7280", hideValue: false }] : []),
                 ];
-                const healthTotal = healthBuckets.filter(b => b.label !== "Probably lost").reduce((s, b) => s + b.count, 0) || 1;
+                const healthTotal = healthBuckets.filter(b => b.label !== "Stale").reduce((s, b) => s + b.count, 0) || 1;
 
                 // SVG donut for quote health
                 const donutSize = 260;
                 const donutR = 96;
                 const donutStroke = 28;
                 const donutCirc = 2 * Math.PI * donutR;
-                const activeBuckets = healthBuckets.filter(b => b.label !== "Probably lost" && b.count > 0);
+                const activeBuckets = healthBuckets.filter(b => b.label !== "Stale" && b.count > 0);
                 const activeTotal = activeBuckets.reduce((s, b) => s + b.count, 0) || 1;
                 let donutOffset = 0;
 
@@ -2237,21 +2232,22 @@ const quoteWonPct = quotesInLast30Days.length > 0
                   </div>
                 );
 
+                const realOpps = hotQuotes.length + warmQuotes.length;
+                const realOppsCents = sumCents(hotQuotes) + sumCents(warmQuotes);
+
                 const page2 = (
                   <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
                     {/* Guidance line */}
                     <div style={{ marginBottom: 6 }}>
                       <span style={{
                         fontSize: 13, fontWeight: 700,
-                        color: goingColdQuotes.length > 0 ? "#ef4444" : warmQuotes.length > 5 ? "#f59e0b" : "#10b981",
+                        color: realOpps > 0 ? "#10b981" : goingColdQuotes.length > 0 ? "#ef4444" : "#8590a2",
                       }}>
-                        {goingColdQuotes.length > 0
-                          ? `${goingColdQuotes.length} quote${goingColdQuotes.length !== 1 ? "s" : ""} going stale — follow up today`
-                          : warmQuotes.length > 5
-                          ? `${warmQuotes.length} quotes need a follow-up soon`
-                          : activeTotal > 0
-                          ? "Your pipeline looks healthy"
-                          : "No open quotes right now"}
+                        {realOpps > 0
+                          ? `${realOpps} real opportunit${realOpps !== 1 ? "ies" : "y"} (${money(realOppsCents)}) — follow up now`
+                          : goingColdQuotes.length > 0
+                          ? "Your pipeline is stale — follow up today"
+                          : "No active quotes right now"}
                       </span>
                     </div>
                     <div className="donut-group" style={{ display: "flex", flexDirection: "column", flex: 1 }}>
@@ -2280,25 +2276,25 @@ const quoteWonPct = quotesInLast30Days.length > 0
                         {/* Center text */}
                         <text x={donutSize/2} y={donutSize/2 - 12} textAnchor="middle" dominantBaseline="middle"
                           style={{ fontSize: 44, fontWeight: 800, fill: "currentColor", letterSpacing: -2 }} className="text-primary">
-                          {activeTotal}
+                          {realOpps}
                         </text>
                         <text x={donutSize/2} y={donutSize/2 + 18} textAnchor="middle" dominantBaseline="middle"
                           style={{ fontSize: 14, fontWeight: 600 }} className="text-muted">
-                          open quotes
+                          active deals
                         </text>
                       </svg>
                     </div>
                     {/* Labels */}
                     <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: "auto", paddingTop: 8 }}>
                       {healthBuckets.map((b, bi) => (
-                        <div key={b.label} className={`donut-label di${bi}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", opacity: b.label === "Probably lost" ? 0.5 : 1 }}>
+                        <div key={b.label} className={`donut-label di${bi}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", opacity: b.label === "Stale" ? 0.5 : 1 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ width: 10, height: 10, borderRadius: 3, background: b.label === "Probably lost" ? "rgba(107,114,128,0.3)" : b.color, flexShrink: 0 }} />
+                            <span style={{ width: 10, height: 10, borderRadius: 3, background: b.label === "Stale" ? "rgba(107,114,128,0.3)" : b.color, flexShrink: 0 }} />
                             <span className="text-primary" style={{ fontSize: 15, fontWeight: 800 }}>{b.count.toLocaleString()}</span>
                             <span className="text-primary" style={{ fontSize: 14, fontWeight: 600 }}>{b.label}</span>
                             <span className="text-muted" style={{ fontSize: 11 }}>({b.days})</span>
                           </div>
-                          {!b.hideValue && <span style={{ fontSize: 14, fontWeight: 700, color: b.label === "Probably lost" ? undefined : b.color }} className={b.label === "Probably lost" ? "text-muted" : ""}>{money(b.cents)}</span>}
+                          {!b.hideValue && <span style={{ fontSize: 14, fontWeight: 700, color: b.label === "Stale" ? undefined : b.color }} className={b.label === "Stale" ? "text-muted" : ""}>{money(b.cents)}</span>}
                         </div>
                       ))}
                     </div>
@@ -2307,13 +2303,12 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 );
 
                 return (
-                  <div className="panel" style={{ padding: "20px 20px 12px", display: "flex", flexDirection: "column" }}>
+                  <div className="panel" style={{ padding: "16px 16px 10px", display: "flex", flexDirection: "column" }}>
                     <a href={`/jobber/sales${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                      <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 6v0a2 2 0 0 1-2 2"/><path d="M18 6v0a2 2 0 0 0 2 2"/><path d="M6 18v0a2 2 0 0 0-2-2"/><path d="M18 18v0a2 2 0 0 1 2-2"/></svg>
-                        How Are Sales?
+                      <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>
+                        Sales Pipeline
                       </h2>
-                      <span className="btn" style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px" }}>Win Business &#8594;</span>
+                      <span className="btn" style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px" }}>Win Work &#8594;</span>
                     </a>
                     <FlipCard pages={[page2, page1]} labels={["Your Open Quotes", "Revenue"]} />
                   </div>
@@ -2324,59 +2319,61 @@ const quoteWonPct = quotesInLast30Days.length > 0
               {/* What to Do Today */}
               {(() => {
                 const adminQs = adminConnectionId ? `?admin_connection_id=${adminConnectionId}` : "";
-                const todayActions: { text: string; href: string; color: string; priority: number }[] = [];
+                const todayActions: { text: string; why: string; href: string; color: string; priority: number }[] = [];
 
                 // Invoices: overdue money
-                if (b15p > 0) todayActions.push({ text: `Call on ${money(b15p)} in overdue invoices (30+ days)`, href: `/jobber/invoices${adminQs}`, color: "#ef4444", priority: 1 });
-                else if (b8_14 > 0) todayActions.push({ text: `Follow up on ${money(b8_14)} in late invoices`, href: `/jobber/invoices${adminQs}`, color: "#f59e0b", priority: 2 });
+                if (b15p > 0) todayActions.push({ text: `Call on ${money(b15p)} in overdue invoices (30+ days)`, why: "This money is yours — a phone call could collect it today", href: `/jobber/invoices${adminQs}`, color: "#ef4444", priority: 1 });
+                else if (b8_14 > 0) todayActions.push({ text: `Follow up on ${money(b8_14)} in late invoices`, why: "This money is yours — a phone call could collect it today", href: `/jobber/invoices${adminQs}`, color: "#f59e0b", priority: 2 });
 
                 // Quotes: going cold
-                if (goingColdQuotes.length > 0) todayActions.push({ text: `Follow up on ${goingColdQuotes.length} quote${goingColdQuotes.length !== 1 ? "s" : ""} before they go stale (${money(sumCents(goingColdQuotes))})`, href: `/jobber/sales${adminQs}`, color: "#ef4444", priority: 1 });
-                else if (warmQuotes.length > 3) todayActions.push({ text: `Check in on ${warmQuotes.length} warm quotes (${money(sumCents(warmQuotes))})`, href: `/jobber/sales${adminQs}`, color: "#f59e0b", priority: 3 });
+                if (goingColdQuotes.length > 0) todayActions.push({ text: `Follow up on ${goingColdQuotes.length} quote${goingColdQuotes.length !== 1 ? "s" : ""} before they go stale (${money(sumCents(goingColdQuotes))})`, why: "These customers were interested but haven't heard from you", href: `/jobber/sales${adminQs}`, color: "#ef4444", priority: 1 });
+                else if (warmQuotes.length > 3) todayActions.push({ text: `Check in on ${warmQuotes.length} warm quotes (${money(sumCents(warmQuotes))})`, why: "They're still interested — a quick check-in could close the deal", href: `/jobber/sales${adminQs}`, color: "#f59e0b", priority: 3 });
 
                 // Capacity: open slots
                 if (effectiveWeeklyTarget > 0 && thisWeekSnap.scheduledRevenue < effectiveWeeklyTarget * 0.7) {
                   const gap = effectiveWeeklyTarget - thisWeekSnap.scheduledRevenue;
-                  todayActions.push({ text: `You have ${money(gap)} in open capacity this week — schedule more work`, href: `/jobber/capacity${adminQs}`, color: "#f59e0b", priority: 2 });
+                  todayActions.push({ text: `You have ${money(gap)} in open capacity this week — schedule more work`, why: "Open slots mean lost revenue — fill them now", href: `/jobber/capacity${adminQs}`, color: "#f59e0b", priority: 2 });
                 }
 
                 // Needs invoicing
-                if (needsInvoiceCount > 0) todayActions.push({ text: `Send invoices for ${needsInvoiceCount} completed job${needsInvoiceCount !== 1 ? "s" : ""} (${money(needsInvoiceCents)})`, href: `/jobber/invoices${adminQs}`, color: "#5aa6ff", priority: 3 });
+                if (needsInvoiceCount > 0) todayActions.push({ text: `Send invoices for ${needsInvoiceCount} completed job${needsInvoiceCount !== 1 ? "s" : ""} (${money(needsInvoiceCents)})`, why: "Work is done, you just haven't billed yet", href: `/jobber/invoices${adminQs}`, color: "#5aa6ff", priority: 3 });
 
                 // Draft invoices unsent
-                if (draftInvoiceCount > 0) todayActions.push({ text: `Send ${draftInvoiceCount} draft invoice${draftInvoiceCount !== 1 ? "s" : ""} (${money(draftInvoiceCents)})`, href: `/jobber/invoices${adminQs}`, color: "#5aa6ff", priority: 3 });
+                if (draftInvoiceCount > 0) todayActions.push({ text: `Send ${draftInvoiceCount} draft invoice${draftInvoiceCount !== 1 ? "s" : ""} (${money(draftInvoiceCents)})`, why: "These are ready to send — takes 2 minutes", href: `/jobber/invoices${adminQs}`, color: "#5aa6ff", priority: 3 });
 
                 // Approved quotes ready to book
-                if (approvedNoJobCount > 0) todayActions.push({ text: `Book ${approvedNoJobCount} approved quote${approvedNoJobCount !== 1 ? "s" : ""} (${money(approvedNoJobCents)})`, href: `/jobber/capacity${adminQs}`, color: "#10b981", priority: 2 });
+                if (approvedNoJobCount > 0) todayActions.push({ text: `Book ${approvedNoJobCount} approved quote${approvedNoJobCount !== 1 ? "s" : ""} (${money(approvedNoJobCents)})`, why: "Customers said yes — get them on the schedule", href: `/jobber/capacity${adminQs}`, color: "#10b981", priority: 2 });
 
                 // Unscheduled jobs
-                if (unscheduledCount > 3) todayActions.push({ text: `Schedule ${unscheduledCount} unscheduled jobs`, href: `/jobber/capacity${adminQs}`, color: "#5aa6ff", priority: 4 });
+                if (unscheduledCount > 3) todayActions.push({ text: `Schedule ${unscheduledCount} unscheduled jobs`, why: "These jobs are waiting for a date", href: `/jobber/capacity${adminQs}`, color: "#5aa6ff", priority: 4 });
 
                 // Open requests
-                if (openRequestsCount > 0) todayActions.push({ text: `Respond to ${openRequestsCount} new request${openRequestsCount !== 1 ? "s" : ""}`, href: `/jobber/sales${adminQs}`, color: "#10b981", priority: 3 });
+                if (openRequestsCount > 0) todayActions.push({ text: `Respond to ${openRequestsCount} new request${openRequestsCount !== 1 ? "s" : ""}`, why: "New leads — respond fast before they call someone else", href: `/jobber/sales${adminQs}`, color: "#10b981", priority: 3 });
 
                 // Sort by priority
                 todayActions.sort((a, b) => a.priority - b.priority);
-                const topActions = todayActions.slice(0, 4);
+                const topActions = todayActions.slice(0, 3);
 
                 return topActions.length > 0 ? (
                   <div className="panel" style={{ padding: "12px 16px", marginTop: 10 }}>
-                    <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 800, margin: "0 0 8px", display: "flex", alignItems: "center", gap: 6 }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                    <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 800, margin: "0 0 8px" }}>
                       What to Do Today
                     </h2>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                       {topActions.map((action, i) => (
                         <a key={i} href={action.href} style={{
-                          display: "flex", alignItems: "center", gap: 8,
+                          display: "flex", alignItems: "flex-start", gap: 8,
                           padding: "8px 10px", borderRadius: 6, textDecoration: "none",
                           borderLeft: `3px solid ${action.color}`,
                           background: `${action.color}08`,
                           transition: "all 0.15s ease",
                         }} className="hover-lift">
-                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: action.color, flexShrink: 0 }} />
-                          <span className="text-primary" style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{action.text}</span>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: action.color, flexShrink: 0 }}>&#8594;</span>
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: action.color, flexShrink: 0, marginTop: 5 }} />
+                          <div style={{ flex: 1 }}>
+                            <span className="text-primary" style={{ fontSize: 14, fontWeight: 600 }}>{action.text}</span>
+                            <div className="text-muted" style={{ fontSize: 11, marginTop: 1, lineHeight: 1.3 }}>{action.why}</div>
+                          </div>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: action.color, flexShrink: 0, marginTop: 3 }}>&#8594;</span>
                         </a>
                       ))}
                     </div>
