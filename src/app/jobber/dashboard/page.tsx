@@ -1789,62 +1789,61 @@ const quoteWonPct = quotesInLast30Days.length > 0
           return (
             <div className="animate-in" style={{ marginTop: 12, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
 
-              {/* Revenue Goal Bar */}
-              {yearlyGoal > 0 && (
-                <div className="panel" style={{ padding: "12px 20px", marginBottom: 10, overflow: "hidden" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <h2 className="text-primary" style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>
-                        {todayUTC.getUTCFullYear()} Revenue Goal
-                      </h2>
-                    </div>
-                    <div style={{ padding: "3px 10px", borderRadius: 12, background: `${paceColor}12`, border: `1px solid ${paceColor}20` }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: paceColor }}>{money(Math.abs(aheadByCents))} {isAhead ? "ahead" : "behind"}</span>
-                    </div>
-                  </div>
-                  <div style={{ position: "relative" }}>
-                    <div style={{ height: 14, borderRadius: 7, background: "rgba(255,255,255,0.05)", boxShadow: "inset 0 1px 2px rgba(0,0,0,0.1)", overflow: "hidden", position: "relative" }}>
-                      {projectedCents > 0 && (
-                        <div style={{ position: "absolute", top: 1, left: 1, bottom: 1, width: `calc(${Math.min(projectedPct, 100)}% - 2px)`, minWidth: 4, borderRadius: 5, background: `repeating-linear-gradient(115deg, ${paceColor}35, ${paceColor}35 3px, ${paceColor}12 3px, ${paceColor}12 6px)`, transition: "width 0.8s cubic-bezier(0.4,0,0.2,1)" }} />
-                      )}
-                      <div style={{ position: "absolute", top: 1, left: 1, bottom: 1, width: `calc(${Math.min(yearPct, 100)}% - 2px)`, minWidth: yearPct > 0 ? 4 : 0, borderRadius: 5, background: paceGrad, boxShadow: `0 0 8px ${paceColor}30`, transition: "width 0.8s cubic-bezier(0.4,0,0.2,1)" }}>
-                        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "45%", borderRadius: "5px 5px 0 0", background: "linear-gradient(180deg, rgba(255,255,255,0.3), transparent)" }} />
-                      </div>
-                      {[25, 50, 75].map(pct => (
-                        <div key={pct} style={{ position: "absolute", top: 0, bottom: 0, left: `${pct}%`, width: 1, background: "rgba(255,255,255,0.08)" }} />
+              {/* What to Do Today — moved above cards */}
+              {(() => {
+                const adminQs = adminConnectionId ? `?admin_connection_id=${adminConnectionId}` : "";
+                const todayActions: { text: string; why: string; href: string; color: string; priority: number }[] = [];
+
+                if (b15p > 0) todayActions.push({ text: `Call on ${money(b15p)} in overdue invoices (30+ days)`, why: "This money is yours — a phone call could collect it today", href: `/jobber/invoices${adminQs}`, color: "#ef4444", priority: 1 });
+                else if (b8_14 > 0) todayActions.push({ text: `Follow up on ${money(b8_14)} in late invoices`, why: "This money is yours — a phone call could collect it today", href: `/jobber/invoices${adminQs}`, color: "#f59e0b", priority: 2 });
+
+                if (goingColdQuotes.length > 0) todayActions.push({ text: `Follow up on ${goingColdQuotes.length} quote${goingColdQuotes.length !== 1 ? "s" : ""} before they go stale (${money(sumCents(goingColdQuotes))})`, why: "These customers were interested but haven't heard from you", href: `/jobber/sales${adminQs}`, color: "#ef4444", priority: 1 });
+                else if (warmQuotes.length > 3) todayActions.push({ text: `Check in on ${warmQuotes.length} warm quotes (${money(sumCents(warmQuotes))})`, why: "They're still interested — a quick check-in could close the deal", href: `/jobber/sales${adminQs}`, color: "#f59e0b", priority: 3 });
+
+                if (effectiveWeeklyTarget > 0 && thisWeekSnap.scheduledRevenue < effectiveWeeklyTarget * 0.7) {
+                  const gap = effectiveWeeklyTarget - thisWeekSnap.scheduledRevenue;
+                  todayActions.push({ text: `You have ${money(gap)} in open capacity this week — schedule more work`, why: "Open slots mean lost revenue — fill them now", href: `/jobber/capacity${adminQs}`, color: "#f59e0b", priority: 2 });
+                }
+
+                if (needsInvoiceCount > 0) todayActions.push({ text: `Send invoices for ${needsInvoiceCount} completed job${needsInvoiceCount !== 1 ? "s" : ""} (${money(needsInvoiceCents)})`, why: "Work is done, you just haven't billed yet", href: `/jobber/invoices${adminQs}`, color: "#5aa6ff", priority: 3 });
+
+                if (draftInvoiceCount > 0) todayActions.push({ text: `Send ${draftInvoiceCount} draft invoice${draftInvoiceCount !== 1 ? "s" : ""} (${money(draftInvoiceCents)})`, why: "These are ready to send — takes 2 minutes", href: `/jobber/invoices${adminQs}`, color: "#5aa6ff", priority: 3 });
+
+                if (approvedNoJobCount > 0) todayActions.push({ text: `Book ${approvedNoJobCount} approved quote${approvedNoJobCount !== 1 ? "s" : ""} (${money(approvedNoJobCents)})`, why: "Customers said yes — get them on the schedule", href: `/jobber/capacity${adminQs}`, color: "#10b981", priority: 2 });
+
+                if (unscheduledCount > 3) todayActions.push({ text: `Schedule ${unscheduledCount} unscheduled jobs`, why: "These jobs are waiting for a date", href: `/jobber/capacity${adminQs}`, color: "#5aa6ff", priority: 4 });
+
+                if (openRequestsCount > 0) todayActions.push({ text: `Respond to ${openRequestsCount} new request${openRequestsCount !== 1 ? "s" : ""}`, why: "New leads — respond fast before they call someone else", href: `/jobber/sales${adminQs}`, color: "#10b981", priority: 3 });
+
+                todayActions.sort((a, b) => a.priority - b.priority);
+                const topActions = todayActions.slice(0, 3);
+
+                return topActions.length > 0 ? (
+                  <div className="panel" style={{ padding: "12px 16px", marginBottom: 12 }}>
+                    <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 800, margin: "0 0 8px" }}>
+                      What to Do Today
+                    </h2>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      {topActions.map((action, i) => (
+                        <a key={i} href={action.href} style={{
+                          display: "flex", alignItems: "flex-start", gap: 8,
+                          padding: "8px 10px", borderRadius: 6, textDecoration: "none",
+                          borderLeft: `3px solid ${action.color}`,
+                          background: `${action.color}08`,
+                          transition: "all 0.15s ease",
+                        }} className="hover-lift">
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: action.color, flexShrink: 0, marginTop: 5 }} />
+                          <div style={{ flex: 1 }}>
+                            <span className="text-primary" style={{ fontSize: 14, fontWeight: 600 }}>{action.text}</span>
+                            <div className="text-muted" style={{ fontSize: 11, marginTop: 1, lineHeight: 1.3 }}>{action.why}</div>
+                          </div>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: action.color, flexShrink: 0, marginTop: 3 }}>&#8594;</span>
+                        </a>
                       ))}
-                      <div style={{ position: "absolute", top: -2, bottom: -2, left: `${expectedPct}%`, width: 2, borderRadius: 1, background: "rgba(255,255,255,0.2)" }} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
-                      <span className="text-muted" style={{ fontSize: 11 }}>$0</span>
-                      {[25, 50, 75].map(pct => (
-                        <span key={pct} className="text-muted" style={{ fontSize: 11 }}>{money(Math.round(yearlyGoal * pct / 100))}</span>
-                      ))}
-                      <span className="text-muted" style={{ fontSize: 11 }}>{money(yearlyGoal)}</span>
                     </div>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "center", marginTop: 4, gap: 12, flexWrap: "wrap" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                      <span style={{ width: 10, height: 8, borderRadius: 2, background: paceGrad, flexShrink: 0 }} />
-                      <span style={{ fontSize: 12, fontWeight: 600, color: paceColor }}>{money(yearRevenue)} collected</span>
-                    </div>
-                    {projectedCents > 0 && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: paceColor }}>+</span>
-                        <span style={{ width: 10, height: 8, borderRadius: 2, flexShrink: 0, background: `repeating-linear-gradient(115deg, ${paceColor}60, ${paceColor}60 2px, ${paceColor}15 2px, ${paceColor}15 4px)` }} />
-                        <span className="text-muted" style={{ fontSize: 12, fontWeight: 600 }}>{money(projectedCents)} booked</span>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ textAlign: "center", marginTop: 4 }}>
-                    {isAhead ? (
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "#10b981" }}>Keep it up — you&apos;re ahead of where you need to be</span>
-                    ) : (
-                      <span style={{ fontSize: 12, fontWeight: 600, color: paceColor }}>You need {money(Math.max(0, expectedRevenue - yearRevenue))} more booked to get back on track</span>
-                    )}
-                  </div>
-                </div>
-              )}
+                ) : null;
+              })()}
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, alignItems: "stretch", flex: 1 }}>
 
@@ -1963,25 +1962,31 @@ const quoteWonPct = quotesInLast30Days.length > 0
                             <div style={{ fontSize: 10, fontWeight: 800, marginBottom: 2, whiteSpace: "nowrap", color: fillPct > 100 ? "#10b981" : fillPct >= 70 ? "#f59e0b" : m.invoicedCents > 0 ? "#ef4444" : "transparent" }}>
                               {m.invoicedCents > 0 ? `${Math.round(fillPct)}%` : ""}
                             </div>
-                            {/* Bar: solid green, scales to collected amount */}
+                            {/* Bar: invoiced is the container, collected fills it from the bottom */}
                             {(() => {
-                              const collH = cfMax > 0 ? Math.max((m.collectedCents / cfMax) * 100, m.collectedCents > 0 ? 4 : 1) : 1;
                               const over = m.collectedCents > m.invoicedCents && m.invoicedCents > 0;
+                              // Container height = max(invoiced, collected) so we always see both
+                              const maxAmount = Math.max(m.invoicedCents, m.collectedCents);
+                              const containerH = cfMax > 0 ? Math.max((maxAmount / cfMax) * 100, maxAmount > 0 ? 6 : 1) : 1;
+                              // Fill % within the container
+                              const fillH = maxAmount > 0 ? Math.min((m.collectedCents / maxAmount) * 100, 100) : 0;
                               return (
                                 <div style={{
                                   width: "80%", borderRadius: "5px 5px 3px 3px",
-                                  height: `${collH}%`,
-                                  background: over ? "linear-gradient(0deg, #10b981, #34d399)" : "linear-gradient(0deg, #10b981a0, #34d399a0)",
-                                  border: over ? "1.5px solid #10b981" : "none",
+                                  height: `${containerH}%`,
+                                  background: "rgba(90,166,255,0.1)",
+                                  border: over ? "1.5px solid #10b981" : "1.5px solid rgba(90,166,255,0.4)",
                                   boxShadow: over ? "0 0 8px rgba(16,185,129,0.3)" : "none",
-                                  position: "relative",
+                                  position: "relative", overflow: "hidden",
                                   transition: "height 0.5s ease",
                                 }}>
-                                  {/* Invoiced line marker when under-collected */}
-                                  {!over && m.invoicedCents > 0 && m.collectedCents > 0 && (
+                                  {/* Collected fill from bottom */}
+                                  {m.collectedCents > 0 && (
                                     <div style={{
-                                      position: "absolute", top: -2, left: -4, right: -4,
-                                      height: 0, borderTop: "2px dashed rgba(90,166,255,0.5)",
+                                      position: "absolute", bottom: 0, left: 0, right: 0,
+                                      height: `${fillH}%`,
+                                      background: "linear-gradient(0deg, #10b981, #34d399)",
+                                      transition: "height 0.5s ease",
                                     }} />
                                   )}
                                 </div>
@@ -2051,7 +2056,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 );
 
                 return (
-                  <div className="panel" style={{ padding: "16px 16px 10px", display: "flex", flexDirection: "column" }}>
+                  <div className="panel" style={{ padding: "16px 16px 10px", display: "flex", flexDirection: "column", minWidth: 0 }}>
                     <a href={`/jobber/invoices${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                       <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>
                         Cash You Need to Collect
@@ -2130,7 +2135,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 ];
 
                 return (
-                  <div className="panel" style={{ padding: "16px 16px 10px", display: "flex", flexDirection: "column" }}>
+                  <div className="panel" style={{ padding: "16px 16px 10px", display: "flex", flexDirection: "column", minWidth: 0 }}>
                     <a href={`/jobber/capacity${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                       <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>
                         This Week&apos;s Schedule
@@ -2252,8 +2257,8 @@ const quoteWonPct = quotesInLast30Days.length > 0
                     </div>
                     <div className="donut-group" style={{ display: "flex", flexDirection: "column", flex: 1 }}>
                     {/* Donut + center count */}
-                    <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", marginTop: "5%" }}>
-                      <svg width={donutSize} height={donutSize} viewBox={`0 0 ${donutSize} ${donutSize}`}>
+                    <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", marginTop: "5%", minWidth: 0, overflow: "hidden" }}>
+                      <svg width={donutSize} height={donutSize} viewBox={`0 0 ${donutSize} ${donutSize}`} style={{ maxWidth: "100%", height: "auto" }}>
                         {/* Track */}
                         <circle cx={donutSize/2} cy={donutSize/2} r={donutR} fill="none" strokeWidth={donutStroke} stroke="rgba(255,255,255,0.04)" />
                         {/* Segments */}
@@ -2303,7 +2308,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 );
 
                 return (
-                  <div className="panel" style={{ padding: "16px 16px 10px", display: "flex", flexDirection: "column" }}>
+                  <div className="panel" style={{ padding: "16px 16px 10px", display: "flex", flexDirection: "column", minWidth: 0 }}>
                     <a href={`/jobber/sales${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                       <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>
                         Sales Pipeline
@@ -2315,145 +2320,6 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 );
               })()}
             </div>
-
-              {/* What to Do Today */}
-              {(() => {
-                const adminQs = adminConnectionId ? `?admin_connection_id=${adminConnectionId}` : "";
-                const todayActions: { text: string; why: string; href: string; color: string; priority: number }[] = [];
-
-                // Invoices: overdue money
-                if (b15p > 0) todayActions.push({ text: `Call on ${money(b15p)} in overdue invoices (30+ days)`, why: "This money is yours — a phone call could collect it today", href: `/jobber/invoices${adminQs}`, color: "#ef4444", priority: 1 });
-                else if (b8_14 > 0) todayActions.push({ text: `Follow up on ${money(b8_14)} in late invoices`, why: "This money is yours — a phone call could collect it today", href: `/jobber/invoices${adminQs}`, color: "#f59e0b", priority: 2 });
-
-                // Quotes: going cold
-                if (goingColdQuotes.length > 0) todayActions.push({ text: `Follow up on ${goingColdQuotes.length} quote${goingColdQuotes.length !== 1 ? "s" : ""} before they go stale (${money(sumCents(goingColdQuotes))})`, why: "These customers were interested but haven't heard from you", href: `/jobber/sales${adminQs}`, color: "#ef4444", priority: 1 });
-                else if (warmQuotes.length > 3) todayActions.push({ text: `Check in on ${warmQuotes.length} warm quotes (${money(sumCents(warmQuotes))})`, why: "They're still interested — a quick check-in could close the deal", href: `/jobber/sales${adminQs}`, color: "#f59e0b", priority: 3 });
-
-                // Capacity: open slots
-                if (effectiveWeeklyTarget > 0 && thisWeekSnap.scheduledRevenue < effectiveWeeklyTarget * 0.7) {
-                  const gap = effectiveWeeklyTarget - thisWeekSnap.scheduledRevenue;
-                  todayActions.push({ text: `You have ${money(gap)} in open capacity this week — schedule more work`, why: "Open slots mean lost revenue — fill them now", href: `/jobber/capacity${adminQs}`, color: "#f59e0b", priority: 2 });
-                }
-
-                // Needs invoicing
-                if (needsInvoiceCount > 0) todayActions.push({ text: `Send invoices for ${needsInvoiceCount} completed job${needsInvoiceCount !== 1 ? "s" : ""} (${money(needsInvoiceCents)})`, why: "Work is done, you just haven't billed yet", href: `/jobber/invoices${adminQs}`, color: "#5aa6ff", priority: 3 });
-
-                // Draft invoices unsent
-                if (draftInvoiceCount > 0) todayActions.push({ text: `Send ${draftInvoiceCount} draft invoice${draftInvoiceCount !== 1 ? "s" : ""} (${money(draftInvoiceCents)})`, why: "These are ready to send — takes 2 minutes", href: `/jobber/invoices${adminQs}`, color: "#5aa6ff", priority: 3 });
-
-                // Approved quotes ready to book
-                if (approvedNoJobCount > 0) todayActions.push({ text: `Book ${approvedNoJobCount} approved quote${approvedNoJobCount !== 1 ? "s" : ""} (${money(approvedNoJobCents)})`, why: "Customers said yes — get them on the schedule", href: `/jobber/capacity${adminQs}`, color: "#10b981", priority: 2 });
-
-                // Unscheduled jobs
-                if (unscheduledCount > 3) todayActions.push({ text: `Schedule ${unscheduledCount} unscheduled jobs`, why: "These jobs are waiting for a date", href: `/jobber/capacity${adminQs}`, color: "#5aa6ff", priority: 4 });
-
-                // Open requests
-                if (openRequestsCount > 0) todayActions.push({ text: `Respond to ${openRequestsCount} new request${openRequestsCount !== 1 ? "s" : ""}`, why: "New leads — respond fast before they call someone else", href: `/jobber/sales${adminQs}`, color: "#10b981", priority: 3 });
-
-                // Sort by priority
-                todayActions.sort((a, b) => a.priority - b.priority);
-                const topActions = todayActions.slice(0, 3);
-
-                return topActions.length > 0 ? (
-                  <div className="panel" style={{ padding: "12px 16px", marginTop: 10 }}>
-                    <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 800, margin: "0 0 8px" }}>
-                      What to Do Today
-                    </h2>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      {topActions.map((action, i) => (
-                        <a key={i} href={action.href} style={{
-                          display: "flex", alignItems: "flex-start", gap: 8,
-                          padding: "8px 10px", borderRadius: 6, textDecoration: "none",
-                          borderLeft: `3px solid ${action.color}`,
-                          background: `${action.color}08`,
-                          transition: "all 0.15s ease",
-                        }} className="hover-lift">
-                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: action.color, flexShrink: 0, marginTop: 5 }} />
-                          <div style={{ flex: 1 }}>
-                            <span className="text-primary" style={{ fontSize: 14, fontWeight: 600 }}>{action.text}</span>
-                            <div className="text-muted" style={{ fontSize: 11, marginTop: 1, lineHeight: 1.3 }}>{action.why}</div>
-                          </div>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: action.color, flexShrink: 0, marginTop: 3 }}>&#8594;</span>
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                ) : null;
-              })()}
-
-              {/* Revenue Goal Bar — moved to top */}
-              {false && yearlyGoal > 0 && (
-                <div className="panel" style={{ padding: "18px 24px", marginTop: 14, overflow: "hidden" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <h2 className="text-primary" style={{ fontSize: 18, fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        {isAutoGoal ? `You're on track for ${money(yearlyGoal)} this year` : `${todayUTC.getUTCFullYear()} Revenue Goal`}
-                      </h2>
-                      {isAutoGoal && (
-                        <span className="text-muted" style={{ fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4, background: "rgba(90,166,255,0.1)" }}>based on what you've been doing</span>
-                      )}
-                    </div>
-                    <div style={{ padding: "3px 10px", borderRadius: 12, background: `${paceColor}12`, border: `1px solid ${paceColor}20` }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: paceColor }}>{money(Math.abs(aheadByCents))} {isAhead ? "ahead of pace" : "behind pace"}</span>
-                    </div>
-                  </div>
-                  <div style={{ position: "relative" }}>
-                    <div style={{ height: 14, borderRadius: 7, background: "rgba(255,255,255,0.05)", boxShadow: "inset 0 1px 2px rgba(0,0,0,0.1)", overflow: "hidden", position: "relative" }}>
-                      {/* Scheduled (striped, behind) */}
-                      {projectedCents > 0 && (
-                        <div style={{
-                          position: "absolute", top: 1, left: 1, bottom: 1,
-                          width: `calc(${Math.min(projectedPct, 100)}% - 2px)`, minWidth: 4,
-                          borderRadius: 5,
-                          background: `repeating-linear-gradient(115deg, ${paceColor}35, ${paceColor}35 3px, ${paceColor}12 3px, ${paceColor}12 6px)`,
-                          transition: "width 0.8s cubic-bezier(0.4,0,0.2,1)",
-                        }} />
-                      )}
-                      {/* Completed (solid, front) */}
-                      <div style={{
-                        position: "absolute", top: 1, left: 1, bottom: 1,
-                        width: `calc(${Math.min(yearPct, 100)}% - 2px)`, minWidth: yearPct > 0 ? 4 : 0,
-                        borderRadius: 5, background: paceGrad,
-                        boxShadow: `0 0 8px ${paceColor}30`,
-                        transition: "width 0.8s cubic-bezier(0.4,0,0.2,1)",
-                      }}>
-                        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "45%", borderRadius: "5px 5px 0 0", background: "linear-gradient(180deg, rgba(255,255,255,0.3), transparent)" }} />
-                      </div>
-                      {/* Quarter ticks */}
-                      {[25, 50, 75].map(pct => (
-                        <div key={pct} style={{ position: "absolute", top: 0, bottom: 0, left: `${pct}%`, width: 1, background: "rgba(255,255,255,0.08)" }} />
-                      ))}
-                      {/* Pace marker */}
-                      <div style={{ position: "absolute", top: -2, bottom: -2, left: `${expectedPct}%`, width: 2, borderRadius: 1, background: "rgba(255,255,255,0.2)" }} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
-                      <span className="text-muted" style={{ fontSize: 11 }}>$0</span>
-                      {[25, 50, 75].map(pct => (
-                        <span key={pct} className="text-muted" style={{ fontSize: 11 }}>{money(Math.round(yearlyGoal * pct / 100))}</span>
-                      ))}
-                      <span className="text-muted" style={{ fontSize: 11 }}>{money(yearlyGoal)}</span>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "center", marginTop: 4, gap: 12, flexWrap: "wrap" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                      <span style={{ width: 10, height: 8, borderRadius: 2, background: paceGrad, flexShrink: 0 }} />
-                      <span style={{ fontSize: 12, fontWeight: 600, color: paceColor }}>{money(yearRevenue)} earned</span>
-                    </div>
-                    {projectedCents > 0 && (<>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: paceColor }}>+</span>
-                        <span style={{ width: 10, height: 8, borderRadius: 2, flexShrink: 0, background: `repeating-linear-gradient(115deg, ${paceColor}60, ${paceColor}60 2px, ${paceColor}15 2px, ${paceColor}15 4px)` }} />
-                        <span className="text-muted" style={{ fontSize: 12, fontWeight: 600 }}>{money(projectedCents)} scheduled</span>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: paceColor }}>=</span>
-                        <span className="text-primary" style={{ fontSize: 12, fontWeight: 700 }}>{money(yearRevenue + projectedCents)} projected</span>
-                      </div>
-                    </>)}
-                  </div>
-                </div>
-              )}
 
             </div>
           );
