@@ -4,100 +4,26 @@ import { supabaseAdmin, fetchAllRows } from "@/lib/supabaseAdmin";
 import { getValidAccessToken } from "@/lib/jobberAuth";
 import { sendSyncFailureEmail } from "@/lib/resend";
 import { getUser } from "@/lib/supabaseAuth";
+import {
+  dollarsToCents,
+  jobToRow,
+  visitToRow,
+  invoiceToRow,
+  quoteToRow,
+  requestToRow,
+  JOB_FIELDS,
+  VISIT_FIELDS,
+  INVOICE_FIELDS,
+  QUOTE_FIELDS,
+  REQUEST_FIELDS,
+  type JobNode,
+  type VisitNode,
+  type InvoiceNode,
+  type QuoteNode,
+  type RequestNode,
+} from "@/lib/jobberMappers";
 
 export const maxDuration = 300; // Tell Vercel this route needs full 300s
-
-type VisitLineItem = {
-  name?: string | null;
-  description?: string | null;
-  quantity?: number | null;
-  unitPrice?: number | null;
-  totalPrice?: number | null;
-};
-
-type VisitNode = {
-  id: string;
-  title?: string | null;
-  startAt?: string | null;
-  endAt?: string | null;
-  completedAt?: string | null;
-  visitStatus?: string | null;
-  isComplete?: boolean | null;
-  duration?: number | null;
-  createdAt?: string | null;
-  lineItems?: { nodes?: VisitLineItem[] } | null;
-};
-
-type JobNode = {
-  id: string;
-  createdAt?: string | null;
-  updatedAt?: string | null;
-  jobStatus?: string | null;
-  startAt?: string | null;
-  endAt?: string | null;
-  jobNumber?: number | null;
-  jobberWebUri?: string | null;
-  title?: string | null;
-  total?: number | null;
-  visits?: { totalCount?: number; nodes?: VisitNode[] } | null;
-};
-
-type InvoiceClient = {
-  name?: string | null;
-};
-
-type InvoiceAmounts = {
-  invoiceBalance?: number | null;
-};
-
-type InvoiceNode = {
-  id: string;
-  invoiceNumber?: string | null;
-  createdAt?: string | null;
-  dueDate?: string | null;
-  updatedAt?: string | null;
-  total?: number | null;
-  jobberWebUri?: string | null;
-  client?: InvoiceClient | null;
-  subject?: string | null;
-  invoiceStatus?: string | null;
-  amounts?: InvoiceAmounts | null;
-};
-
-type QuoteAmounts = {
-  total?: number | null;
-};
-
-type QuoteNode = {
-  id: string;
-  quoteNumber?: string | null;
-  createdAt?: string | null;
-  updatedAt?: string | null;
-  sentAt?: string | null;
-  quoteStatus?: string | null;
-  jobberWebUri?: string | null;
-  title?: string | null;
-  amounts?: QuoteAmounts | null;
-};
-
-type RequestClient = {
-  id?: string | null;
-  name?: string | null;
-};
-
-type RequestNode = {
-  id: string;
-  title?: string | null;
-  requestStatus?: string | null;
-  source?: string | null;
-  jobberWebUri?: string | null;
-  createdAt?: string | null;
-  contactName?: string | null;
-  companyName?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  client?: RequestClient | null;
-};
 
 type PageInfo = {
   hasNextPage: boolean;
@@ -106,12 +32,6 @@ type PageInfo = {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function dollarsToCents(n: number | null | undefined): number {
-  if (n === null || n === undefined) return 0;
-  if (Number.isNaN(n)) return 0;
-  return Math.round(n * 100);
 }
 
 function getTwelveMonthsAgoMs(): number {
@@ -279,16 +199,7 @@ async function handleSyncJobsStep(
   const jobResult = await fetchAllPages<JobNode>(
     token,
     "jobs",
-    `id
-     createdAt
-     updatedAt
-     jobStatus
-     startAt
-     endAt
-     jobNumber
-     jobberWebUri
-     title
-     total`,
+    JOB_FIELDS,
     lastSyncAt
   );
 
@@ -298,19 +209,7 @@ async function handleSyncJobsStep(
 
   const jobs = jobResult.nodes;
   if (jobs.length > 0) {
-    const jobRows = jobs.map(j => ({
-      connection_id: connectionId,
-      jobber_job_id: j.id,
-      job_number: j.jobNumber ?? null,
-      job_title: j.title ?? null,
-      jobber_url: j.jobberWebUri ?? null,
-      status: j.jobStatus ?? null,
-      scheduled_start_at: j.startAt ?? null,
-      scheduled_end_at: j.endAt ?? null,
-      created_at_jobber: j.createdAt ?? null,
-      updated_at_jobber: j.updatedAt ?? null,
-      total_amount_cents: dollarsToCents(j.total),
-    }));
+    const jobRows = jobs.map(j => jobToRow(connectionId, j));
 
     const chunkSize = 1000;
     for (let i = 0; i < jobRows.length; i += chunkSize) {
@@ -323,29 +222,10 @@ async function handleSyncJobsStep(
   }
 
   // Step 2: Fetch visits as a top-level resource
-  type VisitWithJob = VisitNode & { job?: { id?: string; jobNumber?: number } };
-  const visitResult = await fetchAllPages<VisitWithJob>(
+  const visitResult = await fetchAllPages<VisitNode>(
     token,
     "visits",
-    `id
-     title
-     startAt
-     endAt
-     completedAt
-     visitStatus
-     isComplete
-     duration
-     createdAt
-     job { id jobNumber }
-     lineItems(first: 100) {
-       nodes {
-         name
-         description
-         quantity
-         unitPrice
-         totalPrice
-       }
-     }`,
+    VISIT_FIELDS,
     lastSyncAt
   );
 
@@ -356,28 +236,7 @@ async function handleSyncJobsStep(
   const visits = visitResult.nodes;
   let visitCount = 0;
   if (visits.length > 0) {
-    const visitRows = visits.map((v: any) => {
-      // Sum line item revenue if available (dollars → cents)
-      const lineItems = v.lineItems?.nodes || [];
-      const lineItemRevenueCents = lineItems.length > 0
-        ? Math.round(lineItems.reduce((s: number, li: any) => s + (Number(li.totalPrice ?? 0) * 100), 0))
-        : null;
-
-      return {
-      connection_id: connectionId,
-      jobber_visit_id: v.id,
-      jobber_job_id: v.job?.id ?? null,
-      job_number: v.job?.jobNumber ?? null,
-      title: v.title ?? null,
-      visit_status: v.visitStatus ?? null,
-      is_complete: v.isComplete ?? false,
-      start_at: v.startAt ?? null,
-      end_at: v.endAt ?? null,
-      completed_at: v.completedAt ?? null,
-      duration_minutes: v.duration ?? null,
-      created_at_jobber: v.createdAt ?? null,
-      visit_revenue_cents: lineItemRevenueCents,
-    }; });
+    const visitRows = visits.map(v => visitToRow(connectionId, v));
 
     const chunkSize = 1000;
     for (let i = 0; i < visitRows.length; i += chunkSize) {
@@ -399,59 +258,9 @@ async function handleSyncOtherStep(
   lastSyncAt: string | null,
 ): Promise<{ invoiceCount: number; quoteCount: number; requestCount: number }> {
   const [invoiceResult, quoteResult, requestResult] = await Promise.all([
-    fetchAllPages<InvoiceNode>(
-      token,
-      "invoices",
-      `id
-       invoiceNumber
-       createdAt
-       dueDate
-       updatedAt
-       total
-       jobberWebUri
-       subject
-       invoiceStatus
-       client {
-         name
-       }
-       amounts {
-         invoiceBalance
-       }`,
-      lastSyncAt
-    ),
-    fetchAllPages<QuoteNode>(
-      token,
-      "quotes",
-      `id
-       quoteNumber
-       title
-       createdAt
-       updatedAt
-       sentAt
-       quoteStatus
-       jobberWebUri
-       amounts { total }`,
-      lastSyncAt
-    ),
-    fetchAllPages<RequestNode>(
-      token,
-      "requests",
-      `id
-       title
-       requestStatus
-       source
-       jobberWebUri
-       createdAt
-       contactName
-       companyName
-       email
-       phone
-       client {
-         id
-         name
-       }`,
-      lastSyncAt
-    ),
+    fetchAllPages<InvoiceNode>(token, "invoices", INVOICE_FIELDS, lastSyncAt),
+    fetchAllPages<QuoteNode>(token, "quotes", QUOTE_FIELDS, lastSyncAt),
+    fetchAllPages<RequestNode>(token, "requests", REQUEST_FIELDS, lastSyncAt),
   ]);
 
   const invoices = invoiceResult.nodes;
@@ -465,24 +274,7 @@ async function handleSyncOtherStep(
 
   // BATCH UPSERT: Invoices
   if (invoices.length > 0) {
-    const invoiceRows = invoices.map(inv => {
-      const isPaid = (inv.invoiceStatus || '').toLowerCase() === 'paid';
-      return {
-        connection_id: connectionId,
-        jobber_invoice_id: inv.id,
-        invoice_number: inv.invoiceNumber ?? null,
-        created_at_jobber: inv.createdAt ?? null,
-        due_at: inv.dueDate ?? null,
-        paid_at: isPaid ? inv.updatedAt : null,
-        updated_at_jobber: inv.updatedAt ?? null,
-        total_amount_cents: dollarsToCents(inv.total),
-        balance_cents: dollarsToCents(inv.amounts?.invoiceBalance),
-        jobber_url: inv.jobberWebUri ?? null,
-        client_name: inv.client?.name ?? null,
-        subject: inv.subject ?? null,
-        status: inv.invoiceStatus ?? null,
-      };
-    });
+    const invoiceRows = invoices.map(inv => invoiceToRow(connectionId, inv));
 
     const chunkSize = 1000;
     for (let i = 0; i < invoiceRows.length; i += chunkSize) {
@@ -496,18 +288,7 @@ async function handleSyncOtherStep(
 
   // BATCH UPSERT: Quotes
   if (quotes.length > 0) {
-    const quoteRows = quotes.map(q => ({
-      connection_id: connectionId,
-      jobber_quote_id: q.id,
-      quote_number: q.quoteNumber ?? null,
-      quote_title: q.title ?? null,
-      quote_status: q.quoteStatus ?? null,
-      quote_url: q.jobberWebUri ?? null,
-      quote_total_cents: dollarsToCents(q.amounts?.total ?? 0),
-      created_at_jobber: q.createdAt ?? null,
-      updated_at_jobber: q.updatedAt ?? null,
-      sent_at: q.sentAt ?? null,
-    }));
+    const quoteRows = quotes.map(q => quoteToRow(connectionId, q));
 
     const chunkSize = 1000;
     for (let i = 0; i < quoteRows.length; i += chunkSize) {
@@ -521,22 +302,7 @@ async function handleSyncOtherStep(
 
   // BATCH UPSERT: Requests
   if (requests.length > 0) {
-    const requestRows = requests.map(r => ({
-      connection_id: connectionId,
-      jobber_request_id: r.id,
-      title: r.title ?? null,
-      request_status: r.requestStatus ?? null,
-      source: r.source ?? null,
-      client_name: r.client?.name ?? null,
-      client_id: r.client?.id ?? null,
-      contact_name: r.contactName ?? null,
-      company_name: r.companyName ?? null,
-      email: r.email ?? null,
-      phone: r.phone ?? null,
-      jobber_url: r.jobberWebUri ?? null,
-      created_at_jobber: r.createdAt ?? null,
-      synced_at: new Date().toISOString(),
-    }));
+    const requestRows = requests.map(r => requestToRow(connectionId, r));
 
     const chunkSize = 1000;
     for (let i = 0; i < requestRows.length; i += chunkSize) {
