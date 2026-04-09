@@ -5,6 +5,11 @@ import { getValidAccessToken } from "@/lib/jobberAuth";
 import { sendSyncFailureEmail } from "@/lib/resend";
 import { getUser } from "@/lib/supabaseAuth";
 import {
+  fetchAllPages,
+  jobberGraphQLWithPartialErrors,
+  syncMetricsAndHeartbeat,
+} from "@/lib/jobberSync";
+import {
   dollarsToCents,
   jobToRow,
   visitToRow,
@@ -25,167 +30,10 @@ import {
 
 export const maxDuration = 300; // Tell Vercel this route needs full 300s
 
-type PageInfo = {
-  hasNextPage: boolean;
-  endCursor: string | null;
-};
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function getTwelveMonthsAgoMs(): number {
   const date = new Date();
   date.setMonth(date.getMonth() - 12);
   return date.getTime();
-}
-
-function isWithinTwelveMonths(dateStr: string | null | undefined, cutoffMs: number): boolean {
-  if (!dateStr) return false;
-  const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return false;
-  return date.getTime() >= cutoffMs;
-}
-
-async function jobberGraphQLWithPartialErrors<T>(
-  accessToken: string,
-  query: string,
-  maxRetries: number = 5
-): Promise<{ data: T | null; errors: unknown[] }> {
-  const version = process.env.JOBBER_GRAPHQL_VERSION!;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const res = await fetch(process.env.JOBBER_GRAPHQL_URL!, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-        "X-JOBBER-GRAPHQL-VERSION": version,
-      },
-      body: JSON.stringify({ query }),
-    });
-
-    // Retry on HTTP 429 rate limiting
-    if (res.status === 429) {
-      const retryAfter = res.headers.get("Retry-After");
-      const waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : attempt * 2000;
-      console.warn(`Rate limited (HTTP 429). Waiting ${waitTime}ms before retry ${attempt}/${maxRetries}`);
-      await delay(waitTime);
-      continue;
-    }
-
-    // Retry on server errors (5xx) and auth errors (401/403)
-    if (!res.ok && res.status !== 429) {
-      if (attempt < maxRetries && res.status >= 500) {
-        const waitTime = attempt * 2000;
-        console.warn(`Jobber API HTTP ${res.status}. Waiting ${waitTime}ms before retry ${attempt}/${maxRetries}`);
-        await delay(waitTime);
-        continue;
-      }
-      const body = await res.text().catch(() => "");
-      return { data: null, errors: [{ message: `Jobber API error: HTTP ${res.status} — ${body.slice(0, 200)}` }] };
-    }
-
-    // Parse JSON safely — malformed responses shouldn't crash the sync
-    let json: any;
-    try {
-      json = await res.json();
-    } catch {
-      if (attempt < maxRetries) {
-        const waitTime = attempt * 2000;
-        console.warn(`Invalid JSON from Jobber API. Retry ${attempt}/${maxRetries}`);
-        await delay(waitTime);
-        continue;
-      }
-      return { data: null, errors: [{ message: "Invalid JSON response from Jobber API" }] };
-    }
-
-    // Retry on GraphQL-level THROTTLED errors (HTTP 200 but data is null)
-    const isThrottled = (json.errors || []).some(
-      (e: any) => e?.extensions?.code === "THROTTLED"
-    );
-    if (isThrottled && attempt < maxRetries) {
-      const waitTime = attempt * 2000;
-      console.warn(`Throttled by Jobber API. Waiting ${waitTime}ms before retry ${attempt}/${maxRetries}`);
-      await delay(waitTime);
-      continue;
-    }
-
-    return {
-      data: json.data as T | null,
-      errors: (json.errors || []).filter((e: any) => e?.extensions?.code !== "THROTTLED"),
-    };
-  }
-
-  return { data: null, errors: [{ message: "Max retries exceeded due to throttling" }] };
-}
-
-// Fetch all pages with optional updatedAt filter
-async function fetchAllPages<T>(
-  accessToken: string,
-  resourceName: string,
-  nodeFields: string,
-  updatedAfter: string | null = null,
-  maxPages: number = 250
-): Promise<{ nodes: T[]; errors: unknown[] }> {
-  const allNodes: T[] = [];
-  const allErrors: unknown[] = [];
-  let cursor: string | null = null;
-  let pageCount = 0;
-
-  type PageResponse = {
-    [key: string]: { nodes: (T | null)[]; pageInfo: PageInfo } | undefined;
-  };
-
-  while (pageCount < maxPages) {
-    // No artificial delay — throttle retry handles rate limiting automatically
-
-    const afterClause: string = cursor ? `, after: "${cursor}"` : "";
-    const filterClause: string = updatedAfter
-      ? `, filter: { updatedAt: { after: "${updatedAfter}" } }`
-      : "";
-    const query: string = `query {
-      ${resourceName}(first: 100${afterClause}${filterClause}) {
-        nodes {
-          ${nodeFields}
-        }
-        pageInfo {
-          hasNextPage
-          endCursor
-        }
-      }
-    }`;
-
-    const result = await jobberGraphQLWithPartialErrors<PageResponse>(accessToken, query);
-
-    if (result.errors.length > 0) {
-      allErrors.push(...result.errors);
-    }
-
-    const data = result.data?.[resourceName];
-    if (!data) break;
-
-    const validNodes: T[] = [];
-    for (const n of data.nodes || []) {
-      if (n !== null) {
-        validNodes.push(n);
-      }
-    }
-    allNodes.push(...validNodes);
-
-    if (!data.pageInfo.hasNextPage) break;
-    if (!data.pageInfo.endCursor) break; // Prevent infinite loop on null cursor
-    cursor = data.pageInfo.endCursor;
-    pageCount++;
-  }
-
-  // Deduplicate — API can return the same entity on multiple pages
-  const deduped = new Map<string, T>();
-  for (const node of allNodes) {
-    deduped.set((node as any).id, node);
-  }
-
-  return { nodes: Array.from(deduped.values()), errors: allErrors };
 }
 
 // ---- Step-based sync helpers (used by multi-step SyncButton flow) ----
@@ -321,117 +169,6 @@ async function handleSyncOtherStep(
   };
 }
 
-async function handleSyncMetricsStep(
-  connectionId: string,
-  syncCounts: { jobs: number; invoices: number; quotes: number; requests: number },
-): Promise<void> {
-  const now = new Date();
-  const fifteenDaysAgo = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
-
-  // Read accountName from connection (may have been backfilled in step=jobs)
-  const { data: connData } = await supabaseAdmin
-    .from("jobber_connections")
-    .select("jobber_account_name")
-    .eq("id", connectionId)
-    .single();
-  const accountName = connData?.jobber_account_name || null;
-
-  // Always use DB path (data isn't in memory across requests)
-  const [
-    dbInvoices,
-    dbJobs,
-    { count: dbRequestCount },
-    { count: dbJobCount },
-    { count: dbQuoteCount },
-    dbQuotes,
-  ] = await Promise.all([
-    fetchAllRows("fact_invoices", "status, balance_cents, total_amount_cents, due_at", connectionId),
-    fetchAllRows("fact_jobs", "status, scheduled_start_at", connectionId),
-    supabaseAdmin
-      .from("fact_requests")
-      .select("*", { count: "exact", head: true })
-      .eq("connection_id", connectionId),
-    supabaseAdmin
-      .from("fact_jobs")
-      .select("*", { count: "exact", head: true })
-      .eq("connection_id", connectionId),
-    supabaseAdmin
-      .from("fact_quotes")
-      .select("*", { count: "exact", head: true })
-      .eq("connection_id", connectionId),
-    fetchAllRows("fact_quotes", "quote_status, quote_total_cents, sent_at", connectionId),
-  ]);
-
-  const allInvoices: any[] = dbInvoices || [];
-  const allJobs: any[] = dbJobs || [];
-  const allQuotes: any[] = dbQuotes || [];
-  const jobCount = dbJobCount || 0;
-  const requestCount = dbRequestCount || 0;
-  const quoteCount = dbQuoteCount || 0;
-
-  const unpaidInvoices = allInvoices.filter(inv => {
-    const st = (inv.status || "").toLowerCase();
-    return st !== "paid" && st !== "draft" && st !== "void";
-  });
-
-  const pastDueInvoices = unpaidInvoices.filter(inv => {
-    if (!inv.due_at) return false;
-    return new Date(inv.due_at) < now;
-  });
-
-  const invoices15plus = unpaidInvoices.filter(inv => {
-    if (!inv.due_at) return false;
-    return new Date(inv.due_at) < fifteenDaysAgo;
-  });
-
-  const unscheduledJobs = allJobs.filter((j: any) => !j.scheduled_start_at);
-
-  const pastDueCents = pastDueInvoices.reduce((sum: number, inv: any) => sum + (inv.balance_cents || inv.total_amount_cents || 0), 0);
-  const fifteenPlusCents = invoices15plus.reduce((sum: number, inv: any) => sum + (inv.balance_cents || inv.total_amount_cents || 0), 0);
-
-  const statusLooksWon = (status: string) => {
-    const s = status.toUpperCase();
-    return s.includes("APPROV") || s.includes("ACCEPT") || s.includes("WON") || s.includes("CONVERT") || s.includes("BOOK");
-  };
-
-  const leakingQuotes = allQuotes.filter((q: any) => {
-    if (!q.sent_at) return false;
-    const st = (q.quote_status || "").toLowerCase().trim();
-    if (!st) return true;
-    if (st === "archived" || st === "draft") return false;
-    return !statusLooksWon(st);
-  });
-
-  const quoteLeakCount = leakingQuotes.length;
-  const quoteLeakCents = leakingQuotes.reduce((sum: number, q: any) => sum + (q.quote_total_cents || 0), 0);
-
-  const heartbeat: Record<string, any> = {
-    last_sync_at: new Date().toISOString(),
-    sync_status: "complete",
-    sync_error: null,
-    last_sync_invoices: syncCounts.invoices,
-    last_sync_quotes: syncCounts.quotes,
-    job_count: jobCount,
-    request_count: requestCount,
-    quote_count: quoteCount,
-    unscheduled_job_count: unscheduledJobs.length,
-    invoices_past_due_count: pastDueInvoices.length,
-    invoices_past_due_cents: pastDueCents,
-    invoices_15plus_count: invoices15plus.length,
-    invoices_15plus_cents: fifteenPlusCents,
-    quote_leak_count: quoteLeakCount,
-    quote_leak_cents: quoteLeakCents,
-  };
-  if (accountName) heartbeat.jobber_account_name = accountName;
-
-  const { error: hbErr } = await supabaseAdmin
-    .from("jobber_connections")
-    .update(heartbeat)
-    .eq("id", connectionId);
-
-  if (hbErr) throw new Error(`jobber_connections update failed: ${hbErr.message}`);
-}
-
 async function handleStepSync(
   req: Request,
   connectionId: string,
@@ -526,7 +263,7 @@ async function handleStepSync(
         requests: parseInt(searchParams.get("requests") || "0", 10),
       };
 
-      await handleSyncMetricsStep(connectionId, syncCounts);
+      await syncMetricsAndHeartbeat(connectionId, syncCounts);
       return NextResponse.json({ ok: true });
 
     } else {
