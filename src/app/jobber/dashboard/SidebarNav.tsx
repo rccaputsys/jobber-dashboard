@@ -26,10 +26,9 @@ type Props = {
   trialEndsAt?: number;
   subscriptionActive?: boolean;
   autoSync?: boolean;
-  onOpenTargets?: () => void;
 };
 
-export function SidebarNav({ adminConnectionId, companyName, connectionId, lastSyncPretty, billingStatus, trialEndsAt, subscriptionActive, autoSync, onOpenTargets }: Props) {
+export function SidebarNav({ adminConnectionId, companyName, connectionId, lastSyncPretty, billingStatus, trialEndsAt, subscriptionActive, autoSync }: Props) {
   const pathname = usePathname();
   const isLight = useIsLight();
 
@@ -99,28 +98,6 @@ export function SidebarNav({ adminConnectionId, companyName, connectionId, lastS
           );
         })}
 
-        {/* Targets — opens drawer instead of navigating */}
-        <button
-          onClick={onOpenTargets}
-          style={{
-            display: "flex", alignItems: "center", gap: 10,
-            padding: "10px 12px", borderRadius: 8,
-            background: "transparent",
-            color: isLight ? "#64748b" : "rgba(255,255,255,0.5)",
-            fontSize: 13, fontWeight: 600,
-            transition: "all 0.15s ease",
-            borderLeft: "3px solid transparent",
-            border: "none", cursor: "pointer", textAlign: "left",
-            width: "100%",
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <circle cx="12" cy="12" r="6" />
-            <circle cx="12" cy="12" r="2" />
-          </svg>
-          Targets
-        </button>
       </div>
 
       {/* Spacer */}
@@ -145,6 +122,45 @@ export function SidebarNav({ adminConnectionId, companyName, connectionId, lastS
             <SubscriptionStatus billingStatus={billingStatus} trialEndsAt={trialEndsAt} subscriptionActive={subscriptionActive} />
           </div>
         )}
+
+        {/* Restart tour link */}
+        <button
+          type="button"
+          onClick={() => {
+            try {
+              Object.keys(localStorage)
+                .filter(k => k.startsWith("tour_") || k.startsWith("welcome_") || k.startsWith("aha_") || k.startsWith("checklist_"))
+                .forEach(k => localStorage.removeItem(k));
+            } catch {}
+            window.location.reload();
+          }}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            width: "100%", marginTop: 10,
+            padding: "6px 10px", borderRadius: 6,
+            background: "transparent",
+            border: `1px solid ${isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"}`,
+            color: isLight ? "#64748b" : "rgba(255,255,255,0.5)",
+            fontSize: 11, fontWeight: 600, cursor: "pointer",
+            transition: "all 0.15s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = isLight ? "rgba(90,166,255,0.06)" : "rgba(90,166,255,0.08)";
+            e.currentTarget.style.color = "#5aa6ff";
+            e.currentTarget.style.borderColor = "rgba(90,166,255,0.25)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = isLight ? "#64748b" : "rgba(255,255,255,0.5)";
+            e.currentTarget.style.borderColor = isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)";
+          }}
+        >
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+            <polygon points="6.5,5 11,8 6.5,11" fill="currentColor" />
+          </svg>
+          Restart tour
+        </button>
 
         {/* Footer */}
         <div className="text-muted" style={{ marginTop: 12, paddingTop: 8, borderTop: `1px solid ${isLight ? "#e2e8f0" : "rgba(255,255,255,0.06)"}`, fontSize: 9, lineHeight: 1.5, textAlign: "center" }}>

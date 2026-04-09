@@ -7,8 +7,8 @@ import { OnboardingOverlay } from "../dashboard/OnboardingOverlay";
 import { CapacityTrendsSection } from "./CapacityTrendsSection";
 import { CapacityWeekBreakdown } from "./CapacityWeekBreakdown";
 import { CapacityKpiCards } from "./CapacityKpiCards";
-import { CapacityHeatmap } from "./CapacityHeatmap";
 import { CapacityActionList } from "./CapacityActionList";
+import { AttentionList } from "../dashboard/AttentionList";
 import { ActionStrip } from "../dashboard/ActionStrip";
 import { ErrorBoundary } from "../dashboard/ErrorBoundary";
 import { DashboardLayout } from "../dashboard/DashboardLayout";
@@ -509,6 +509,172 @@ export default async function CapacityPage({
 
 
   /* ------------------------------------------------------------------ */
+  /*  Prioritized action list — "here's what needs your attention"      */
+  /* ------------------------------------------------------------------ */
+  type CapacityAction = {
+    text: string;
+    why: string;
+    color: string;
+    priority: number;
+  };
+  const capacityActions: CapacityAction[] = [];
+
+  // Helper for visit revenue (used by both fresh and stale late visit logic)
+  const visitRevCents = (v: any) => {
+    const jid = v.jobber_job_id;
+    const jobTotal = jid ? (jobTotals.get(jid) || 0) : 0;
+    const vCount = jid ? (jobVisitCounts.get(jid) || 1) : 1;
+    return Math.round(jobTotal / vCount);
+  };
+
+  // Split late visits into FRESH (< 30 days late, still actionable) vs
+  // STALE (30+ days late, probably abandoned and just needs cleanup).
+  const allLateVisits = visits.filter((v: any) => v.visit_status === "LATE");
+  const STALE_LATE_DAYS = 30;
+  const freshLateVisits = allLateVisits.filter((v: any) => {
+    const startAt = v.start_at ? new Date(v.start_at).getTime() : null;
+    const daysLate = startAt ? (Date.now() - startAt) / 86400000 : 0;
+    return daysLate < STALE_LATE_DAYS;
+  });
+  const staleLateVisits = allLateVisits.filter((v: any) => {
+    const startAt = v.start_at ? new Date(v.start_at).getTime() : null;
+    const daysLate = startAt ? (Date.now() - startAt) / 86400000 : 0;
+    return daysLate >= STALE_LATE_DAYS;
+  });
+
+  // P1 — Fresh late visits (catch up — still actionable)
+  if (freshLateVisits.length > 0) {
+    const lateCents = freshLateVisits.reduce((s: number, v: any) => s + visitRevCents(v), 0);
+    capacityActions.push({
+      text: `Catch up on ${freshLateVisits.length} late visit${freshLateVisits.length !== 1 ? "s" : ""}${lateCents > 0 ? ` — ${money(lateCents)}` : ""}`,
+      why: "These were scheduled but never completed. Reschedule or close them out before they get any older.",
+      color: "#ef4444",
+      priority: 1,
+    });
+  }
+
+  // P1 — This week severely under-booked
+  const thisWeekHmap = heatmapWeeks[0];
+  if (thisWeekHmap && effectiveWeeklyTarget > 0) {
+    const thisWeekBooked = workDaysList.reduce(
+      (s: number, d: string) => s + (thisWeekHmap.days[d]?.revenueCents || 0),
+      0,
+    );
+    const thisWeekPct = thisWeekBooked / effectiveWeeklyTarget;
+    if (thisWeekPct < 0.5) {
+      const gap = effectiveWeeklyTarget - thisWeekBooked;
+      capacityActions.push({
+        text: `This week is only ${Math.round(thisWeekPct * 100)}% booked — fill ${money(gap)}`,
+        why: "Open slots = lost revenue. Pull from approved quotes or reach out to recent leads.",
+        color: "#ef4444",
+        priority: 1,
+      });
+    }
+  }
+
+  // P2 — Approved quotes that haven't been turned into jobs
+  if (approvedQuotes.length > 0) {
+    const approvedCents = approvedQuotes.reduce((s: number, q: any) => s + Number(q.quote_total_cents ?? 0), 0);
+    capacityActions.push({
+      text: `Book ${approvedQuotes.length} approved quote${approvedQuotes.length !== 1 ? "s" : ""} — ${money(approvedCents)}`,
+      why: "Customers said yes. Put them on the schedule before they reconsider.",
+      color: "#10b981",
+      priority: 2,
+    });
+  }
+
+  // Split unscheduled jobs into FRESH (< 60 days old, still worth scheduling)
+  // vs STALE (60+ days old, likely abandoned and just needs cleanup).
+  const STALE_UNSCHED_DAYS = 60;
+  const freshUnscheduledJobs = unscheduledJobs.filter((j: any) => {
+    if (!j.created_at) return true;
+    const daysOld = (Date.now() - new Date(j.created_at).getTime()) / 86400000;
+    return daysOld < STALE_UNSCHED_DAYS;
+  });
+  const staleUnscheduledJobs = unscheduledJobs.filter((j: any) => {
+    if (!j.created_at) return false;
+    const daysOld = (Date.now() - new Date(j.created_at).getTime()) / 86400000;
+    return daysOld >= STALE_UNSCHED_DAYS;
+  });
+
+  // P2 — Fresh unscheduled jobs needing a date
+  if (freshUnscheduledJobs.length > 0) {
+    const unschedCents = freshUnscheduledJobs.reduce((s: number, j: any) => s + Number(j.total_amount_cents ?? 0), 0);
+    capacityActions.push({
+      text: `Schedule ${freshUnscheduledJobs.length} unscheduled job${freshUnscheduledJobs.length !== 1 ? "s" : ""}${unschedCents > 0 ? ` — ${money(unschedCents)}` : ""}`,
+      why: "These jobs are sitting in your queue without a date. Pick a day so the work gets done.",
+      color: "#f59e0b",
+      priority: 2,
+    });
+  }
+
+  // P3 — Next week under-booked
+  const nextWeekHmap = heatmapWeeks[1];
+  if (nextWeekHmap && effectiveWeeklyTarget > 0) {
+    const nextWeekBooked = workDaysList.reduce(
+      (s: number, d: string) => s + (nextWeekHmap.days[d]?.revenueCents || 0),
+      0,
+    );
+    const nextWeekPct = nextWeekBooked / effectiveWeeklyTarget;
+    if (nextWeekPct < 0.7) {
+      const gap = effectiveWeeklyTarget - nextWeekBooked;
+      capacityActions.push({
+        text: `Next week is ${Math.round(nextWeekPct * 100)}% booked — ${money(gap)} of open capacity`,
+        why: "Plan ahead: this is the easiest week to fill since you still have time to schedule customers.",
+        color: "#5aa6ff",
+        priority: 3,
+      });
+    }
+  }
+
+  // P5 — Cleanup: stale late visits (30+ days late) + stale unscheduled jobs
+  // (60+ days old). Combined into one grey callout.
+  const cleanupItemCount = staleLateVisits.length + staleUnscheduledJobs.length;
+  if (cleanupItemCount > 0) {
+    const staleLateCents = staleLateVisits.reduce((s: number, v: any) => s + visitRevCents(v), 0);
+    const staleUnschedCents = staleUnscheduledJobs.reduce(
+      (s: number, j: any) => s + Number(j.total_amount_cents ?? 0),
+      0,
+    );
+    const totalStaleCents = staleLateCents + staleUnschedCents;
+    const parts: string[] = [];
+    if (staleLateVisits.length > 0) {
+      parts.push(`${staleLateVisits.length} visit${staleLateVisits.length !== 1 ? "s" : ""} 30+ days late`);
+    }
+    if (staleUnscheduledJobs.length > 0) {
+      parts.push(`${staleUnscheduledJobs.length} unscheduled job${staleUnscheduledJobs.length !== 1 ? "s" : ""} 60+ days old`);
+    }
+    capacityActions.push({
+      text: `Archive ${cleanupItemCount} stale item${cleanupItemCount !== 1 ? "s" : ""} if you don't need them${totalStaleCents > 0 ? ` — ${money(totalStaleCents)}` : ""}`,
+      why: `${parts.join(" and ")}. They've been sitting too long to act on. Archive in Jobber to keep your dashboard honest.`,
+      color: "#6b7280",
+      priority: 5,
+    });
+  }
+
+  // P4 — Open capacity over the next 6 weeks (informational)
+  if (effectiveWeeklyTarget > 0) {
+    const sixWeekTarget = effectiveWeeklyTarget * 6;
+    let sixWeekBooked = 0;
+    for (const w of heatmapWeeks) {
+      for (const d of workDaysList) {
+        sixWeekBooked += w.days[d]?.revenueCents || 0;
+      }
+    }
+    const openCents = Math.max(0, sixWeekTarget - sixWeekBooked);
+    if (openCents > effectiveWeeklyTarget * 0.5) {
+      capacityActions.push({
+        text: `${money(openCents)} in open slots over the next 6 weeks`,
+        why: "Plenty of room to fill. Use the action list below to see exactly which jobs need scheduling.",
+        color: "#94a3b8",
+        priority: 4,
+      });
+    }
+  }
+
+  capacityActions.sort((a, b) => a.priority - b.priority);
+
+  /* ------------------------------------------------------------------ */
   /*  Render                                                             */
   /* ------------------------------------------------------------------ */
   return (
@@ -523,25 +689,11 @@ export default async function CapacityPage({
       <ErrorBoundary>
       <div className="dashboard-container">
 
-
-        {/* 8-Week Capacity Heatmap */}
-        <div className="panel animate-in delay-1" style={{ marginTop: 12, padding: "16px 20px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>Your Next 6 Weeks</h2>
-            {effectiveWeeklyTarget > 0 && (
-              <span className="text-muted" style={{ fontSize: 11 }}>
-                Weekly goal: {money(effectiveWeeklyTarget)}
-                {isAutoCapacity && <span style={{ fontSize: 9, marginLeft: 4, padding: "1px 4px", borderRadius: 3, background: "rgba(90,166,255,0.1)" }}>based on your recent weeks</span>}
-              </span>
-            )}
-          </div>
-          <CapacityHeatmap
-            weeks={heatmapWeeks}
-            dayLabels={dayLabels.filter(d => workDaysList.includes(d))}
-            weeklyTargetCents={effectiveWeeklyTarget || 0}
-            currencyCode={currencyCode}
-          />
-        </div>
+        {/* ===== Here's What Needs Your Attention (prioritized capacity actions) ===== */}
+        <AttentionList
+          actions={capacityActions}
+          emptyMessage="Schedule looks clean — nothing urgent to handle right now."
+        />
 
         {/* Action Lists: Unscheduled + Late */}
         <CapacityActionList

@@ -228,14 +228,23 @@ export function OutstandingInvoices({
   const nowMs = Date.now();
 
   // Outstanding buckets by aging
+  // Order: most actionable first → stale (write-off candidates) last.
+  // Stale = 180+ days overdue. These are pulled out so they don't inflate
+  // the "way overdue" panic number — they're effectively write-offs.
+  const STALE_OVERDUE_DAYS = 180;
   const outstandingBuckets: Bucket[] = [
-    { key: "30plus", label: "Way Overdue (30+ days)", range: "Call them today", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
+    { key: "30plus", label: "Way Overdue (30\u2013179 days)", range: "Call them today", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
     { key: "7to30", label: "Getting Late (8\u201330 days)", range: "Send a reminder", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
     { key: "1to7", label: "Just Past Due (1\u20137 days)", range: "Just came due", color: "#5aa6ff", bg: "rgba(90,166,255,0.08)", items: [], totalCents: 0 },
     { key: "current", label: "Not Due Yet", range: "On time", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
+    { key: "stale", label: "Stale (180+ days)", range: "Likely write-off \u2014 archive if not collectible", color: "#6b7280", bg: "rgba(107,114,128,0.08)", items: [], totalCents: 0 },
   ];
   for (const inv of invoices) {
-    const b = inv.days_overdue >= 30 ? outstandingBuckets[0] : inv.days_overdue >= 7 ? outstandingBuckets[1] : inv.days_overdue > 0 ? outstandingBuckets[2] : outstandingBuckets[3];
+    const b = inv.days_overdue >= STALE_OVERDUE_DAYS ? outstandingBuckets[4]
+      : inv.days_overdue >= 30 ? outstandingBuckets[0]
+      : inv.days_overdue >= 7 ? outstandingBuckets[1]
+      : inv.days_overdue > 0 ? outstandingBuckets[2]
+      : outstandingBuckets[3];
     b.totalCents += inv.balance_cents;
     b.items.push({
       key: inv.invoice_number,
@@ -254,11 +263,11 @@ export function OutstandingInvoices({
     });
   }
 
-  // Needs invoicing buckets
+  // Needs invoicing buckets — by days since work completed
   const needsBuckets: Bucket[] = [
-    { key: "30plus", label: "Way Overdue \u2014 Bill Now", range: "", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
-    { key: "7to30", label: "Send the Invoice Soon", range: "", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
-    { key: "under7", label: "Recently Finished", range: "", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
+    { key: "30plus", label: "Way Overdue \u2014 Bill Now", range: "30+ days since work done", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
+    { key: "7to30", label: "Send the Invoice Soon", range: "7\u201329 days since work done", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
+    { key: "under7", label: "Recently Finished", range: "0\u20136 days since work done", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
   ];
   for (const j of needsInvoicing) {
     const completedDate = j.scheduled_at ? new Date(j.scheduled_at).getTime() : 0;
@@ -274,17 +283,18 @@ export function OutstandingInvoices({
       cells: [
         <span key="age" style={{ textAlign: "center", display: "block" }}><span style={{ padding: "2px 7px", borderRadius: 5, fontSize: 11, fontWeight: 700, color: waitColor, background: `${waitColor}18` }}>{daysWaiting}d</span></span>,
         <div key="name"><div className="cell-primary" style={{ fontWeight: 600 }}>#{j.job_number}{j.completedVisits ? <span className="text-muted" style={{ fontWeight: 500, fontSize: 11 }}> &bull; {j.completedVisits} visit{j.completedVisits !== 1 ? "s" : ""}</span> : null}</div><div className="cell-secondary" style={{ fontSize: 11, marginTop: 2 }}>{j.job_title}</div></div>,
+        <span key="completed" className="cell-muted" style={{ whiteSpace: "nowrap", textAlign: "center", display: "block" }}>{fmtDate(j.scheduled_at)}</span>,
         <span key="amt" className="cell-primary" style={{ fontWeight: 600, whiteSpace: "nowrap", textAlign: "right", display: "block" }}>{money(j.total_amount_cents)}</span>,
         j.jobber_url ? <a key="link" href={j.jobber_url} target="_blank" rel="noreferrer" className="btn" style={{ padding: "4px 10px", fontSize: 11 }}>View &rarr;</a> : <span key="link" />,
       ],
     });
   }
 
-  // Draft buckets
+  // Draft buckets — by days sitting in draft
   const draftBuckets: Bucket[] = [
-    { key: "30plus", label: "Sitting Too Long \u2014 Send Now", range: "", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
-    { key: "7to30", label: "Review and Send", range: "", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
-    { key: "under7", label: "Just Created", range: "", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
+    { key: "30plus", label: "Sitting Too Long \u2014 Send Now", range: "30+ days in draft", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
+    { key: "7to30", label: "Review and Send", range: "7\u201329 days in draft", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
+    { key: "under7", label: "Just Created", range: "0\u20136 days in draft", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
   ];
   for (const d of drafts) {
     const createdDate = d.created_at ? new Date(d.created_at).getTime() : 0;
@@ -324,8 +334,9 @@ export function OutstandingInvoices({
     : activeTab === "needs_invoicing"
     ? [
         { label: "Waiting", align: "center", width: 90 },
-        { label: "Job", width: "40%" },
-        { label: "Amount", align: "right", width: "25%" },
+        { label: "Job", width: "35%" },
+        { label: "Work Done", align: "center", width: "20%" },
+        { label: "Amount", align: "right", width: "20%" },
         { label: "Action", align: "center", width: 80 },
       ]
     : [
@@ -362,16 +373,15 @@ export function OutstandingInvoices({
   type ToggleCard = { key: TabKey; label: string; count: number; dollars: string; color: string };
   const toggleCards: ToggleCard[] = [
     { key: "needs_invoicing", label: "Work Done, Not Billed", count: needsInvoicing.length, dollars: money(totalNeedsInvoicing), color: "#10b981" },
-    { key: "drafts", label: "Invoices to Send", count: drafts.length, dollars: money(totalDrafts), color: "#6b7280" },
+    { key: "drafts", label: "Draft Invoices", count: drafts.length, dollars: money(totalDrafts), color: "#6b7280" },
     { key: "outstanding", label: "Money Owed to You", count: invoices.length, dollars: money(totalOutstanding), color: "#ef4444" },
   ];
 
   return (
     <div className="panel animate-in delay-2" style={{ marginTop: 20, padding: 20 }}>
-      {/* Title row with inline toggle cards */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-        <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>What Needs Your Attention</h2>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {/* Toggle cards row (left-aligned, no header) */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {toggleCards.map(card => {
             const active = activeTab === card.key;
             return (
@@ -380,33 +390,33 @@ export function OutstandingInvoices({
                 className="toggle-btn"
                 onClick={() => setTab(card.key)}
                 style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "6px 14px", borderRadius: 10,
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "10px 18px", borderRadius: 12,
                   border: "none",
                   background: active
-                    ? `linear-gradient(135deg, ${card.color}22, ${card.color}10)`
+                    ? `linear-gradient(135deg, ${card.color}25, ${card.color}12)`
                     : (isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)"),
                   boxShadow: active
-                    ? `0 0 0 1.5px ${card.color}, 0 2px 8px ${card.color}20`
+                    ? `0 0 0 2px ${card.color}, 0 4px 12px ${card.color}25`
                     : `inset 0 0 0 1px ${isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"}`,
                   cursor: "pointer", transition: "all 0.2s ease",
                   opacity: active ? 1 : 0.65,
-                  transform: active ? "scale(1)" : "scale(0.98)",
+                  transform: active ? "scale(1)" : "scale(0.97)",
                 }}
               >
                 <span style={{
-                  width: 7, height: 7, borderRadius: "50%",
+                  width: 9, height: 9, borderRadius: "50%",
                   background: card.color, flexShrink: 0,
-                  boxShadow: active ? `0 0 6px ${card.color}60` : "none",
+                  boxShadow: active ? `0 0 8px ${card.color}80` : "none",
                 }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: isLight ? "#334155" : "rgba(255,255,255,0.8)" }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: isLight ? "#334155" : "rgba(255,255,255,0.85)" }}>
                   {card.label}
                 </span>
-                <span style={{ fontSize: 12, fontWeight: 800, color: isLight ? "#1e293b" : "#EAF1FF" }}>
+                <span style={{ fontSize: 14, fontWeight: 800, color: isLight ? "#1e293b" : "#EAF1FF" }}>
                   {card.count.toLocaleString()}
                 </span>
                 {card.count > 0 && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: card.color }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: card.color }}>
                     {card.dollars}
                   </span>
                 )}

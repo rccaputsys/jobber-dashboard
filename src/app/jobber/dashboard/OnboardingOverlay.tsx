@@ -5,6 +5,19 @@ import { useRouter } from "next/navigation";
 import { useIsLight } from "@/lib/hooks";
 import { track } from "@/lib/analytics";
 
+// ---------------------------------------------------------------------------
+// Onboarding flow — rebuilt 2026-04-09 to match the new "Here's what needs
+// your attention" UI pattern across all four tabs.
+//
+// Flow:  Welcome → 5-step spotlight tour → Completion screen → optional
+//        floating "Resume tour" button if minimized.
+//
+// The previous version had 8 steps targeting elements that no longer exist
+// (revenue chart, week-glance, invoice trends chart, etc.) and a separate
+// persistent setup checklist. Both have been removed in favor of a single
+// focused tour that hits the actual current UI.
+// ---------------------------------------------------------------------------
+
 type OnboardingState = {
   hasData: boolean;
   weeklyTargetSet: boolean;
@@ -29,99 +42,56 @@ function useLocalFlag(key: string): [boolean, () => void] {
   return [done, mark];
 }
 
-// Tour steps: each targets a real element on the page and optionally navigates to a tab
 type TourStep = {
-  selector: string;        // CSS selector for the element to highlight
+  selector: string;            // CSS selector to spotlight
+  tab: string;                 // Path to navigate to before spotlighting
   title: string;
   body: string;
-  tab?: string;            // URL to navigate to before highlighting
-  position?: "top" | "bottom" | "left" | "right";
-  interactive?: boolean;   // If true, user can click within the spotlight area
-  scrollTo?: "top" | "center" | "bottom"; // Where to scroll the element — default "center"
-  onEnter?: () => void;    // Called when step becomes active
-  onLeave?: () => void;    // Called when leaving this step
-  autoAdvanceOnEvent?: string; // If set, auto-advance when this DOM event fires
+  scrollTo?: "top" | "center" | "bottom";
 };
 
 const TOUR_STEPS: TourStep[] = [
   {
-    selector: "[data-tour='revenue-chart']",
+    selector: "[data-tour='overview-actions']",
     tab: "/jobber/dashboard",
-    title: "Here's your money coming in",
-    body: "This shows how much work you completed each month. You can switch to a weekly view if you want to zoom in.",
-    position: "bottom",
+    title: "Start with what to do today",
+    body: "Every screen leads with the most important actions. This top panel shows your top three priorities right now — overdue collections, cooling quotes, and open capacity.",
+    scrollTo: "top",
   },
   {
-    selector: "[data-tour='week-glance']",
+    selector: "[data-tour='overview-cards']",
     tab: "/jobber/dashboard",
-    title: "Your week in four numbers",
-    body: "What's booked, what's done, what got paid, and quotes you won. Try clicking the buttons to see last week or last month.",
-    position: "bottom",
-    interactive: true,
+    title: "Three cards. Three numbers that matter.",
+    body: "Cash to collect, this week's schedule, and your sales pipeline. Each card shows the headline number on top and a detail view you can flip between. Click any card to dig deeper.",
+    scrollTo: "center",
   },
   {
-    selector: "[data-tour='recommendations']",
-    tab: "/jobber/dashboard",
-    title: "Things that need your attention",
-    body: "Unpaid invoices, quotes going cold, work that still needs to be scheduled. The biggest dollar items show up first.",
-    position: "top",
-  },
-  {
-    selector: "[data-tour='sales-pipeline']",
+    selector: "[data-tour='attention-list']",
     tab: "/jobber/sales",
-    title: "Where your quotes stand",
-    body: "Every quote you've sent, from first contact to closed. You can see right away where things are getting stuck.",
-    position: "bottom",
+    title: "Sell — your prioritized quote actions",
+    body: "Cooling quotes, customers waiting on changes, drafts to send, and approved quotes to book. Sorted by urgency. The pipeline below lets you drill into any stage.",
+    scrollTo: "top",
   },
   {
     selector: "[data-tour='sales-actions']",
     tab: "/jobber/sales",
-    title: "Your to-do list for quotes",
-    body: "Use the tabs to see what's waiting on a response, what needs changes, and what you should follow up on. You can collapse groups, sort columns, and export to Excel.",
-    position: "bottom",
-    scrollTo: "top",
-    interactive: true,
+    title: "Drill in, sort, and export",
+    body: "Every action list works the same way. Click a bucket to expand it. Click column headers to sort by amount, age, or date. And the Download button gives you a CSV you can work off of in Excel or send straight to your admin.",
+    scrollTo: "center",
   },
   {
-    selector: "[data-tour='capacity-target']",
+    selector: "[data-tour='attention-list']",
     tab: "/jobber/capacity",
-    title: "How much work do you want each week?",
-    body: "Click the Weekly Target button, type a dollar amount, and hit Save. This tells AccuInsight how full your schedule should be. Once you save it, the chart will show whether you need more work or if you're good.",
-    position: "bottom",
-    interactive: true,
-    autoAdvanceOnEvent: "accuinsight:target-saved",
-    onEnter: () => {
-      const el = document.querySelector("[data-tour='capacity-target'] button");
-      if (el) {
-        (el as HTMLElement).style.outline = "2px solid #5aa6ff";
-        (el as HTMLElement).style.outlineOffset = "2px";
-        (el as HTMLElement).style.animation = "tour-pulse 1.5s ease-in-out infinite";
-      }
-    },
-    onLeave: () => {
-      const el = document.querySelector("[data-tour='capacity-target'] button");
-      if (el) {
-        (el as HTMLElement).style.outline = "";
-        (el as HTMLElement).style.outlineOffset = "";
-        (el as HTMLElement).style.animation = "";
-      }
-    },
+    title: "Book — what's stopping you from filling the schedule",
+    body: "Late visits, unscheduled jobs, approved quotes ready to book. Click the gear on the Weekly Capacity card on your overview to set your target — that's how the dashboard knows when you're booked enough.",
+    scrollTo: "top",
   },
   {
-    selector: "[data-tour='revenue-chart']",
-    tab: "/jobber/dashboard",
-    title: "Is your schedule full enough?",
-    body: "Each bar is one week of booked work. Green means you're on track. Yellow means you could use more. The dotted line is your target.",
-    position: "bottom",
-    interactive: true,
-  },
-  {
-    selector: "[data-tour='invoice-chart']",
+    selector: "[data-tour='attention-list']",
     tab: "/jobber/invoices",
-    title: "Are you getting paid?",
-    body: "Grey bars are what you billed. Green is what came in. If the green is shorter than the grey, someone owes you money. Use the buttons to switch time ranges.",
-    position: "bottom",
-    interactive: true,
+    title: "Collect — get paid for the work you've done",
+    body: "Invoices to chase, work that's done but not yet billed, drafts ready to send. The buckets below show exactly which clients to call and which can probably be written off.",
+    scrollTo: "top",
   },
 ];
 
@@ -135,10 +105,11 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
   const adminQs = adminConnectionId ? `?admin_connection_id=${adminConnectionId}` : "";
   const isLight = useIsLight();
   const router = useRouter();
-  const [ahaShown, dismissAha] = useLocalFlag(`aha_dismissed_${connectionId}`);
+
   const [tourDone, markTourDone] = useLocalFlag(`tour_done_${connectionId}`);
-  const [checklistDismissed, dismissChecklist] = useLocalFlag(`checklist_dismissed_${connectionId}`);
-  // Persist tour step so it survives page navigation
+  const [welcomeShown, markWelcomeShown] = useLocalFlag(`welcome_shown_${connectionId}`);
+
+  // Persisted current step (so navigation between tabs doesn't lose progress)
   const [tourStep, _setTourStep] = useState<number | null>(() => {
     if (typeof window === "undefined") return null;
     const stored = localStorage.getItem(`tour_step_${connectionId}`);
@@ -151,73 +122,24 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
       else localStorage.removeItem(`tour_step_${connectionId}`);
     } catch {}
   }, [connectionId]);
-  const [checklistOpen, setChecklistOpen] = useState(true);
+
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [showComplete, setShowComplete] = useState(false);
+  const [tourMinimized, setTourMinimized] = useState(false);
   const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null);
   const [navigating, setNavigating] = useState(false);
-  const stepRef = useRef(tourStep);
-  stepRef.current = tourStep;
 
-  // Track revenue viewed (auto after 5s on page)
-  const [revenueViewed, setRevenueViewed] = useState(false);
+  // Show welcome modal once for first-time users with data
   useEffect(() => {
-    const stored = localStorage.getItem(`checklist_revenue_${connectionId}`);
-    if (stored === "true") { setRevenueViewed(true); return; }
-    const timer = setTimeout(() => {
-      setRevenueViewed(true);
-      try { localStorage.setItem(`checklist_revenue_${connectionId}`, "true"); } catch {}
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [connectionId]);
-
-  // Track if target was set during this onboarding session
-  // Only checks off if user explicitly visits capacity page and sets a target
-  const [targetSetDuringOnboarding, setTargetSetDuringOnboarding] = useState(false);
-  useEffect(() => {
-    const stored = localStorage.getItem(`checklist_target_${connectionId}`);
-    if (stored === "true") setTargetSetDuringOnboarding(true);
-  }, [connectionId]);
-
-  // Listen for custom event from capacity page when target is saved
-  useEffect(() => {
-    const handler = () => {
-      setTargetSetDuringOnboarding(true);
-      try { localStorage.setItem(`checklist_target_${connectionId}`, "true"); } catch {}
-    };
-    window.addEventListener("accuinsight:target-saved", handler);
-    return () => window.removeEventListener("accuinsight:target-saved", handler);
-  }, [connectionId]);
-
-  // Track if sales target was set
-  const [salesTargetSet, setSalesTargetSet] = useState(false);
-  useEffect(() => {
-    const stored = localStorage.getItem(`checklist_sales_target_${connectionId}`);
-    if (stored === "true") { setSalesTargetSet(true); return; }
-    // Check if any sales target is already set
-    const check = () => {
-      const weekly = localStorage.getItem("accuinsight_weekly_rev_target");
-      const monthly = localStorage.getItem("accuinsight_monthly_rev_target");
-      if ((weekly && Number(weekly) > 0) || (monthly && Number(monthly) > 0)) {
-        setSalesTargetSet(true);
-        try { localStorage.setItem(`checklist_sales_target_${connectionId}`, "true"); } catch {}
-      }
-    };
-    check();
-    // Poll every 3s since sales targets are saved to localStorage by another component
-    const poll = setInterval(check, 3000);
-    return () => clearInterval(poll);
-  }, [connectionId]);
-
-  const prevStepRef = useRef<number | null>(null);
-
-  // Position spotlight on current tour element
-  useEffect(() => {
-    // Fire onLeave for previous step
-    if (prevStepRef.current !== null && prevStepRef.current !== tourStep) {
-      const prevStep = TOUR_STEPS[prevStepRef.current];
-      if (prevStep?.onLeave) prevStep.onLeave();
+    if (state.hasData && !welcomeShown && !tourDone && tourStep === null && !showComplete && !tourMinimized) {
+      markWelcomeShown();
+      setShowWelcome(true);
     }
-    prevStepRef.current = tourStep;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.hasData, welcomeShown]);
 
+  // Spotlight positioning
+  useEffect(() => {
     if (tourStep === null) { setSpotlightRect(null); return; }
     const step = TOUR_STEPS[tourStep];
     if (!step) return;
@@ -226,21 +148,18 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
     const scrollAndSpotlight = () => {
       const el = document.querySelector(step.selector);
       if (!el) {
-        // Element not found yet, retry
-        if (!cancelled) setTimeout(scrollAndSpotlight, 400);
+        if (!cancelled) setTimeout(scrollAndSpotlight, 300);
         return;
       }
 
       setNavigating(false);
-      // Hide spotlight during scroll
       setSpotlightRect(null);
 
-      // Scroll using window.scrollTo for reliability (scrollIntoView can be blocked by overflow:hidden parents)
       const rect = el.getBoundingClientRect();
       const scrollTarget = step.scrollTo || "center";
       let targetY: number;
       if (scrollTarget === "top") {
-        targetY = window.scrollY + rect.top - 100; // 100px from top
+        targetY = window.scrollY + rect.top - 100;
       } else if (scrollTarget === "bottom") {
         targetY = window.scrollY + rect.bottom - window.innerHeight + 100;
       } else {
@@ -248,53 +167,41 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
       }
       window.scrollTo({ top: Math.max(0, targetY), behavior: "smooth" });
 
-      // Poll until scroll settles (rect stops changing), then show spotlight
+      // Wait for scroll to settle, then show spotlight
       let lastTop = -1;
       let settleCount = 0;
       const pollScroll = () => {
         if (cancelled) return;
-        const rect = el.getBoundingClientRect();
-        if (Math.abs(rect.top - lastTop) < 2) {
+        const r = el.getBoundingClientRect();
+        if (Math.abs(r.top - lastTop) < 2) {
           settleCount++;
           if (settleCount >= 3) {
-            // Scroll has settled — show spotlight
-            setSpotlightRect(rect);
-            // Fire onEnter lifecycle
-            if (step.onEnter) step.onEnter();
-            // Auto-advance on custom event (e.g. target saved)
-            if (step.autoAdvanceOnEvent) {
-              const autoHandler = () => { setTimeout(() => advanceTour(), 500); };
-              window.addEventListener(step.autoAdvanceOnEvent, autoHandler, { once: true });
-            }
+            setSpotlightRect(r);
             return;
           }
         } else {
           settleCount = 0;
         }
-        lastTop = rect.top;
+        lastTop = r.top;
         requestAnimationFrame(pollScroll);
       };
-      // Start polling after a short delay
       setTimeout(pollScroll, 100);
     };
 
-    // Navigate if needed (compare pathname only, ignore query string)
     const currentPath = window.location.pathname;
-    if (step.tab && !currentPath.startsWith(step.tab)) {
+    if (!currentPath.startsWith(step.tab)) {
       setNavigating(true);
       setSpotlightRect(null);
       router.push(step.tab + adminQs);
-      // Wait for page to load, then scroll and spotlight
-      setTimeout(scrollAndSpotlight, 2500);
+      setTimeout(scrollAndSpotlight, 1500);
     } else {
-      // Same page — small delay then scroll
       setTimeout(scrollAndSpotlight, 200);
     }
 
     return () => { cancelled = true; };
-  }, [tourStep, router]);
+  }, [tourStep, router, adminQs]);
 
-  // Reposition on scroll/resize/DOM changes (debounced)
+  // Reposition spotlight on scroll/resize
   useEffect(() => {
     if (tourStep === null) return;
     let rafId: number;
@@ -310,21 +217,8 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
     };
     window.addEventListener("scroll", reposition, true);
     window.addEventListener("resize", reposition);
-
-    // Watch for DOM changes inside the spotlight target (e.g. input expanding)
-    const step = TOUR_STEPS[tourStep];
-    let observer: MutationObserver | null = null;
-    if (step) {
-      const el = document.querySelector(step.selector);
-      if (el) {
-        observer = new MutationObserver(reposition);
-        observer.observe(el, { childList: true, subtree: true, attributes: true });
-      }
-    }
-
     return () => {
       cancelAnimationFrame(rafId);
-      if (observer) observer.disconnect();
       window.removeEventListener("scroll", reposition, true);
       window.removeEventListener("resize", reposition);
     };
@@ -335,9 +229,6 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
   const muted = isLight ? "#64748b" : "rgba(255,255,255,0.5)";
   const primary = isLight ? "#1e293b" : "#EAF1FF";
 
-  const [showTourComplete, setShowTourComplete] = useState(false);
-  const [tourMinimized, setTourMinimized] = useState(false);
-
   const advanceTour = () => {
     if (tourStep !== null && tourStep < TOUR_STEPS.length - 1) {
       track("tour_step_completed", { step: tourStep, title: TOUR_STEPS[tourStep]?.title });
@@ -346,105 +237,103 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
       track("tour_completed", { total_steps: TOUR_STEPS.length });
       setTourStep(null);
       markTourDone();
-      setShowTourComplete(true);
+      setShowComplete(true);
     }
   };
 
   const lastStepRef = useRef<number>(0);
-  const endTour = () => {
-    track("tour_skipped", { at_step: tourStep, title: TOUR_STEPS[tourStep ?? 0]?.title });
+  const minimizeTour = () => {
+    track("tour_minimized", { at_step: tourStep });
     lastStepRef.current = tourStep ?? 0;
     setTourMinimized(true);
     setTourStep(null);
   };
 
-  const fullyDismissTour = () => {
-    setTourMinimized(false);
-    markTourDone();
-    if (!window.location.pathname.startsWith("/jobber/dashboard")) {
-      router.push("/jobber/dashboard" + adminQs);
-    }
+  const startTour = () => {
+    track("tour_started");
+    setShowWelcome(false);
+    setTourStep(0);
   };
 
-  const [showWelcome, setShowWelcome] = useState(false);
-
-  // Show welcome screen for first-time users
-  useEffect(() => {
-    if (state.hasData && !ahaShown && !tourDone && tourStep === null && !showTourComplete && !tourMinimized) {
-      dismissAha();
-      setShowWelcome(true);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.hasData, ahaShown]);
-
-  // Welcome screen — lets user start the tour
+  // ---- Welcome modal ----
   if (showWelcome) {
     return (
       <div style={{
-        position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-        background: "rgba(0,0,0,0.6)", zIndex: 1000,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: 20,
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
       }}>
         <div style={{
           background: bg, borderRadius: 20, padding: "36px 32px",
-          maxWidth: 420, width: "100%",
+          maxWidth: 440, width: "100%",
           border: `1px solid ${cardBorder}`,
-          boxShadow: "0 24px 48px rgba(0,0,0,0.3)",
+          boxShadow: "0 24px 60px rgba(0,0,0,0.4)",
           textAlign: "center",
         }}>
           <div style={{
-            width: 56, height: 56, borderRadius: 14, margin: "0 auto 20px",
-            background: "linear-gradient(135deg, rgba(90,166,255,0.15), rgba(90,166,255,0.15))",
+            width: 64, height: 64, borderRadius: 16, margin: "0 auto 22px",
+            background: "linear-gradient(135deg, rgba(90,166,255,0.18), rgba(56,189,248,0.18))",
             display: "flex", alignItems: "center", justifyContent: "center",
+            border: "1px solid rgba(90,166,255,0.25)",
           }}>
-            <svg width="28" height="28" viewBox="0 0 50 50">
-              <defs><linearGradient id="wg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#5aa6ff" /><stop offset="100%" stopColor="#5aa6ff" /></linearGradient></defs>
-              <circle cx="25" cy="25" r="22" fill="none" stroke="url(#wg)" strokeWidth="3" />
-              <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#wg)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            <svg width="32" height="32" viewBox="0 0 50 50">
+              <defs>
+                <linearGradient id="welcomeLg" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#5aa6ff" />
+                  <stop offset="100%" stopColor="#38bdf8" />
+                </linearGradient>
+              </defs>
+              <circle cx="25" cy="25" r="22" fill="none" stroke="url(#welcomeLg)" strokeWidth="3" />
+              <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#welcomeLg)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: primary, marginBottom: 8 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: primary, marginBottom: 10 }}>
             Welcome to AccuInsight
           </div>
           <div style={{ fontSize: 14, color: muted, lineHeight: 1.7, marginBottom: 28 }}>
-            Your Jobber data is ready. Let's take a quick look at what's here so you know where everything is. Takes about 60 seconds.
+            Your Jobber data is in. Take a 60-second tour so you know exactly where to look when you need to chase money, fill the schedule, or close a deal.
           </div>
           <button
-            onClick={() => { track("tour_started"); setShowWelcome(false); setTourStep(0); }}
-            className="btn"
+            onClick={startTour}
             style={{
               padding: "14px 36px", fontSize: 15, fontWeight: 700,
               background: "linear-gradient(135deg, #5aa6ff, #38bdf8)",
               color: "#fff", border: "none", borderRadius: 12,
-              cursor: "pointer", boxShadow: "0 4px 16px rgba(90,166,255,0.3)",
-              width: "100%",
+              cursor: "pointer", boxShadow: "0 4px 16px rgba(90,166,255,0.35)",
+              width: "100%", marginBottom: 10,
             }}
           >
             Show me around
+          </button>
+          <button
+            onClick={() => { setShowWelcome(false); markTourDone(); }}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              fontSize: 12, fontWeight: 600, color: muted, padding: "6px 12px",
+            }}
+          >
+            Skip the tour
           </button>
         </div>
       </div>
     );
   }
 
-  // Tour complete screen
-  if (showTourComplete) {
+  // ---- Tour complete screen ----
+  if (showComplete) {
     return (
       <div style={{
-        position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-        background: "rgba(0,0,0,0.6)", zIndex: 1000,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: 20,
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
       }}>
         <div style={{
           background: bg, borderRadius: 20, padding: "36px 32px",
-          maxWidth: 440, width: "100%",
+          maxWidth: 460, width: "100%",
           border: `1px solid ${cardBorder}`,
-          boxShadow: "0 24px 48px rgba(0,0,0,0.3)",
+          boxShadow: "0 24px 60px rgba(0,0,0,0.4)",
           textAlign: "center",
         }}>
-          {/* Completion checkmark */}
           <div style={{
             width: 56, height: 56, borderRadius: "50%", margin: "0 auto 20px",
             background: "linear-gradient(135deg, #10b981, #059669)",
@@ -454,29 +343,25 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
           }}>
             {"\u2713"}
           </div>
-
           <div style={{ fontSize: 22, fontWeight: 800, color: primary, marginBottom: 8 }}>
-            Your dashboard is ready.
+            You&apos;re all set.
           </div>
-          <div style={{ fontSize: 14, color: muted, lineHeight: 1.7, marginBottom: 24 }}>
-            Everything updates automatically when you sync. Check back weekly to stay on top of your numbers, or whenever you want a quick pulse on the business.
+          <div style={{ fontSize: 14, color: muted, lineHeight: 1.7, marginBottom: 20 }}>
+            One last thing: set your <strong style={{ color: primary }}>weekly capacity target</strong> by clicking the gear icon on the Weekly Capacity card. That tells AccuInsight when you&apos;re fully booked vs. need more work.
           </div>
 
           {/* Founder note */}
           <div style={{
-            padding: "18px 20px", borderRadius: 12, marginBottom: 24,
-            background: isLight ? "rgba(90,166,255,0.04)" : "rgba(90,166,255,0.08)",
-            border: `1px solid ${isLight ? "rgba(90,166,255,0.12)" : "rgba(90,166,255,0.15)"}`,
+            padding: "16px 18px", borderRadius: 12, marginBottom: 20,
+            background: isLight ? "rgba(90,166,255,0.05)" : "rgba(90,166,255,0.08)",
+            border: `1px solid ${isLight ? "rgba(90,166,255,0.12)" : "rgba(90,166,255,0.18)"}`,
             textAlign: "left",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
               <img
                 src="/ryan-headshot.jpg"
                 alt="Ryan"
-                style={{
-                  width: 40, height: 40, borderRadius: "50%",
-                  objectFit: "cover",
-                }}
+                style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover" }}
               />
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: primary }}>Ryan</div>
@@ -484,7 +369,7 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
               </div>
             </div>
             <div style={{ fontSize: 13, color: muted, lineHeight: 1.7 }}>
-              I owned a service company for years. I built AccuInsight because I was tired of digging through Jobber reports to figure out how we were doing. If you have questions or feedback, reach out anytime.
+              I owned a service company for years and got tired of digging through Jobber reports just to know how we were doing. The bigger problem was knowing what to prioritize, and what to put in front of my staff every morning. AccuInsight uses your own data to surface the priorities so you spend less time telling people what to go do, and more time running the business. Reach out anytime.
             </div>
             <a href="mailto:ryan@ownerview.io" style={{
               display: "inline-block", marginTop: 12,
@@ -496,17 +381,16 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
 
           <button
             onClick={() => {
-              setShowTourComplete(false);
+              setShowComplete(false);
               if (!window.location.pathname.startsWith("/jobber/dashboard")) {
                 router.push("/jobber/dashboard" + adminQs);
               }
             }}
-            className="btn"
             style={{
               padding: "14px 36px", fontSize: 15, fontWeight: 700,
               background: "linear-gradient(135deg, #5aa6ff, #38bdf8)",
               color: "#fff", border: "none", borderRadius: 12,
-              cursor: "pointer", boxShadow: "0 4px 16px rgba(90,166,255,0.3)",
+              cursor: "pointer", boxShadow: "0 4px 16px rgba(90,166,255,0.35)",
               width: "100%",
             }}
           >
@@ -517,84 +401,17 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
     );
   }
 
-  // Aha modal (only if tour doesn't auto-start — fallback)
-  if (state.hasData && !ahaShown) {
-    return (
-      <div style={{
-        position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-        background: "rgba(0,0,0,0.6)", zIndex: 1000,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: 20,
-      }}
-        onClick={dismissAha}
-      >
-        <div style={{
-          background: bg, borderRadius: 16, padding: "32px",
-          maxWidth: 400, width: "100%",
-          border: `1px solid ${cardBorder}`,
-          boxShadow: "0 24px 48px rgba(0,0,0,0.3)",
-          textAlign: "center",
-        }}
-          onClick={e => e.stopPropagation()}
-        >
-          <div style={{
-            width: 48, height: 48, borderRadius: 12, margin: "0 auto 16px",
-            background: "linear-gradient(135deg, rgba(90,166,255,0.15), rgba(90,166,255,0.15))",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 24,
-          }}>
-            <svg width="24" height="24" viewBox="0 0 50 50">
-              <defs><linearGradient id="og" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#5aa6ff" /><stop offset="100%" stopColor="#5aa6ff" /></linearGradient></defs>
-              <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#og)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: primary, marginBottom: 8 }}>
-            Your data is here.
-          </div>
-          <div style={{ fontSize: 14, color: muted, lineHeight: 1.6, marginBottom: 24 }}>
-            That's your last few months of revenue pulled straight from Jobber. Poke around, every tab has something useful.
-          </div>
-          <button
-            onClick={dismissAha}
-            className="btn"
-            style={{
-              padding: "12px 32px", fontSize: 15, fontWeight: 700,
-              background: "linear-gradient(135deg, #5aa6ff, #38bdf8)",
-              color: "#fff", border: "none", borderRadius: 10,
-              cursor: "pointer", boxShadow: "0 4px 12px rgba(90,166,255,0.3)",
-            }}
-          >
-            Got it
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Tour with spotlight
+  // ---- Active tour with spotlight ----
   if (tourStep !== null) {
     const step = TOUR_STEPS[tourStep];
     const pad = 12;
     const hasSpotlight = spotlightRect && !navigating;
-
-    // Tooltip always fixed at bottom-center for consistency
-    const tooltipW = Math.min(400, window.innerWidth - 32);
-    const tooltipStyle: React.CSSProperties = {
-      position: "fixed", zIndex: 1002,
-      bottom: 24, left: "50%", transform: "translateX(-50%)",
-      background: bg, borderRadius: 16, padding: "20px 24px",
-      width: tooltipW,
-      border: `1px solid ${cardBorder}`,
-      boxShadow: "0 -8px 32px rgba(0,0,0,0.3), 0 16px 48px rgba(0,0,0,0.4)",
-    };
+    const tooltipW = typeof window !== "undefined" ? Math.min(440, window.innerWidth - 32) : 440;
 
     return (
       <>
         {/* Dark overlay with spotlight cutout */}
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-          zIndex: 1001, pointerEvents: "none",
-        }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 1001, pointerEvents: "none" }}>
           <svg width="100%" height="100%" style={{ position: "absolute", top: 0, left: 0 }}>
             <defs>
               <mask id="spotlight-mask">
@@ -611,7 +428,7 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
                 )}
               </mask>
             </defs>
-            <rect width="100%" height="100%" fill={step.interactive ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0.6)"} mask="url(#spotlight-mask)" />
+            <rect width="100%" height="100%" fill="rgba(0,0,0,0.55)" mask="url(#spotlight-mask)" />
           </svg>
 
           {/* Spotlight border glow */}
@@ -623,69 +440,77 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
               width: spotlightRect.width + pad * 2,
               height: spotlightRect.height + pad * 2,
               borderRadius: 12,
-              border: "2px solid rgba(90,166,255,0.4)",
-              boxShadow: "0 0 16px rgba(90,166,255,0.15)",
+              border: "2px solid rgba(90,166,255,0.5)",
+              boxShadow: "0 0 24px rgba(90,166,255,0.25), 0 0 0 3px rgba(90,166,255,0.08)",
               pointerEvents: "none",
               transition: "top 0.3s ease, left 0.3s ease, width 0.3s ease, height 0.3s ease",
-              willChange: "top, left, width, height",
             }} />
           )}
         </div>
 
-        {/* Click blocker — on interactive steps, clip-path cuts a hole so real elements are clickable */}
-        {step.interactive && hasSpotlight ? (
-          <div
-            style={{
-              position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1001,
-              clipPath: `polygon(0% 0%, 0% 100%, ${spotlightRect.left - pad}px 100%, ${spotlightRect.left - pad}px ${spotlightRect.top - pad}px, ${spotlightRect.right + pad}px ${spotlightRect.top - pad}px, ${spotlightRect.right + pad}px ${spotlightRect.bottom + pad}px, ${spotlightRect.left - pad}px ${spotlightRect.bottom + pad}px, ${spotlightRect.left - pad}px 100%, 100% 100%, 100% 0%)`,
-            }}
-          />
-        ) : (
-          <div
-            style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1001 }}
-          />
-        )}
+        {/* Click blocker (full overlay over screen, blocks interaction during tour) */}
+        <div style={{ position: "fixed", inset: 0, zIndex: 1001 }} />
 
-        {/* Tooltip */}
-        <div style={{ ...tooltipStyle, position: "fixed" }} onClick={e => e.stopPropagation()}>
-          {/* Subtle X to minimize */}
+        {/* Tooltip — fixed at bottom-center */}
+        <div
+          style={{
+            position: "fixed", zIndex: 1002,
+            bottom: 24, left: "50%", transform: "translateX(-50%)",
+            background: bg, borderRadius: 16, padding: "20px 24px",
+            width: tooltipW,
+            border: `1px solid ${cardBorder}`,
+            boxShadow: "0 -8px 32px rgba(0,0,0,0.3), 0 16px 48px rgba(0,0,0,0.4)",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Minimize X */}
           <button
-            onClick={endTour}
+            onClick={minimizeTour}
+            aria-label="Minimize tour"
             style={{
               position: "absolute", top: 10, right: 12,
               background: "none", border: "none",
-              color: isLight ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.15)",
-              fontSize: 16, cursor: "pointer", padding: "2px 4px", lineHeight: 1,
+              color: isLight ? "rgba(0,0,0,0.25)" : "rgba(255,255,255,0.2)",
+              fontSize: 18, cursor: "pointer", padding: "2px 6px", lineHeight: 1,
             }}
-            onMouseEnter={e => { e.currentTarget.style.color = isLight ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.4)"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = isLight ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.15)"; }}
           >
             &times;
           </button>
-          {/* Step progress with checkmarks */}
+
+          {/* Step progress dots */}
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
-            {TOUR_STEPS.map((s, i) => (
+            {TOUR_STEPS.map((_, i) => (
               <div key={i} style={{
-                width: 24, height: 24, borderRadius: "50%", flexShrink: 0,
+                width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 11, fontWeight: 800,
-                background: i < tourStep ? "#10b981" : i === tourStep ? "linear-gradient(135deg, #5aa6ff, #38bdf8)" : (isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)"),
+                background: i < tourStep
+                  ? "#10b981"
+                  : i === tourStep
+                    ? "linear-gradient(135deg, #5aa6ff, #38bdf8)"
+                    : (isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)"),
                 color: i <= tourStep ? "#fff" : muted,
                 transition: "all 0.3s ease",
-                boxShadow: i === tourStep ? "0 2px 8px rgba(90,166,255,0.3)" : "none",
+                boxShadow: i === tourStep ? "0 2px 8px rgba(90,166,255,0.35)" : "none",
               }}>
                 {i < tourStep ? "\u2713" : i + 1}
               </div>
             ))}
-            <span style={{ fontSize: 11, fontWeight: 600, color: muted, marginLeft: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: muted, marginLeft: 6 }}>
               {tourStep + 1} of {TOUR_STEPS.length}
             </span>
           </div>
 
-          <div style={{ fontSize: 16, fontWeight: 700, color: primary, marginBottom: 6, opacity: navigating ? 0.4 : 1, transition: "opacity 0.3s ease" }}>
-            {navigating ? `Going to ${step.tab?.split("/").pop() || "next section"}...` : step.title}
+          <div style={{
+            fontSize: 17, fontWeight: 800, color: primary, marginBottom: 6,
+            opacity: navigating ? 0.4 : 1, transition: "opacity 0.3s ease",
+          }}>
+            {navigating ? "Loading next section..." : step.title}
           </div>
-          <div style={{ fontSize: 13, color: muted, lineHeight: 1.6, marginBottom: 20, opacity: navigating ? 0.3 : 1, transition: "opacity 0.3s ease" }}>
+          <div style={{
+            fontSize: 13, color: muted, lineHeight: 1.6, marginBottom: 20,
+            opacity: navigating ? 0.3 : 1, transition: "opacity 0.3s ease",
+          }}>
             {navigating ? "" : step.body}
           </div>
 
@@ -695,9 +520,11 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
                 <button
                   onClick={() => setTourStep(tourStep - 1)}
                   style={{
-                    background: "none", border: `1px solid ${cardBorder}`, color: primary,
-                    fontSize: 12, fontWeight: 600, cursor: "pointer", padding: "8px 14px",
-                    borderRadius: 8,
+                    background: "none",
+                    border: `1px solid ${cardBorder}`,
+                    color: primary,
+                    fontSize: 12, fontWeight: 600, cursor: "pointer",
+                    padding: "8px 14px", borderRadius: 8,
                   }}
                 >
                   Back
@@ -706,12 +533,11 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
             </div>
             <button
               onClick={advanceTour}
-              className="btn"
               style={{
-                padding: "10px 24px", fontSize: 14, fontWeight: 700,
+                padding: "10px 26px", fontSize: 14, fontWeight: 700,
                 background: "linear-gradient(135deg, #5aa6ff, #38bdf8)",
                 color: "#fff", border: "none", borderRadius: 10,
-                cursor: "pointer", boxShadow: "0 4px 12px rgba(90,166,255,0.3)",
+                cursor: "pointer", boxShadow: "0 4px 12px rgba(90,166,255,0.35)",
               }}
             >
               {tourStep < TOUR_STEPS.length - 1 ? "Next" : "Finish"}
@@ -722,7 +548,7 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
     );
   }
 
-  // Minimized tour — floating "Resume tour" button
+  // ---- Minimized tour — floating "Resume tour" button ----
   if (tourMinimized && !tourDone) {
     return (
       <button
@@ -746,213 +572,5 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
     );
   }
 
-  // Don't show checklist if dismissed, no data, tour active, or completion screen showing
-  if (checklistDismissed || !state.hasData || tourStep !== null || showTourComplete || showWelcome) return null;
-
-  const items = [
-    { label: "Connect your Jobber account", done: true, sub: "" },
-    { label: "Check your revenue on the Overview tab", done: revenueViewed, sub: "" },
-    { label: "Set a capacity target", done: targetSetDuringOnboarding, href: "/jobber/capacity", sub: "Go to Capacity and enter your weekly revenue goal" },
-    { label: "Set a sales target", done: salesTargetSet, href: "/jobber/sales", sub: "Go to Sales and set a weekly or monthly sales target" },
-  ];
-  const doneCount = items.filter(i => i.done).length;
-  const allDone = doneCount === items.length;
-
-  // Mobile: floating button
-  if (!checklistOpen) {
-    return (
-      <button
-        onClick={() => setChecklistOpen(true)}
-        style={{
-          position: "fixed", bottom: 20, right: 20, zIndex: 900,
-          padding: "10px 16px", borderRadius: 12,
-          background: "linear-gradient(135deg, #5aa6ff, #38bdf8)",
-          color: "#fff", border: "none", fontSize: 12, fontWeight: 700,
-          boxShadow: "0 4px 16px rgba(90,166,255,0.4)",
-          cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
-        }}
-      >
-        Setup {doneCount}/{items.length}
-      </button>
-    );
-  }
-
-  return (
-    <div style={{
-      position: "fixed", bottom: 20, right: 20, zIndex: 900,
-      width: 320, maxWidth: "calc(100vw - 32px)",
-      background: bg, borderRadius: 16,
-      border: `1px solid ${cardBorder}`,
-      boxShadow: "0 16px 48px rgba(0,0,0,0.3)",
-      overflow: "hidden",
-    }}>
-      {/* Header */}
-      <div style={{
-        padding: "14px 16px 10px",
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        borderBottom: `1px solid ${cardBorder}`,
-      }}>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: primary }}>
-            Get started with AccuInsight
-          </div>
-          <div style={{ fontSize: 11, color: muted, marginTop: 2 }}>
-            {doneCount} of {items.length} done
-          </div>
-        </div>
-        <button
-          onClick={() => setChecklistOpen(false)}
-          style={{
-            background: "none", border: "none", color: muted,
-            fontSize: 18, cursor: "pointer", padding: "0 4px", lineHeight: 1,
-          }}
-        >
-          &times;
-        </button>
-      </div>
-
-      {/* Progress bar */}
-      <div style={{ padding: "0 16px", marginTop: 12 }}>
-        <div style={{
-          height: 6, borderRadius: 3,
-          background: isLight ? "#e2e8f0" : "rgba(255,255,255,0.08)",
-        }}>
-          <div style={{
-            height: "100%", borderRadius: 3,
-            background: "linear-gradient(90deg, #5aa6ff, #5aa6ff)",
-            width: `${(doneCount / items.length) * 100}%`,
-            transition: "width 0.5s ease",
-          }} />
-        </div>
-      </div>
-
-      {/* Items */}
-      <div style={{ padding: "12px 16px 8px" }}>
-        {items.map((item, i) => (
-          <div
-            key={i}
-            style={{
-              display: "flex", alignItems: "flex-start", gap: 10,
-              padding: "10px 0",
-              borderBottom: i < items.length - 1 ? `1px solid ${cardBorder}` : "none",
-              opacity: item.done ? 0.5 : 1,
-            }}
-          >
-            <div style={{
-              width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 1,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              background: item.done ? "#10b981" : (isLight ? "#f1f5f9" : "rgba(255,255,255,0.06)"),
-              border: item.done ? "none" : `2px solid ${isLight ? "#cbd5e1" : "rgba(255,255,255,0.15)"}`,
-              color: "#fff", fontSize: 12, fontWeight: 800,
-              transition: "all 0.3s ease",
-            }}>
-              {item.done && "\u2713"}
-            </div>
-            <div>
-              {item.href && !item.done ? (
-                <a href={item.href} style={{
-                  fontSize: 13, fontWeight: 600, color: "#5aa6ff",
-                  textDecoration: "none", display: "block",
-                }}>
-                  {item.label}
-                </a>
-              ) : (
-                <span style={{
-                  fontSize: 13, fontWeight: 600, color: primary,
-                  textDecoration: item.done ? "line-through" : "none",
-                }}>
-                  {item.label}
-                </span>
-              )}
-              {item.sub && !item.done && (
-                <div style={{ fontSize: 11, color: muted, marginTop: 2 }}>
-                  {item.sub}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Tour button */}
-      {!tourDone && (
-        <div style={{ padding: "4px 14px 14px" }}>
-          <button
-            onClick={() => setTourStep(0)}
-            style={{
-              width: "100%",
-              padding: "12px 16px",
-              borderRadius: 10,
-              background: "linear-gradient(135deg, rgba(90,166,255,0.12), rgba(90,166,255,0.12))",
-              border: "1px solid rgba(90,166,255,0.25)",
-              color: "#5aa6ff",
-              fontSize: 13, fontWeight: 700, cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              transition: "all 0.15s ease",
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(90,166,255,0.2), rgba(90,166,255,0.2))"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(90,166,255,0.12), rgba(90,166,255,0.12))"; }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="8" cy="8" r="7" stroke="#5aa6ff" strokeWidth="1.5" />
-              <polygon points="6.5,5 11,8 6.5,11" fill="#5aa6ff" />
-            </svg>
-            Take a quick tour
-          </button>
-        </div>
-      )}
-
-      {/* All done */}
-      {allDone && (
-        <div style={{
-          padding: "14px 16px", margin: "0 12px 12px",
-          background: isLight ? "rgba(16,185,129,0.06)" : "rgba(16,185,129,0.08)",
-          borderRadius: 10,
-          border: `1px solid ${isLight ? "rgba(16,185,129,0.2)" : "rgba(16,185,129,0.15)"}`,
-        }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#10b981", marginBottom: 4 }}>
-            You're good to go.
-          </div>
-          <div style={{ fontSize: 12, color: muted, marginBottom: 10 }}>
-            {state.trialDaysLeft > 0
-              ? `Your trial ends in ${state.trialDaysLeft} day${state.trialDaysLeft !== 1 ? "s" : ""}. Upgrade anytime to keep your dashboard.`
-              : "Upgrade to keep your dashboard."
-            }
-          </div>
-          <form action="/api/billing/checkout" method="POST" onSubmit={() => track("upgrade_cta_clicked", { location: "onboarding_checklist" })}>
-            <button
-              type="submit"
-              className="btn"
-              style={{
-                padding: "10px 20px", fontSize: 13, fontWeight: 700,
-                background: "linear-gradient(135deg, #5aa6ff, #38bdf8)",
-                color: "#fff", border: "none", borderRadius: 8,
-                cursor: "pointer", boxShadow: "0 2px 8px rgba(90,166,255,0.3)",
-                width: "100%",
-              }}
-            >
-              Upgrade for $29/month
-            </button>
-          </form>
-        </div>
-      )}
-
-      {allDone && (
-        <div style={{ padding: "0 16px 14px", textAlign: "center" }}>
-          <button
-            onClick={dismissChecklist}
-            style={{ background: "none", border: "none", color: muted, fontSize: 11, cursor: "pointer" }}
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-      <style>{`
-        @keyframes tour-pulse {
-          0%, 100% { outline-color: rgba(90,166,255,0.8); }
-          50% { outline-color: rgba(90,166,255,0.3); }
-        }
-      `}</style>
-    </div>
-  );
+  return null;
 }

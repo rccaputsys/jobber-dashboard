@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import { SidebarNav } from "./SidebarNav";
-import { TargetsDrawer } from "./TargetsDrawer";
 
 type Props = {
   adminConnectionId?: string;
@@ -17,15 +15,12 @@ type Props = {
 };
 
 export function DashboardLayout({ children, adminConnectionId, ...sidebarProps }: Props) {
-  const [targetsOpen, setTargetsOpen] = useState(false);
-
   return (
     <div className="app-layout">
-      <SidebarNav {...sidebarProps} adminConnectionId={adminConnectionId} onOpenTargets={() => setTargetsOpen(true)} />
+      <SidebarNav {...sidebarProps} adminConnectionId={adminConnectionId} />
       <div className="app-main">
         {children}
       </div>
-      <TargetsDrawer open={targetsOpen} onClose={() => setTargetsOpen(false)} adminConnectionId={adminConnectionId} />
     </div>
   );
 }

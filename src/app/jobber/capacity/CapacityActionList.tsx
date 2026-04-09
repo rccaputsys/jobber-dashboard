@@ -223,26 +223,39 @@ export function CapacityActionList({
   const approvedTotalCents = approvedQuotes.reduce((s, q) => s + Number(q.quote_total_cents ?? 0), 0);
   const activeTab: TabKey = tab;
 
-  // Bucket unscheduled by value
+  // Bucket unscheduled by AGE — matches the staleness split in the
+  // top "Here's what needs your attention" panel.
+  // Stale  = 60+ days old   (grey, archive candidate)
+  // Aging  = 30-59 days old (orange, needs scheduling soon)
+  // Recent = <30 days old   (blue, fresh)
+  const nowMs = Date.now();
+  const ageDays = (createdAt: string | null) => {
+    if (!createdAt) return 0;
+    return Math.max(0, (nowMs - new Date(createdAt).getTime()) / 86400000);
+  };
   const buckets: Bucket[] = [
-    { key: "high", label: "Big Jobs ($1,000+)", range: "", color: "#10b981", bg: "rgba(16,185,129,0.08)", jobs: [], totalCents: 0 },
-    { key: "medium", label: "Mid-Size Jobs ($250\u2013$999)", range: "", color: "#5aa6ff", bg: "rgba(90,166,255,0.08)", jobs: [], totalCents: 0 },
-    { key: "low", label: "Smaller Jobs (Under $250)", range: "", color: "#8b5cf6", bg: "rgba(139,92,246,0.08)", jobs: [], totalCents: 0 },
+    { key: "recent", label: "Recent", range: "< 30 days old", color: "#5aa6ff", bg: "rgba(90,166,255,0.08)", jobs: [], totalCents: 0 },
+    { key: "aging", label: "Aging", range: "30\u201359 days old", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", jobs: [], totalCents: 0 },
+    { key: "stale", label: "Stale", range: "60+ days old \u2014 archive if not needed", color: "#6b7280", bg: "rgba(107,114,128,0.08)", jobs: [], totalCents: 0 },
   ];
   for (const j of unscheduledJobs) {
-    const dollars = j.total_amount_cents / 100;
-    const bucket = dollars >= 1000 ? buckets[0] : dollars >= 250 ? buckets[1] : buckets[2];
+    const days = ageDays(j.created_at);
+    const bucket = days >= 60 ? buckets[2] : days >= 30 ? buckets[1] : buckets[0];
     bucket.totalCents += j.total_amount_cents;
     bucket.jobs.push(j);
   }
 
-  // Bucket late visits by how late
+  // Bucket late visits by HOW LATE — matches the staleness split.
+  // Stale     = 30+ days late (grey, archive candidate)
+  // Very Late = 7-29 days late (red, needs a call)
+  // Late      = 1-6 days late (orange, getting late)
   const lateBuckets: Bucket[] = [
-    { key: "very-late", label: "More Than a Week Late", range: "Needs a call", color: "#ef4444", bg: "rgba(239,68,68,0.08)", jobs: [], totalCents: 0 },
-    { key: "late", label: "A Few Days Late", range: "Getting late", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", jobs: [], totalCents: 0 },
+    { key: "late", label: "Late", range: "1\u20136 days late", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", jobs: [], totalCents: 0 },
+    { key: "very-late", label: "Very Late", range: "7\u201329 days late \u2014 needs a call", color: "#ef4444", bg: "rgba(239,68,68,0.08)", jobs: [], totalCents: 0 },
+    { key: "stale-late", label: "Stale", range: "30+ days late \u2014 archive if not needed", color: "#6b7280", bg: "rgba(107,114,128,0.08)", jobs: [], totalCents: 0 },
   ];
   for (const v of lateVisits) {
-    const bucket = v.days_late >= 7 ? lateBuckets[0] : lateBuckets[1];
+    const bucket = v.days_late >= 30 ? lateBuckets[2] : v.days_late >= 7 ? lateBuckets[1] : lateBuckets[0];
     bucket.totalCents += v.amount_cents;
     bucket.jobs.push({
       job_number: v.job_number,
@@ -265,10 +278,9 @@ export function CapacityActionList({
 
   return (
     <div className="panel animate-in delay-2" style={{ marginTop: 20, padding: 20 }}>
-      {/* Title row with inline toggle cards */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-        <h2 className="text-primary" style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>What Needs Your Attention</h2>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {/* Toggle cards row (left-aligned, no header) */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {toggleCards.map(card => {
             const active = activeTab === card.key;
             return (
@@ -277,33 +289,33 @@ export function CapacityActionList({
                 className="toggle-btn"
                 onClick={() => setTab(card.key)}
                 style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "6px 14px", borderRadius: 10,
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "10px 18px", borderRadius: 12,
                   border: "none",
                   background: active
-                    ? `linear-gradient(135deg, ${card.color}22, ${card.color}10)`
+                    ? `linear-gradient(135deg, ${card.color}25, ${card.color}12)`
                     : (isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)"),
                   boxShadow: active
-                    ? `0 0 0 1.5px ${card.color}, 0 2px 8px ${card.color}20`
+                    ? `0 0 0 2px ${card.color}, 0 4px 12px ${card.color}25`
                     : `inset 0 0 0 1px ${isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"}`,
                   cursor: "pointer", transition: "all 0.2s ease",
                   opacity: active ? 1 : 0.65,
-                  transform: active ? "scale(1)" : "scale(0.98)",
+                  transform: active ? "scale(1)" : "scale(0.97)",
                 }}
               >
                 <span style={{
-                  width: 7, height: 7, borderRadius: "50%",
+                  width: 9, height: 9, borderRadius: "50%",
                   background: card.color, flexShrink: 0,
-                  boxShadow: active ? `0 0 6px ${card.color}60` : "none",
+                  boxShadow: active ? `0 0 8px ${card.color}80` : "none",
                 }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: isLight ? "#334155" : "rgba(255,255,255,0.8)" }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: isLight ? "#334155" : "rgba(255,255,255,0.85)" }}>
                   {card.label}
                 </span>
-                <span style={{ fontSize: 12, fontWeight: 800, color: isLight ? "#1e293b" : "#EAF1FF" }}>
+                <span style={{ fontSize: 14, fontWeight: 800, color: isLight ? "#1e293b" : "#EAF1FF" }}>
                   {card.count.toLocaleString()}
                 </span>
                 {card.count > 0 && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: card.color }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: card.color }}>
                     {card.dollars}
                   </span>
                 )}
@@ -314,14 +326,18 @@ export function CapacityActionList({
         <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
           {activeTab === "unscheduled" && unscheduledJobs.length > 0 && (
             <ExportCSV
-              data={unscheduledJobs.map(j => ({
-                "Value Group": j.total_amount_cents >= 100000 ? "Big Jobs ($1,000+)" : j.total_amount_cents >= 25000 ? "Mid-Size Jobs ($250-$999)" : "Smaller Jobs (Under $250)",
-                "Job #": j.job_number,
-                "Title": j.job_title,
-                "Amount": (j.total_amount_cents / 100).toFixed(2),
-                "Created": j.created_at ? new Date(j.created_at).toLocaleDateString() : "",
-                "Jobber URL": j.jobber_url,
-              }))}
+              data={unscheduledJobs.map(j => {
+                const days = j.created_at ? Math.max(0, (Date.now() - new Date(j.created_at).getTime()) / 86400000) : 0;
+                return {
+                  "Age Group": days >= 60 ? "Stale (60+ days)" : days >= 30 ? "Aging (30-59 days)" : "Recent (<30 days)",
+                  "Days Old": Math.round(days),
+                  "Job #": j.job_number,
+                  "Title": j.job_title,
+                  "Amount": (j.total_amount_cents / 100).toFixed(2),
+                  "Created": j.created_at ? new Date(j.created_at).toLocaleDateString() : "",
+                  "Jobber URL": j.jobber_url,
+                };
+              })}
               filename="unscheduled-jobs"
               label="Download"
             />

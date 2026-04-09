@@ -4,8 +4,8 @@ import { getUser } from "@/lib/supabaseAuth";
 import { redirect } from "next/navigation";
 import { DashboardTopbar } from "../dashboard/DashboardTopbar";
 import { OnboardingOverlay } from "../dashboard/OnboardingOverlay";
-import { InvoiceTrendsSection } from "./InvoiceTrendsSection";
 import { ActionStrip } from "../dashboard/ActionStrip";
+import { AttentionList } from "../dashboard/AttentionList";
 import { OutstandingInvoices } from "./OutstandingInvoices";
 import { ErrorBoundary } from "../dashboard/ErrorBoundary";
 import { DashboardLayout } from "../dashboard/DashboardLayout";
@@ -274,6 +274,92 @@ export default async function InvoicesPage({
   }));
 
   /* ------------------------------------------------------------------ */
+  /*  Prioritized action list — "here's what needs your attention"      */
+  /* ------------------------------------------------------------------ */
+  type InvoiceAction = {
+    text: string;
+    why: string;
+    color: string;
+    priority: number;
+  };
+  const invoiceActions: InvoiceAction[] = [];
+
+  // Split outstanding into fresh vs stale (180+ days = likely abandoned)
+  const STALE_INV_DAYS = 180;
+  const freshOutstanding = outstanding.filter((i) => i.days_overdue < STALE_INV_DAYS);
+  const staleOutstanding = outstanding.filter((i) => i.days_overdue >= STALE_INV_DAYS);
+
+  // P1 — Severely overdue (30+ days late, but not yet stale)
+  const veryOverdue = freshOutstanding.filter((i) => i.days_overdue >= 30);
+  if (veryOverdue.length > 0) {
+    const cents = veryOverdue.reduce((s, i) => s + i.balance_cents, 0);
+    invoiceActions.push({
+      text: `Call on ${veryOverdue.length} invoice${veryOverdue.length !== 1 ? "s" : ""} 30+ days overdue — ${money(cents)}`,
+      why: "This money is yours. A phone call today could collect it.",
+      color: "#ef4444",
+      priority: 1,
+    });
+  }
+
+  // P2 — Recently overdue (8-30 days)
+  const recentlyOverdue = freshOutstanding.filter((i) => i.days_overdue >= 8 && i.days_overdue < 30);
+  if (recentlyOverdue.length > 0) {
+    const cents = recentlyOverdue.reduce((s, i) => s + i.balance_cents, 0);
+    invoiceActions.push({
+      text: `Send firm reminders for ${recentlyOverdue.length} late invoice${recentlyOverdue.length !== 1 ? "s" : ""} — ${money(cents)}`,
+      why: "Past due 8+ days. A direct ask now keeps these from sliding to 30+ days.",
+      color: "#f59e0b",
+      priority: 2,
+    });
+  }
+
+  // P2 — Jobs done but not yet invoiced
+  if (needsInvoicing.length > 0) {
+    const cents = needsInvoicing.reduce((s, j) => s + j.total_amount_cents, 0);
+    invoiceActions.push({
+      text: `Invoice ${needsInvoicing.length} completed job${needsInvoicing.length !== 1 ? "s" : ""} — ${money(cents)}`,
+      why: "Work is done — get the bill out so you can get paid.",
+      color: "#5aa6ff",
+      priority: 2,
+    });
+  }
+
+  // P3 — Draft invoices ready to send
+  if (draftCount > 0) {
+    invoiceActions.push({
+      text: `Send ${draftCount} draft invoice${draftCount !== 1 ? "s" : ""} — ${money(draftCents)}`,
+      why: "These are ready — takes 2 minutes to hit send.",
+      color: "#5aa6ff",
+      priority: 3,
+    });
+  }
+
+  // P3 — Just barely overdue (1-7 days) — friendly nudge
+  const justLate = freshOutstanding.filter((i) => i.days_overdue >= 1 && i.days_overdue < 8);
+  if (justLate.length > 0) {
+    const cents = justLate.reduce((s, i) => s + i.balance_cents, 0);
+    invoiceActions.push({
+      text: `Friendly reminder for ${justLate.length} invoice${justLate.length !== 1 ? "s" : ""} just past due — ${money(cents)}`,
+      why: "Still recent — a polite check-in often clears them up.",
+      color: "#5aa6ff",
+      priority: 3,
+    });
+  }
+
+  // P5 — Cleanup: stale outstanding (180+ days) — likely uncollectible
+  if (staleOutstanding.length > 0) {
+    const cents = staleOutstanding.reduce((s, i) => s + i.balance_cents, 0);
+    invoiceActions.push({
+      text: `Write off or archive ${staleOutstanding.length} dead invoice${staleOutstanding.length !== 1 ? "s" : ""}${cents > 0 ? ` — ${money(cents)}` : ""}`,
+      why: "Outstanding 180+ days. Either collect now via collections or write them off so your AR reflects reality.",
+      color: "#6b7280",
+      priority: 5,
+    });
+  }
+
+  invoiceActions.sort((a, b) => a.priority - b.priority);
+
+  /* ------------------------------------------------------------------ */
   /*  Render                                                             */
   /* ------------------------------------------------------------------ */
   return (
@@ -288,19 +374,11 @@ export default async function InvoicesPage({
       <ErrorBoundary>
       <div className="dashboard-container">
 
-
-        {/* Trends */}
-        <div data-tour="invoice-chart">
-        <InvoiceTrendsSection
-          events={invoiceEvents}
-          agingBuckets={agingBuckets}
-          totalOutstandingCents={outstandingBalance}
-          currencyCode={currencyCode}
-          draftCount={draftCount}
-          draftCents={draftCents}
-          paymentTimings={paymentTimings}
+        {/* ===== Here's What Needs Your Attention (prioritized invoice actions) ===== */}
+        <AttentionList
+          actions={invoiceActions}
+          emptyMessage="Nothing urgent right now — collections are in good shape."
         />
-        </div>
 
         {/* Invoice Action List */}
         <OutstandingInvoices

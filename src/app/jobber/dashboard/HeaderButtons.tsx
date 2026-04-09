@@ -34,15 +34,15 @@ export function SubscriptionStatus({ billingStatus, trialEndsAt, subscriptionAct
           ? "linear-gradient(135deg, rgba(239,68,68,0.2), rgba(239,68,68,0.1))"
           : warning
           ? "linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.1))"
-          : "linear-gradient(135deg, rgba(124,92,255,0.2), rgba(90,166,255,0.15))",
-        borderColor: urgent ? "rgba(239,68,68,0.4)" : warning ? "rgba(245,158,11,0.4)" : "rgba(124,92,255,0.3)",
-        color: urgent ? "#ef4444" : warning ? "#f59e0b" : "#7c5cff",
-        boxShadow: urgent ? "0 2px 8px rgba(239,68,68,0.2)" : "0 2px 8px rgba(124,92,255,0.15)",
+          : "linear-gradient(135deg, rgba(90,166,255,0.2), rgba(90,166,255,0.15))",
+        borderColor: urgent ? "rgba(239,68,68,0.4)" : warning ? "rgba(245,158,11,0.4)" : "rgba(90,166,255,0.3)",
+        color: urgent ? "#ef4444" : warning ? "#f59e0b" : "#5aa6ff",
+        boxShadow: urgent ? "0 2px 8px rgba(239,68,68,0.2)" : "0 2px 8px rgba(90,166,255,0.15)",
         whiteSpace: "nowrap",
       }}>
         <span style={{
           width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
-          background: urgent ? "#ef4444" : warning ? "#f59e0b" : "#7c5cff",
+          background: urgent ? "#ef4444" : warning ? "#f59e0b" : "#5aa6ff",
           animation: urgent ? "pulse-dot 1.5s ease-in-out infinite" : "none",
         }} />
         {daysLeft}d left &middot; Upgrade
@@ -70,10 +70,10 @@ export function TrialBanner({ trialEndsAt, subscriptionActive }: {
     ? "linear-gradient(90deg, rgba(239,68,68,0.1), rgba(245,158,11,0.06))"
     : warning
     ? "linear-gradient(90deg, rgba(245,158,11,0.08), rgba(245,158,11,0.04))"
-    : "linear-gradient(90deg, rgba(124,92,255,0.08), rgba(90,166,255,0.04))";
+    : "linear-gradient(90deg, rgba(90,166,255,0.08), rgba(90,166,255,0.04))";
 
-  const borderColor = expired || urgent ? "rgba(239,68,68,0.2)" : warning ? "rgba(245,158,11,0.15)" : "rgba(124,92,255,0.12)";
-  const textColor = expired || urgent ? "#ef4444" : warning ? "#f59e0b" : "#7c5cff";
+  const borderColor = expired || urgent ? "rgba(239,68,68,0.2)" : warning ? "rgba(245,158,11,0.15)" : "rgba(90,166,255,0.12)";
+  const textColor = expired || urgent ? "#ef4444" : warning ? "#f59e0b" : "#5aa6ff";
 
   const message = expired
     ? "Your free trial has ended. Upgrade to keep your dashboard."
@@ -99,7 +99,7 @@ export function TrialBanner({ trialEndsAt, subscriptionActive }: {
       <form action="/api/billing/checkout" method="POST" style={{ margin: 0 }}>
         <button type="submit" style={{
           padding: "4px 14px", fontSize: 11, fontWeight: 700,
-          background: expired || urgent ? "#ef4444" : warning ? "#f59e0b" : "linear-gradient(135deg, #7c5cff, #5aa6ff)",
+          background: expired || urgent ? "#ef4444" : warning ? "#f59e0b" : "linear-gradient(135deg, #5aa6ff, #38bdf8)",
           color: "#fff", border: "none", borderRadius: 6,
           cursor: "pointer",
           boxShadow: "0 2px 6px rgba(0,0,0,0.15)",

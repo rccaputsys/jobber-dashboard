@@ -6,8 +6,8 @@ import { redirect } from "next/navigation";
 import { ExportCSV } from "../dashboard/ExportCSV";
 import { DashboardTopbar } from "../dashboard/DashboardTopbar";
 import { OnboardingOverlay } from "../dashboard/OnboardingOverlay";
+import { AttentionList } from "../dashboard/AttentionList";
 import { QuotePipeline } from "./QuotePipeline";
-import { SalesTrendsSection } from "./SalesTrendsSection";
 import { QuoteFollowUpTable } from "./QuoteFollowUpTable";
 import { SalesActionTabs } from "./SalesActionTabs";
 import { ErrorBoundary } from "../dashboard/ErrorBoundary";
@@ -379,6 +379,136 @@ export default async function SalesPage({
   }).sort((a: any, b: any) => b.days_waiting - a.days_waiting);
 
   /* ------------------------------------------------------------------ */
+  /*  Prioritized action list — "here's what to do" focused on sales     */
+  /* ------------------------------------------------------------------ */
+  type SalesAction = {
+    text: string;
+    why: string;
+    color: string;
+    priority: number;
+    href?: string;
+  };
+  const salesActions: SalesAction[] = [];
+
+  // P1 — Going cold (30-45 days). Highest urgency: about to lose deals.
+  if (ageBuckets[2].quotes.length > 0) {
+    const cents = sumCents(ageBuckets[2].quotes);
+    const n = ageBuckets[2].quotes.length;
+    salesActions.push({
+      text: `Call on ${n} cooling quote${n !== 1 ? "s" : ""} — ${money(cents)}`,
+      why: "These customers haven't heard from you in 30+ days. One call today could save the deal.",
+      color: "#ef4444",
+      priority: 1,
+    });
+  }
+
+  // P1 — Customers waiting on changes for more than 3 days
+  const stuckChanges = changesRequestedList.filter((c: any) => c.days_waiting >= 3);
+  if (stuckChanges.length > 0) {
+    const cents = stuckChanges.reduce((s: number, c: any) => s + (c.amount_cents || 0), 0);
+    salesActions.push({
+      text: `Reply to ${stuckChanges.length} change request${stuckChanges.length !== 1 ? "s" : ""} — ${money(cents)}`,
+      why: "Customers asked for changes and are waiting. Quick replies close deals.",
+      color: "#ef4444",
+      priority: 1,
+    });
+  }
+
+  // P2 — Warm quotes (14-30 days)
+  if (ageBuckets[1].quotes.length > 0) {
+    const cents = sumCents(ageBuckets[1].quotes);
+    const n = ageBuckets[1].quotes.length;
+    salesActions.push({
+      text: `Follow up on ${n} warm quote${n !== 1 ? "s" : ""} — ${money(cents)}`,
+      why: "It's been 2-4 weeks. A friendly check-in keeps you top of mind before they go cold.",
+      color: "#f59e0b",
+      priority: 2,
+    });
+  }
+
+  // P2 — New requests waiting to be quoted
+  if (requestsList.length > 0) {
+    salesActions.push({
+      text: `Respond to ${requestsList.length} new request${requestsList.length !== 1 ? "s" : ""}`,
+      why: "Fresh leads. Speed matters — first to respond often wins the job.",
+      color: "#5aa6ff",
+      priority: 2,
+    });
+  }
+
+  // Split drafts: fresh ones are an opportunity to send, stale ones are
+  // cleanup candidates (sat in draft for 30+ days = likely abandoned).
+  const freshDraftQuotes = draftQuotes.filter((q: any) => quoteAgeDays(q) <= 30);
+  const staleDraftQuotes = draftQuotes.filter((q: any) => quoteAgeDays(q) > 30);
+
+  // P3 — Fresh draft quotes ready to send
+  if (freshDraftQuotes.length > 0) {
+    const cents = sumCents(freshDraftQuotes);
+    salesActions.push({
+      text: `Send ${freshDraftQuotes.length} draft quote${freshDraftQuotes.length !== 1 ? "s" : ""} — ${money(cents)}`,
+      why: "These are written and ready. Hit send.",
+      color: "#5aa6ff",
+      priority: 3,
+    });
+  }
+
+  // P3 — Approved but not yet booked (won deals waiting for the schedule)
+  if (approvedQuotes.length > 0) {
+    const cents = sumCents(approvedQuotes);
+    salesActions.push({
+      text: `Book ${approvedQuotes.length} approved quote${approvedQuotes.length !== 1 ? "s" : ""} — ${money(cents)}`,
+      why: "Customers said yes. Get them on the schedule before they reconsider.",
+      color: "#10b981",
+      priority: 3,
+    });
+  }
+
+  // P4 — Hot quotes (informational, low urgency, no action needed)
+  if (ageBuckets[0].quotes.length >= 5) {
+    const cents = sumCents(ageBuckets[0].quotes);
+    const n = ageBuckets[0].quotes.length;
+    salesActions.push({
+      text: `${n} hot quotes in play — ${money(cents)}`,
+      why: "These are fresh and looking good. Keep an eye on them but no action needed yet.",
+      color: "#94a3b8",
+      priority: 4,
+    });
+  }
+
+  // P5 — Cleanup: archive stale items so the pipeline reflects reality.
+  // Combined into one summary callout in the "Here's what to do" panel; the
+  // breakdown lives in the existing action tabs below.
+  //   • inactive sent quotes (45+ days quiet — "Probably lost")
+  //   • stale draft quotes (30+ days untouched — likely abandoned)
+  //   • old open requests (30+ days unactioned)
+  const inactiveQuotes = ageBuckets[3].quotes;
+  const oldRequests = requestsList.filter((r: any) => r.days_old > 30);
+  const cleanupCount = inactiveQuotes.length + staleDraftQuotes.length + oldRequests.length;
+  if (cleanupCount > 0) {
+    const inactiveCents = sumCents(inactiveQuotes);
+    const staleDraftCents = sumCents(staleDraftQuotes);
+    const totalStuckCents = inactiveCents + staleDraftCents;
+    const parts: string[] = [];
+    if (inactiveQuotes.length > 0) {
+      parts.push(`${inactiveQuotes.length} sent quote${inactiveQuotes.length !== 1 ? "s" : ""} quiet 45+ days`);
+    }
+    if (staleDraftQuotes.length > 0) {
+      parts.push(`${staleDraftQuotes.length} draft${staleDraftQuotes.length !== 1 ? "s" : ""} sitting 30+ days`);
+    }
+    if (oldRequests.length > 0) {
+      parts.push(`${oldRequests.length} request${oldRequests.length !== 1 ? "s" : ""} 30+ days old`);
+    }
+    salesActions.push({
+      text: `Archive ${cleanupCount} stale item${cleanupCount !== 1 ? "s" : ""} to clean up your pipeline${totalStuckCents > 0 ? ` — ${money(totalStuckCents)}` : ""}`,
+      why: `${parts.join(", ")}. Archiving them keeps your win rate, pipeline value, and dashboards honest.`,
+      color: "#6b7280",
+      priority: 5,
+    });
+  }
+
+  salesActions.sort((a, b) => a.priority - b.priority);
+
+  /* ------------------------------------------------------------------ */
   /*  Render                                                             */
   /* ------------------------------------------------------------------ */
   return (
@@ -393,12 +523,10 @@ export default async function SalesPage({
       <ErrorBoundary>
       <div className="dashboard-container">
 
-        {/* Sales Trends */}
-        <SalesTrendsSection
-          wonQuoteEvents={wonQuoteEvents}
-          allClosureEvents={allClosureEvents}
-          sentOpenEvents={sentOpenEvents}
-          currencyCode={currencyCode}
+        {/* ===== Here's What Needs Your Attention (prioritized sales actions) ===== */}
+        <AttentionList
+          actions={salesActions}
+          emptyMessage="Nothing urgent right now — your pipeline is in good shape."
         />
 
         {/* ===== Pipeline + Action List ===== */}

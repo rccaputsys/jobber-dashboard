@@ -9,12 +9,12 @@ type Stage = {
 };
 
 const stageColors: Record<string, string> = {
-  Requests:    "#5aa6ff",
-  Draft:       "#6b7280",
+  Requests:    "#5aa6ff",   // bright blue — fresh leads
+  Draft:       "#6b7280",   // grey — your work in progress
   Sent:        "#f59e0b",
-  "Waiting on Customers": "#94a3b8",
-  "Customer Wants Changes": "#ef4444",
-  Won:    "#10b981",
+  "Waiting on Customers": "#f59e0b",   // amber — waiting / in flight
+  "Customer Wants Changes": "#ef4444", // red — needs your reply
+  Won:    "#10b981",        // green — closed deals
 };
 
 export function QuotePipeline({
@@ -48,30 +48,33 @@ export function QuotePipeline({
                 className="hover-lift"
                 style={{
                   flex: 1,
-                  padding: "10px 10px",
+                  padding: "12px 10px",
                   minWidth: 0,
                   background: isActive
-                    ? (isLight ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.03)")
-                    : "transparent",
+                    ? `${accent}20`
+                    : `${accent}0d`,
                   borderRadius: 8,
-                  border: isActive
-                    ? `1.5px solid ${accent}50`
-                    : `1.5px solid ${accent}20`,
-                  borderLeft: `3px solid ${isActive ? accent : `${accent}40`}`,
+                  border: `2px solid ${isActive ? accent : `${accent}40`}`,
+                  borderLeft: `4px solid ${accent}`,
                   textAlign: "center",
                   cursor: clickable ? "pointer" : "default",
                   transition: "all 0.15s ease",
-                  opacity: hasSelection && !isActive ? 0.6 : 1,
+                  opacity: hasSelection && !isActive ? 0.55 : 1,
+                  boxShadow: isActive ? `0 2px 12px ${accent}30` : "none",
                 }}
               >
-                <div className="text-muted" style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.3, marginBottom: 4 }}>
+                <div style={{
+                  fontSize: 12, fontWeight: 800, letterSpacing: 0.4, marginBottom: 5,
+                  textTransform: "uppercase",
+                  color: accent,
+                }}>
                   {stage.label}
                 </div>
-                <div className="text-primary" style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5 }}>
+                <div className="text-primary" style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.5, lineHeight: 1.1 }}>
                   {stage.value || stage.count.toLocaleString()}
                 </div>
-                <div className="text-muted" style={{ fontSize: 13, fontWeight: 500 }}>
-                  {stage.value ? `${stage.count.toLocaleString()} quotes` : "new leads"}
+                <div className="text-muted" style={{ fontSize: 12, fontWeight: 600, marginTop: 2 }}>
+                  {stage.value ? `${stage.count.toLocaleString()} ${stage.count === 1 ? "quote" : "quotes"}` : "new leads"}
                 </div>
               </button>
               {i < stages.length - 1 && (

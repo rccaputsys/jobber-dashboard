@@ -289,7 +289,7 @@ export const globalStyles = `
   .dashboard-container {
     max-width: 1600px;
     margin: 0 auto;
-    padding: 16px;
+    padding: 12px 16px 16px;
     width: 100%;
     overflow-x: hidden;
     display: flex;
@@ -299,13 +299,13 @@ export const globalStyles = `
 
   @media (min-width: 640px) {
     .dashboard-container {
-      padding: 20px;
+      padding: 15px 20px 20px;
     }
   }
 
   @media (min-width: 1024px) {
     .dashboard-container {
-      padding: 24px 32px 80px;
+      padding: 18px 32px 80px;
     }
   }
 

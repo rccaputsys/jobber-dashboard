@@ -2,6 +2,25 @@
 
 import { useState, useEffect } from "react";
 
+// Playful loading messages — themed for home service / trade businesses.
+// One picked at random per load so it doesn't feel canned.
+const LOADING_MESSAGES = [
+  "Loading the spreader...",
+  "Topping off the tank...",
+  "Sharpening the blades...",
+  "Coiling the hoses...",
+  "Stocking the van...",
+  "Greasing the wheels...",
+  "Tightening the bolts...",
+  "Calibrating the GPS...",
+  "Calling dispatch...",
+  "Warming up the truck...",
+];
+
+function pickLoadingMessage(): string {
+  return LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)];
+}
+
 function useTheme() {
   const [isLight, setIsLight] = useState(true);
   useEffect(() => {
@@ -17,6 +36,8 @@ export default function Loading() {
 
 function TabLoadingScreen({ tab }: { tab: string }) {
   const isLight = useTheme();
+  // Pick a random message once on mount (memoized via useState)
+  const [loadingMessage] = useState(pickLoadingMessage);
 
   const bg = isLight
     ? "linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)"
@@ -30,128 +51,125 @@ function TabLoadingScreen({ tab }: { tab: string }) {
   const sidebarBg = isLight ? "#ffffff" : "rgba(255,255,255,0.02)";
   const sidebarBorder = isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.06)";
 
+  // App accent color — must match SidebarNav active state
+  const accentColor = "#5aa6ff";
+  const accentBgActive = isLight ? "rgba(90,166,255,0.1)" : "rgba(90,166,255,0.12)";
+
   const shimmerGradient = `linear-gradient(90deg, ${shimmerFrom} 25%, ${shimmerTo} 50%, ${shimmerFrom} 75%)`;
 
-  // Per-tab skeleton shapes
+  // Reusable AttentionList skeleton (top of every action tab)
+  const attentionListSkeleton = (
+    <div style={{ padding: "14px 18px", borderRadius: 14, background: panelBg, border: `1px solid ${panelBorder}`, marginBottom: 12 }}>
+      <div className="loading-shimmer" style={{ width: 200, height: 16, borderRadius: 4, marginBottom: 12 }} />
+      {[1, 2, 3].map(i => (
+        <div key={i} style={{
+          display: "flex", gap: 10, padding: "10px 12px", borderRadius: 8,
+          marginBottom: 6,
+          borderLeft: `3px solid ${accentColor}30`,
+          background: `${accentColor}08`,
+        }}>
+          <div className="loading-shimmer" style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, marginTop: 6 }} />
+          <div style={{ flex: 1 }}>
+            <div className="loading-shimmer" style={{ width: "60%", height: 14, borderRadius: 4, marginBottom: 4 }} />
+            <div className="loading-shimmer" style={{ width: "85%", height: 11, borderRadius: 3 }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  // Per-tab skeleton shapes — match the current UI
   const skeletonContent = tab === "Overview" ? (
     <>
-      {/* Revenue goal bar */}
-      <div className="loading-shimmer" style={{ height: 32, borderRadius: 8, marginBottom: 16 }} />
-      {/* Three cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+      {/* "What to Do Today" panel */}
+      <div style={{ padding: "14px 18px", borderRadius: 14, background: panelBg, border: `1px solid ${panelBorder}`, marginBottom: 12 }}>
+        <div className="loading-shimmer" style={{ width: 140, height: 14, borderRadius: 4, marginBottom: 10 }} />
         {[1, 2, 3].map(i => (
-          <div key={i} style={{ padding: 20, borderRadius: 14, background: panelBg, border: `1px solid ${panelBorder}` }}>
-            <div className="loading-shimmer" style={{ width: "40%", height: 12, borderRadius: 4, marginBottom: 12 }} />
-            <div className="loading-shimmer" style={{ width: "70%", height: 24, borderRadius: 6, marginBottom: 10 }} />
-            <div className="loading-shimmer" style={{ width: "100%", height: 80, borderRadius: 8, marginBottom: 10 }} />
-            <div className="loading-shimmer" style={{ width: "55%", height: 10, borderRadius: 4 }} />
+          <div key={i} style={{ display: "flex", gap: 8, padding: "8px 10px", borderRadius: 6, marginBottom: 4, borderLeft: `3px solid ${accentColor}30`, background: `${accentColor}08` }}>
+            <div className="loading-shimmer" style={{ width: "70%", height: 14, borderRadius: 3 }} />
+          </div>
+        ))}
+      </div>
+      {/* Three overview cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+        {[1, 2, 3].map(i => (
+          <div key={i} style={{ padding: "12px 14px 8px", borderRadius: 14, background: panelBg, border: `1px solid ${panelBorder}` }}>
+            {/* Title row */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <div className="loading-shimmer" style={{ width: 120, height: 16, borderRadius: 4 }} />
+              <div className="loading-shimmer" style={{ width: 90, height: 22, borderRadius: 6 }} />
+            </div>
+            {/* Stat strip */}
+            <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
+              <div className="loading-shimmer" style={{ width: 80, height: 18, borderRadius: 4 }} />
+              <div className="loading-shimmer" style={{ width: 80, height: 18, borderRadius: 4 }} />
+            </div>
+            {/* Chart area */}
+            <div className="loading-shimmer" style={{ width: "100%", height: 180, borderRadius: 8 }} />
+            {/* Bottom toggle row */}
+            <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 8 }}>
+              <div className="loading-shimmer" style={{ width: 60, height: 14, borderRadius: 3 }} />
+              <div className="loading-shimmer" style={{ width: 60, height: 14, borderRadius: 3 }} />
+            </div>
           </div>
         ))}
       </div>
     </>
   ) : tab === "Sales" ? (
     <>
-      {/* Trends chart */}
-      <div style={{ padding: 20, borderRadius: 14, background: panelBg, border: `1px solid ${panelBorder}`, marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-          <div className="loading-shimmer" style={{ width: 120, height: 14, borderRadius: 4 }} />
-          <div style={{ display: "flex", gap: 6 }}>
-            <div className="loading-shimmer" style={{ width: 60, height: 24, borderRadius: 6 }} />
-            <div className="loading-shimmer" style={{ width: 60, height: 24, borderRadius: 6 }} />
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 100 }}>
-          {[40, 65, 50, 80, 70, 55, 90, 60].map((h, i) => (
-            <div key={i} className="loading-shimmer" style={{ flex: 1, height: `${h}%`, borderRadius: "4px 4px 0 0" }} />
-          ))}
-        </div>
-      </div>
-      {/* Pipeline cards */}
+      {attentionListSkeleton}
+      {/* Pipeline + tabs panel */}
       <div style={{ padding: 20, borderRadius: 14, background: panelBg, border: `1px solid ${panelBorder}` }}>
-        <div className="loading-shimmer" style={{ width: 140, height: 14, borderRadius: 4, marginBottom: 14 }} />
-        <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+        {/* Pipeline header */}
+        <div className="loading-shimmer" style={{ width: 140, height: 16, borderRadius: 4, marginBottom: 14 }} />
+        {/* Pipeline stages */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
           {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} style={{ flex: 1, padding: 12, borderRadius: 8, background: panelBg, border: `1px solid ${panelBorder}` }}>
-              <div className="loading-shimmer" style={{ width: "60%", height: 10, borderRadius: 3, marginBottom: 8 }} />
-              <div className="loading-shimmer" style={{ width: "80%", height: 18, borderRadius: 4, marginBottom: 6 }} />
-              <div className="loading-shimmer" style={{ width: "50%", height: 10, borderRadius: 3 }} />
-            </div>
+            <div key={i} className="loading-shimmer" style={{ flex: 1, height: 76, borderRadius: 8 }} />
           ))}
         </div>
-        {/* Toggle buttons + distribution bar */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          {[1, 2, 3].map(i => (
-            <div key={i} className="loading-shimmer" style={{ width: 110, height: 30, borderRadius: 10 }} />
-          ))}
-        </div>
+        {/* Distribution bar */}
         <div className="loading-shimmer" style={{ height: 22, borderRadius: 6, marginBottom: 12 }} />
-        {[1, 2, 3].map(i => (
-          <div key={i} className="loading-shimmer" style={{ height: 42, borderRadius: 6, marginBottom: 4 }} />
+        {/* Action rows */}
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="loading-shimmer" style={{ height: 44, borderRadius: 6, marginBottom: 4 }} />
         ))}
       </div>
     </>
   ) : tab === "Capacity" ? (
     <>
-      {/* Heatmap */}
-      <div style={{ padding: 20, borderRadius: 14, background: panelBg, border: `1px solid ${panelBorder}`, marginBottom: 16 }}>
-        <div className="loading-shimmer" style={{ width: 140, height: 14, borderRadius: 4, marginBottom: 14 }} />
-        {/* Header row */}
-        <div style={{ display: "flex", gap: 4, marginBottom: 8 }}>
-          <div style={{ width: 76 }} />
-          <div style={{ width: 76 }} />
-          {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="loading-shimmer" style={{ flex: 1, height: 14, borderRadius: 3 }} />
+      {attentionListSkeleton}
+      {/* Action list panel */}
+      <div style={{ padding: 20, borderRadius: 14, background: panelBg, border: `1px solid ${panelBorder}` }}>
+        {/* Toggle buttons (no header) */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} className="loading-shimmer" style={{ width: 180, height: 40, borderRadius: 12 }} />
           ))}
         </div>
-        {/* Rows */}
-        {[1, 2, 3, 4, 5, 6].map(r => (
-          <div key={r} style={{ display: "flex", gap: 4, marginBottom: 4 }}>
-            <div className="loading-shimmer" style={{ width: 76, height: 44, borderRadius: 4 }} />
-            <div className="loading-shimmer" style={{ width: 76, height: 44, borderRadius: 4 }} />
-            {[1, 2, 3, 4, 5].map(c => (
-              <div key={c} className="loading-shimmer" style={{ flex: 1, height: 44, borderRadius: 4 }} />
-            ))}
+        {/* Distribution bar */}
+        <div className="loading-shimmer" style={{ height: 22, borderRadius: 6, marginBottom: 12 }} />
+        {/* Bucket rows */}
+        {[1, 2, 3].map(i => (
+          <div key={i} style={{ marginBottom: 8 }}>
+            <div className="loading-shimmer" style={{ height: 44, borderRadius: 6, marginBottom: 4 }} />
           </div>
         ))}
-      </div>
-      {/* Action list */}
-      <div style={{ padding: 20, borderRadius: 14, background: panelBg, border: `1px solid ${panelBorder}` }}>
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <div className="loading-shimmer" style={{ width: 100, height: 16, borderRadius: 4 }} />
-          {[1, 2, 3].map(i => (
-            <div key={i} className="loading-shimmer" style={{ width: 110, height: 30, borderRadius: 10 }} />
-          ))}
-        </div>
-        <div className="loading-shimmer" style={{ height: 22, borderRadius: 6 }} />
       </div>
     </>
   ) : (
     <>
-      {/* Invoices: trends + action list */}
-      <div style={{ padding: 20, borderRadius: 14, background: panelBg, border: `1px solid ${panelBorder}`, marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-          <div className="loading-shimmer" style={{ width: 120, height: 14, borderRadius: 4 }} />
-          <div style={{ display: "flex", gap: 6 }}>
-            <div className="loading-shimmer" style={{ width: 60, height: 24, borderRadius: 6 }} />
-            <div className="loading-shimmer" style={{ width: 60, height: 24, borderRadius: 6 }} />
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 120 }}>
-          {[50, 70, 45, 85, 60, 75, 55, 90, 65, 80, 50, 70].map((h, i) => (
-            <div key={i} className="loading-shimmer" style={{ flex: 1, height: `${h}%`, borderRadius: "4px 4px 0 0" }} />
-          ))}
-        </div>
-      </div>
+      {/* Invoices: attention list + outstanding action list */}
+      {attentionListSkeleton}
       <div style={{ padding: 20, borderRadius: 14, background: panelBg, border: `1px solid ${panelBorder}` }}>
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <div className="loading-shimmer" style={{ width: 140, height: 16, borderRadius: 4 }} />
+        <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
           {[1, 2, 3].map(i => (
-            <div key={i} className="loading-shimmer" style={{ width: 110, height: 30, borderRadius: 10 }} />
+            <div key={i} className="loading-shimmer" style={{ width: 180, height: 40, borderRadius: 12 }} />
           ))}
         </div>
         <div className="loading-shimmer" style={{ height: 22, borderRadius: 6, marginBottom: 12 }} />
-        {[1, 2, 3].map(i => (
-          <div key={i} className="loading-shimmer" style={{ height: 42, borderRadius: 6, marginBottom: 4 }} />
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="loading-shimmer" style={{ height: 44, borderRadius: 6, marginBottom: 4 }} />
         ))}
       </div>
     </>
@@ -159,52 +177,61 @@ function TabLoadingScreen({ tab }: { tab: string }) {
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
-      {/* Sidebar skeleton */}
+      {/* Sidebar skeleton — must match SidebarNav.tsx layout exactly to
+          prevent the nav from "snapping" when the real component mounts. */}
       <div style={{
-        width: 220, flexShrink: 0,
+        width: 200, flexShrink: 0,
         background: sidebarBg,
         borderRight: `1px solid ${sidebarBorder}`,
-        padding: "20px 12px",
-        display: "flex", flexDirection: "column", gap: 8,
+        height: "100%",
+        display: "flex", flexDirection: "column",
       }}>
-        {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 8px 16px" }}>
-          <svg width="26" height="26" viewBox="0 0 50 50">
-            <defs>
-              <linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#7c5cff" />
-                <stop offset="100%" stopColor="#5aa6ff" />
-              </linearGradient>
-            </defs>
-            <circle cx="25" cy="25" r="22" fill="none" stroke="url(#lg)" strokeWidth="3" opacity="0.4" />
-            <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#lg)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
-          </svg>
-          <div>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", background: "linear-gradient(135deg, #7c5cff, #5aa6ff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", opacity: 0.5 }}>
+        {/* Logo + company — matches SidebarNav padding "16px 14px 12px" */}
+        <div style={{ padding: "16px 14px 12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <svg width="24" height="24" viewBox="0 0 50 50" style={{ flexShrink: 0 }}>
+              <defs>
+                <linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#5aa6ff" />
+                  <stop offset="100%" stopColor="#38bdf8" />
+                </linearGradient>
+              </defs>
+              <circle cx="25" cy="25" r="22" fill="none" stroke="url(#lg)" strokeWidth="3" opacity="0.4" />
+              <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#lg)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+            </svg>
+            <div style={{ fontSize: 12, fontWeight: 800, background: "linear-gradient(135deg, #5aa6ff, #38bdf8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", opacity: 0.5 }}>
               AccuInsight
             </div>
-            <div className="loading-shimmer" style={{ width: 90, height: 10, marginTop: 3, borderRadius: 3 }} />
           </div>
+          {/* Company name placeholder (matches paddingLeft: 32 from real nav) */}
+          <div className="loading-shimmer" style={{ height: 13, width: "70%", marginLeft: 32, borderRadius: 3 }} />
         </div>
-        {/* Nav items */}
-        {[{ label: "Overview", tab: "Overview" }, { label: "Sell", tab: "Sales" }, { label: "Book", tab: "Capacity" }, { label: "Collect", tab: "Invoices" }].map(t => (
-          <div key={t.tab} style={{
-            padding: "10px 12px", borderRadius: 8,
-            background: t.tab === tab
-              ? (isLight ? "rgba(124,92,255,0.08)" : "rgba(124,92,255,0.15)")
-              : "transparent",
-            color: t.tab === tab
-              ? (isLight ? "#5b21b6" : "#a78bfa")
-              : (isLight ? "#64748b" : "rgba(255,255,255,0.4)"),
-            fontSize: 13, fontWeight: t.tab === tab ? 700 : 500,
-          }}>
-            {t.label}
-          </div>
-        ))}
+        {/* Nav items — matches SidebarNav padding "0 8px", gap 2 */}
+        <div style={{ padding: "0 8px", display: "flex", flexDirection: "column", gap: 2 }}>
+          {[{ label: "Overview", tab: "Overview" }, { label: "Sell", tab: "Sales" }, { label: "Book", tab: "Capacity" }, { label: "Collect", tab: "Invoices" }].map(t => {
+            const isActive = t.tab === tab;
+            return (
+              <div key={t.tab} style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "10px 12px", borderRadius: 8,
+                background: isActive ? accentBgActive : "transparent",
+                color: isActive ? accentColor : (isLight ? "#64748b" : "rgba(255,255,255,0.5)"),
+                fontSize: 13, fontWeight: isActive ? 700 : 600,
+                borderLeft: isActive ? `3px solid ${accentColor}` : "3px solid transparent",
+              }}>
+                <div style={{ width: 18, height: 18, opacity: 0.5 }} />
+                {t.label}
+              </div>
+            );
+          })}
+        </div>
+        {/* Spacer */}
         <div style={{ flex: 1 }} />
-        {/* Bottom sidebar items */}
-        <div className="loading-shimmer" style={{ width: "80%", height: 28, borderRadius: 6 }} />
-        <div className="loading-shimmer" style={{ width: "60%", height: 10, borderRadius: 3, marginTop: 4 }} />
+        {/* Bottom — matches SidebarNav padding "12px 12px 16px" with top border */}
+        <div style={{ padding: "12px 12px 16px", borderTop: `1px solid ${sidebarBorder}` }}>
+          <div className="loading-shimmer" style={{ width: "100%", height: 28, borderRadius: 6, marginBottom: 6 }} />
+          <div className="loading-shimmer" style={{ width: "60%", height: 10, borderRadius: 3 }} />
+        </div>
       </div>
 
       {/* Main content */}
@@ -219,19 +246,17 @@ function TabLoadingScreen({ tab }: { tab: string }) {
           gap: 16, marginBottom: 24,
         }}>
           <div style={{ position: "relative", width: 36, height: 36 }}>
-            <div style={{
+            <div className="loading-spin-outer" style={{
               position: "absolute", inset: 0,
-              border: `2.5px solid ${isLight ? "rgba(124,92,255,0.12)" : "rgba(124,92,255,0.15)"}`,
-              borderTopColor: "#7c5cff",
-              borderRadius: "50%",
-              animation: "loading-spin 1s linear infinite",
-            }} />
-            <div style={{
-              position: "absolute", inset: 5,
               border: `2.5px solid ${isLight ? "rgba(90,166,255,0.12)" : "rgba(90,166,255,0.15)"}`,
-              borderBottomColor: "#5aa6ff",
+              borderTopColor: accentColor,
               borderRadius: "50%",
-              animation: "loading-spin 1.5s linear infinite reverse",
+            }} />
+            <div className="loading-spin-inner" style={{
+              position: "absolute", inset: 5,
+              border: `2.5px solid ${isLight ? "rgba(56,189,248,0.12)" : "rgba(56,189,248,0.15)"}`,
+              borderBottomColor: "#38bdf8",
+              borderRadius: "50%",
             }} />
           </div>
           <div>
@@ -239,7 +264,7 @@ function TabLoadingScreen({ tab }: { tab: string }) {
               Loading {tab}
             </div>
             <div style={{ color: textMuted, fontSize: 11, fontWeight: 500 }}>
-              Crunching your numbers...
+              {loadingMessage}
             </div>
           </div>
         </div>
@@ -251,17 +276,24 @@ function TabLoadingScreen({ tab }: { tab: string }) {
       </div>
 
       <style>{`
-        @keyframes loading-spin {
+        @keyframes accuLoadingSpin {
+          from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
-        @keyframes loading-shimmer {
+        @keyframes accuLoadingShimmer {
           0% { background-position: -200% 0; }
           100% { background-position: 200% 0; }
+        }
+        .loading-spin-outer {
+          animation: accuLoadingSpin 1s linear infinite;
+        }
+        .loading-spin-inner {
+          animation: accuLoadingSpin 1.5s linear infinite reverse;
         }
         .loading-shimmer {
           background: ${shimmerGradient};
           background-size: 200% 100%;
-          animation: loading-shimmer 1.8s ease-in-out infinite;
+          animation: accuLoadingShimmer 1.8s ease-in-out infinite;
         }
       `}</style>
     </div>

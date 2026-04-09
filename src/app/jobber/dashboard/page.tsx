@@ -18,6 +18,7 @@ import { CapacityChart } from "../capacity/CapacityChart";
 import { type AgingBucket } from "../invoices/InvoiceTrendsSection";
 import { AgingDonutWrapper } from "./AgingDonutWrapper";
 import { CapacityTargetDisplay } from "./CapacityTargetDisplay";
+import { InlineCapacityEditor } from "./InlineCapacityEditor";
 import { FlipCard } from "./FlipCard";
 import { InsightTip } from "./InsightTip";
 import { ActionStrip } from "./ActionStrip";
@@ -1819,7 +1820,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 const topActions = todayActions.slice(0, 3);
 
                 return topActions.length > 0 ? (
-                  <div className="panel" style={{ padding: "12px 16px", marginBottom: 12 }}>
+                  <div data-tour="overview-actions" className="panel" style={{ padding: "12px 16px", marginBottom: 12 }}>
                     <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 800, margin: "0 0 8px" }}>
                       What to Do Today
                     </h2>
@@ -1845,7 +1846,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 ) : null;
               })()}
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, alignItems: "stretch", flex: 1 }}>
+            <div data-tour="overview-cards" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, alignItems: "stretch", flex: 1 }}>
 
               {/* ═══ INVOICES CARD ═══ */}
               {(() => {
@@ -1928,10 +1929,10 @@ const quoteWonPct = quotesInLast30Days.length > 0
                       </div>
                     </div>
                     {/* Fill-style bar chart — invoiced is container, collected fills it */}
-                    <div style={{ display: "flex", alignItems: "flex-end", gap: 4, flex: 1, minHeight: 60 }}>
+                    <div style={{ display: "flex", alignItems: "flex-end", gap: 4, flex: 1, minHeight: 45 }}>
                       {cashFlowMonths.map((m, i) => {
                         const barH = cfMax > 0 ? Math.max((m.invoicedCents / cfMax) * 100, m.invoicedCents > 0 ? 6 : 1) : 1;
-                        const fillPct = m.invoicedCents > 0 ? Math.min((m.collectedCents / m.invoicedCents) * 100, 100) : 0;
+                        const fillPct = m.invoicedCents > 0 ? (m.collectedCents / m.invoicedCents) * 100 : 0;
                         const prev = i > 0 ? cashFlowMonths[i - 1] : null;
                         const invChange = prev && prev.invoicedCents > 0 ? Math.round(((m.invoicedCents - prev.invoicedCents) / prev.invoicedCents) * 100) : null;
                         const colChange = prev && prev.collectedCents > 0 ? Math.round(((m.collectedCents - prev.collectedCents) / prev.collectedCents) * 100) : null;
@@ -2009,7 +2010,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
                   </div>
                 );
 
-                // Past-due total + one-line commentary based on the worst bucket
+                // Past-due commentary based on the worst bucket (used in card header)
                 const pastDueCommentary = (() => {
                   if (totalAR === 0) return "Everyone's paid up — nothing to chase right now";
                   const pct15p = totalAR > 0 ? b15p / totalAR : 0;
@@ -2024,38 +2025,21 @@ const quoteWonPct = quotesInLast30Days.length > 0
                   }
                   return `All overdue is recent — a friendly nudge should clear it up`;
                 })();
-                const pastDueCommentaryColor = totalAR === 0
+                const pastDueColor = totalAR === 0
                   ? "#10b981"
                   : b15p > 0 ? "#dc2626" : b8_14 > 0 ? "#ef4444" : "#f59e0b";
 
                 const invPage2 = (
-                  <div style={{ display: "flex", flex: 1, padding: "4px 0", flexDirection: "column" }}>
-                    {/* Total past due header + commentary */}
-                    <div style={{
-                      display: "flex", alignItems: "baseline", justifyContent: "space-between",
-                      paddingBottom: 8, marginBottom: 8,
-                      borderBottom: "1px solid rgba(255,255,255,0.06)",
-                    }}>
-                      <div>
-                        <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                          Total past due
-                        </div>
-                        <div style={{ fontSize: 22, fontWeight: 800, color: totalAR > 0 ? pastDueCommentaryColor : "#10b981", lineHeight: 1.1, marginTop: 2 }}>
-                          {money(totalAR)}
-                        </div>
+                  <div style={{ display: "flex", flex: 1, padding: 0, flexDirection: "column" }}>
+                    {totalAR > 0 && (
+                      <div style={{
+                        fontSize: 11, fontWeight: 600, color: pastDueColor,
+                        marginBottom: 6, lineHeight: 1.3,
+                        textAlign: "center", width: "100%",
+                      }}>
+                        {pastDueCommentary}
                       </div>
-                      {totalPastDueCount > 0 && (
-                        <div className="text-muted" style={{ fontSize: 12, fontWeight: 600 }}>
-                          across {totalPastDueCount} invoice{totalPastDueCount !== 1 ? "s" : ""}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{
-                      fontSize: 12, fontWeight: 600, color: pastDueCommentaryColor,
-                      marginBottom: 10, lineHeight: 1.4,
-                    }}>
-                      {pastDueCommentary}
-                    </div>
+                    )}
                     {agingRows.length > 0 ? (
                       <div style={{ display: "flex", flexDirection: "column", width: "100%", flex: 1 }}>
                         <div style={{ display: "flex", flex: 1 }}>
@@ -2100,15 +2084,65 @@ const quoteWonPct = quotesInLast30Days.length > 0
                   </div>
                 );
 
+                // Per-page header for the OVERDUE tab
+                const overdueHeader = (
+                  <div style={{ display: "flex", gap: 16, alignItems: "baseline", flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                      <span style={{ fontSize: 18, fontWeight: 800, color: totalAR > 0 ? pastDueColor : "#10b981", lineHeight: 1 }}>
+                        {money(totalAR)}
+                      </span>
+                      <span className="text-muted" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        Past due
+                      </span>
+                    </div>
+                    {totalPastDueCount > 0 && (
+                      <span className="text-muted" style={{ fontSize: 11, fontWeight: 600 }}>
+                        {totalPastDueCount} invoice{totalPastDueCount !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
+                );
+
+                // Per-page header for the CASH FLOW tab
+                const cashFlowHeader = (
+                  <div style={{ display: "flex", gap: 16, alignItems: "baseline", flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                      <span className="text-primary" style={{ fontSize: 18, fontWeight: 800, lineHeight: 1 }}>
+                        {money(invoiced30Cents)}
+                      </span>
+                      <span className="text-muted" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        Invoiced 30d
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                      <span style={{ fontSize: 18, fontWeight: 800, color: collected30Cents > 0 ? "#10b981" : "#8590a2", lineHeight: 1 }}>
+                        {money(collected30Cents)}
+                      </span>
+                      <span className="text-muted" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        Collected 30d
+                      </span>
+                    </div>
+                    {collectionRate !== null && (
+                      <span className="text-muted" style={{ fontSize: 11, fontWeight: 600 }}>
+                        {collectionRate}% rate
+                      </span>
+                    )}
+                  </div>
+                );
+
                 return (
-                  <div className="panel" style={{ padding: "16px 16px 10px", display: "flex", flexDirection: "column", minWidth: 0 }}>
-                    <a href={`/jobber/invoices${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                  <div className="panel" style={{ padding: "12px 14px 8px", display: "flex", flexDirection: "column", minWidth: 0 }}>
+                    <a href={`/jobber/invoices${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                       <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>
                         Cash You Need to Collect
                       </h2>
                       <span className="btn" style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px" }}>Collect Payments &#8594;</span>
                     </a>
-                    <FlipCard pages={[invPage2, invPage1]} labels={["What's Overdue", "Cash Flow"]} />
+                    <FlipCard
+                      pages={[invPage2, invPage1]}
+                      labels={["What's Overdue", "Cash Flow"]}
+                      headers={[overdueHeader, cashFlowHeader]}
+                    />
                   </div>
                 );
               })()}
@@ -2179,15 +2213,26 @@ const quoteWonPct = quotesInLast30Days.length > 0
                   { label: "Next Week", days: nextWeekDays.map(d => ({ ...d, isToday: false })), bookedCents: nextWeekDays.reduce((s, d) => s + d.scheduledCents, 0) },
                 ];
 
-                return (
-                  <div className="panel" style={{ padding: "16px 16px 10px", display: "flex", flexDirection: "column", minWidth: 0 }}>
-                    <a href={`/jobber/capacity${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>
-                        This Week&apos;s Schedule
-                      </h2>
-                      <span className="btn" style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px" }}>Book Work &#8594;</span>
-                    </a>
+                // Per-view headers and measure-aware math now live inside
+                // CapacityTargetDisplay (it reads localStorage via the
+                // useCapacityMeasure hook, which a server component can't do).
 
+                return (
+                  <div className="panel" style={{ padding: "12px 14px 8px", display: "flex", flexDirection: "column", minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+                      <a href={`/jobber/capacity${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+                        <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>
+                          Weekly Capacity
+                        </h2>
+                      </a>
+                      <InlineCapacityEditor
+                        currentTargetCents={effectiveWeeklyTarget || 0}
+                        currentWorkDays={workDaysList}
+                        adminConnectionId={adminConnectionId}
+                        currencyCode={currencyCode}
+                      />
+                      <a href={`/jobber/capacity${adminQs}`} className="btn" style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", textDecoration: "none" }}>Book Work &#8594;</a>
+                    </div>
                     <CapacityTargetDisplay
                       weeklyTargetCents={effectiveWeeklyTarget || 0}
                       weeks={weekSets}
@@ -2234,9 +2279,9 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 const healthTotal = healthBuckets.filter(b => b.label !== "Stale").reduce((s, b) => s + b.count, 0) || 1;
 
                 // SVG donut for quote health
-                const donutSize = 260;
-                const donutR = 96;
-                const donutStroke = 28;
+                const donutSize = 195;
+                const donutR = 72;
+                const donutStroke = 21;
                 const donutCirc = 2 * Math.PI * donutR;
                 const activeBuckets = healthBuckets.filter(b => b.label !== "Stale" && b.count > 0);
                 const activeTotal = activeBuckets.reduce((s, b) => s + b.count, 0) || 1;
@@ -2244,20 +2289,9 @@ const quoteWonPct = quotesInLast30Days.length > 0
 
                 const page1 = (
                   <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-                    {/* Won this month */}
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 10 }}>
-                      <div>
-                        <div style={{ fontSize: 22, fontWeight: 800, color: "#10b981", letterSpacing: -1.5, lineHeight: 1 }}>{money(wonThisMonthCents)}</div>
-                        <div className="text-muted" style={{ fontSize: 11, marginTop: 3 }}>won this month</div>
-                      </div>
-                      <div style={{ borderLeft: "1px solid rgba(255,255,255,0.06)", paddingLeft: 12 }}>
-                        <div className="text-primary" style={{ fontSize: 15, fontWeight: 800, letterSpacing: -0.5, lineHeight: 1 }}>{money(monthBars.reduce((s, b) => s + b.cents, 0))}</div>
-                        <div className="text-muted" style={{ fontSize: 10, marginTop: 2 }}>last 6 months</div>
-                      </div>
-                    </div>
                     {/* Mini bar chart */}
                     <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                      <div style={{ display: "flex", alignItems: "flex-end", gap: 4, flex: 1, minHeight: 60 }}>
+                      <div style={{ display: "flex", alignItems: "flex-end", gap: 4, flex: 1, minHeight: 45 }}>
                         {monthBars.map((b, i) => {
                           const prev = i > 0 ? monthBars[i - 1] : null;
                           const change = prev && prev.cents > 0 ? Math.round(((b.cents - prev.cents) / prev.cents) * 100) : null;
@@ -2288,9 +2322,9 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 const page2 = (
                   <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
                     {/* Guidance line */}
-                    <div style={{ marginBottom: 6 }}>
+                    <div style={{ marginBottom: 6, textAlign: "center", width: "100%" }}>
                       <span style={{
-                        fontSize: 13, fontWeight: 700,
+                        fontSize: 11, fontWeight: 700,
                         color: realOpps > 0 ? "#10b981" : goingColdQuotes.length > 0 ? "#ef4444" : "#8590a2",
                       }}>
                         {realOpps > 0
@@ -2317,7 +2351,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
                               strokeDasharray={`${Math.max(segLen - gap, 1)} ${donutCirc - Math.max(segLen - gap, 1)}`}
                               strokeDashoffset={-donutOffset}
                               strokeLinecap="butt"
-                              style={{ transform: "rotate(-90deg)", transformOrigin: "center", transition: "all 0.5s ease" }}
+                              style={{ transform: "rotate(-90deg)", transformOrigin: "center", transition: "stroke-dashoffset 0.2s ease, stroke-dasharray 0.2s ease" }}
                             />
                           );
                           donutOffset += segLen;
@@ -2352,15 +2386,55 @@ const quoteWonPct = quotesInLast30Days.length > 0
                   </div>
                 );
 
+                // Open pipeline = everything not yet stale: hot + warm + going cold
+                const openPipelineQuotes = [...hotQuotes, ...warmQuotes, ...goingColdQuotes];
+                const openPipelineCents = sumCents(openPipelineQuotes);
+                const openPipelineCount = openPipelineQuotes.length;
+                // Total sales over the 6-month chart window
+                const totalSales6moCents = monthBars.reduce((s, b) => s + b.cents, 0);
+                const totalSales6moCount = monthBars.reduce((s, b) => s + b.count, 0);
+
+                // Per-page header for the OPEN QUOTES tab
+                const quotesHeader = (
+                  <div style={{ display: "flex", gap: 16, alignItems: "baseline", flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                      <span style={{ fontSize: 18, fontWeight: 800, color: openPipelineCents > 0 ? "#5aa6ff" : "#8590a2", lineHeight: 1 }}>
+                        {money(openPipelineCents)}
+                      </span>
+                      <span className="text-muted" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        Open pipeline
+                      </span>
+                    </div>
+                  </div>
+                );
+
+                // Per-page header for the SALES tab
+                const salesHeader = (
+                  <div style={{ display: "flex", gap: 16, alignItems: "baseline", flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                      <span style={{ fontSize: 18, fontWeight: 800, color: totalSales6moCents > 0 ? "#10b981" : "#8590a2", lineHeight: 1 }}>
+                        {money(totalSales6moCents)}
+                      </span>
+                      <span className="text-muted" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        Sales 6mo
+                      </span>
+                    </div>
+                  </div>
+                );
+
                 return (
-                  <div className="panel" style={{ padding: "16px 16px 10px", display: "flex", flexDirection: "column", minWidth: 0 }}>
-                    <a href={`/jobber/sales${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                  <div className="panel" style={{ padding: "12px 14px 8px", display: "flex", flexDirection: "column", minWidth: 0 }}>
+                    <a href={`/jobber/sales${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                       <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>
                         Sales Pipeline
                       </h2>
                       <span className="btn" style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px" }}>Win Work &#8594;</span>
                     </a>
-                    <FlipCard pages={[page2, page1]} labels={["Your Open Quotes", "Revenue"]} />
+                    <FlipCard
+                      pages={[page2, page1]}
+                      labels={["Your Open Quotes", "Sales"]}
+                      headers={[quotesHeader, salesHeader]}
+                    />
                   </div>
                 );
               })()}
