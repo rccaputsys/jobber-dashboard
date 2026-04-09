@@ -4,7 +4,6 @@ import { getUser } from "@/lib/supabaseAuth";
 import { redirect } from "next/navigation";
 import { DashboardTopbar } from "../dashboard/DashboardTopbar";
 import { OnboardingOverlay } from "../dashboard/OnboardingOverlay";
-import { CapacityTrendsSection } from "./CapacityTrendsSection";
 import { CapacityWeekBreakdown } from "./CapacityWeekBreakdown";
 import { CapacityKpiCards } from "./CapacityKpiCards";
 import { CapacityActionList } from "./CapacityActionList";
