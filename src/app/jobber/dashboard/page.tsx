@@ -2009,8 +2009,53 @@ const quoteWonPct = quotesInLast30Days.length > 0
                   </div>
                 );
 
+                // Past-due total + one-line commentary based on the worst bucket
+                const pastDueCommentary = (() => {
+                  if (totalAR === 0) return "Everyone's paid up — nothing to chase right now";
+                  const pct15p = totalAR > 0 ? b15p / totalAR : 0;
+                  if (b15p > 0 && pct15p >= 0.5) {
+                    return `Over half of what's owed is 30+ days late — call those clients first`;
+                  }
+                  if (b15p > 0) {
+                    return `${money(b15p)} is 30+ days late — start with the oldest accounts`;
+                  }
+                  if (b8_14 > 0) {
+                    return `Send firm reminders today before these get stale`;
+                  }
+                  return `All overdue is recent — a friendly nudge should clear it up`;
+                })();
+                const pastDueCommentaryColor = totalAR === 0
+                  ? "#10b981"
+                  : b15p > 0 ? "#dc2626" : b8_14 > 0 ? "#ef4444" : "#f59e0b";
+
                 const invPage2 = (
                   <div style={{ display: "flex", flex: 1, padding: "4px 0", flexDirection: "column" }}>
+                    {/* Total past due header + commentary */}
+                    <div style={{
+                      display: "flex", alignItems: "baseline", justifyContent: "space-between",
+                      paddingBottom: 8, marginBottom: 8,
+                      borderBottom: "1px solid rgba(255,255,255,0.06)",
+                    }}>
+                      <div>
+                        <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                          Total past due
+                        </div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: totalAR > 0 ? pastDueCommentaryColor : "#10b981", lineHeight: 1.1, marginTop: 2 }}>
+                          {money(totalAR)}
+                        </div>
+                      </div>
+                      {totalPastDueCount > 0 && (
+                        <div className="text-muted" style={{ fontSize: 12, fontWeight: 600 }}>
+                          across {totalPastDueCount} invoice{totalPastDueCount !== 1 ? "s" : ""}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{
+                      fontSize: 12, fontWeight: 600, color: pastDueCommentaryColor,
+                      marginBottom: 10, lineHeight: 1.4,
+                    }}>
+                      {pastDueCommentary}
+                    </div>
                     {agingRows.length > 0 ? (
                       <div style={{ display: "flex", flexDirection: "column", width: "100%", flex: 1 }}>
                         <div style={{ display: "flex", flex: 1 }}>
