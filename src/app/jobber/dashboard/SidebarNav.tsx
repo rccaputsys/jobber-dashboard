@@ -91,9 +91,10 @@ export function SidebarNav({ adminConnectionId, companyName, connectionId, lastS
 
   // Shared style for the three bottom action pills — applied via CSS class
   // so inner buttons fill the full container area.
-  const pillBg = isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)";
-  const pillBorder = isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)";
-  const pillColor = isLight ? "#64748b" : "rgba(255,255,255,0.65)";
+  const pillBg = isLight ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.08)";
+  const pillBorder = isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.15)";
+  const pillColor = isLight ? "#475569" : "rgba(255,255,255,0.75)";
+  const pillHoverBg = isLight ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.14)";
 
   const bottomSection = (
     <div style={{ padding: "12px 12px 14px", borderTop: `1px solid ${isLight ? "#e2e8f0" : "rgba(255,255,255,0.06)"}` }}>
@@ -160,6 +161,13 @@ export function SidebarNav({ adminConnectionId, companyName, connectionId, lastS
           gap: 4px !important;
           cursor: pointer !important;
           box-shadow: none !important;
+          transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease !important;
+        }
+        .sidebar-actions > form > button:hover,
+        .sidebar-actions > button:hover {
+          background: ${pillHoverBg} !important;
+          border-color: ${isLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.22)"} !important;
+          color: ${isLight ? "#1e293b" : "#ffffff"} !important;
         }
       `}</style>
 
