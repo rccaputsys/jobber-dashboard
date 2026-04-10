@@ -780,6 +780,22 @@ export function SalesActionTabs({
           {tab === "requests" && requestExportData.length > 0 && (
             <ExportCSV data={requestExportData} filename="open-requests" label="Download" />
           )}
+          {tab === "draft" && draftQuotes.length > 0 && (
+            <ExportCSV data={draftQuotes.map(q => ({
+              "Quote #": q.quote_number, "Title": q.quote_title,
+              "Amount": (q.amount_cents / 100).toFixed(2), "Days in Draft": q.days_quiet,
+              "Last Updated": q.updated_at ? new Date(q.updated_at).toLocaleDateString() : "",
+              "Jobber URL": q.quote_url,
+            }))} filename="draft-quotes" label="Download" />
+          )}
+          {tab === "approved" && approvedQuotes.length > 0 && (
+            <ExportCSV data={approvedQuotes.map(q => ({
+              "Quote #": q.quote_number, "Title": q.quote_title,
+              "Amount": (q.amount_cents / 100).toFixed(2),
+              "Sent": q.sent_at ? new Date(q.sent_at).toLocaleDateString() : "",
+              "Jobber URL": q.quote_url,
+            }))} filename="won-quotes" label="Download" />
+          )}
         </div>
       </div>
 

@@ -863,38 +863,12 @@ export const globalStyles = `
     border-right-color: #e2e5ea !important;
   }
 
+  /* Mobile: hamburger menu replaces the sidebar */
+  .sidebar-mobile-bar { display: none; }
   @media (max-width: 768px) {
     .app-layout { flex-direction: column; }
-    .sidebar-nav {
-      width: 100%;
-      height: auto;
-      position: relative;
-      border-right: none;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      display: flex;
-      align-items: center;
-      padding: 0;
-      overflow-x: auto;
-    }
-    .sidebar-nav > div:first-child { display: none; } /* hide logo on mobile */
-    .sidebar-nav > div:last-child {
-      display: flex;
-      flex-direction: row;
-      gap: 0;
-      padding: 4px 8px;
-      width: 100%;
-    }
-    .sidebar-nav > div:last-child a {
-      flex: 1;
-      justify-content: center;
-      padding: 8px 4px !important;
-      border-left: none !important;
-      border-bottom: 3px solid transparent;
-      border-radius: 0 !important;
-      font-size: 11px !important;
-      gap: 4px !important;
-    }
-    .sidebar-nav > div:last-child a svg { width: 14px; height: 14px; }
+    .sidebar-desktop { display: none !important; }
+    .sidebar-mobile-bar { display: block; }
   }
 
   /* Nav tabs (legacy — kept for compatibility) */
