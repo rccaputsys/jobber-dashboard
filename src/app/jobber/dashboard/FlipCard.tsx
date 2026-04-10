@@ -28,7 +28,7 @@ export function FlipCard({
     <div style={{ display: "flex", flexDirection: "column", height: "100%", flex: 1, minHeight: 0 }}>
       {/* Per-page header (above the separator) — also stacked so height is stable */}
       {headers && headers.length > 0 && (
-        <div style={{ display: "grid", marginBottom: 4 }}>
+        <div style={{ display: "grid", marginBottom: 4, minHeight: 28 }}>
           {headers.map((h, i) => (
             <div
               key={i}

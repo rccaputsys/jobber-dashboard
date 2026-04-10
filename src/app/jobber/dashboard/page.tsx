@@ -1747,44 +1747,45 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 const invPage2 = (
                   <div style={{ display: "flex", flex: 1, padding: 0, flexDirection: "column" }}>
                     {agingRows.length > 0 ? (
-                      <div style={{ display: "flex", flexDirection: "column", width: "100%", flex: 1 }}>
-                        {agingRows.map(b => (
-                          <div
-                            key={b.label}
-                            className="aging-row"
-                            style={{
-                              flex: Math.max(b.cents, 1), minHeight: 12,
-                              display: "flex", alignItems: "center", gap: 0,
-                              borderRadius: 6, padding: "2px 0",
+                      <div style={{ display: "flex", flex: 1, width: "100%" }}>
+                        {/* Left labels */}
+                        <div style={{ display: "flex", flexDirection: "column", paddingRight: 14, textAlign: "right", flex: 1, justifyContent: "center" }}>
+                          {agingRows.map((b, bi) => (
+                            <div key={b.label} className="aging-row-label" data-aging-idx={bi} style={{
+                              flex: Math.max(b.cents, 1), display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "flex-end",
+                              opacity: 0.85, transition: "transform 0.15s ease, opacity 0.15s ease",
+                            }}>
+                              <div style={{ fontSize: 17, fontWeight: 800, color: b.color, lineHeight: 1.1 }}>{money(b.cents)}</div>
+                              <div className="text-muted" style={{ fontSize: 11, lineHeight: 1.3 }}>{b.count} invoice{b.count !== 1 ? "s" : ""}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {/* Connected vertical bar with faint dividers */}
+                        <div style={{
+                          width: 56, borderRadius: 10, overflow: "hidden",
+                          display: "flex", flexDirection: "column", flexShrink: 0,
+                          background: "rgba(255,255,255,0.03)",
+                        }}>
+                          {agingRows.map((b, bi) => (
+                            <div key={b.label} className="aging-bar-seg" data-aging-idx={bi} style={{
+                              flex: Math.max(b.cents, 1), minHeight: 6,
+                              background: b.color,
+                              borderBottom: bi < agingRows.length - 1 ? "1px solid rgba(255,255,255,0.08)" : "none",
                               cursor: "default",
-                              transition: "all 0.15s ease",
-                            }}
-                          >
-                            {/* Left: $ + count */}
-                            <div className="aging-row-label" style={{
-                              flex: 1, textAlign: "right", paddingRight: 12,
-                              transition: "transform 0.15s ease, opacity 0.15s ease",
-                              opacity: 0.85,
-                            }}>
-                              <div style={{ fontSize: 17, fontWeight: 800, color: b.color }}>{money(b.cents)}</div>
-                              <div className="text-muted" style={{ fontSize: 11 }}>{b.count} invoice{b.count !== 1 ? "s" : ""}</div>
-                            </div>
-                            {/* Center: bar segment */}
-                            <div style={{
-                              width: 56, flexShrink: 0, alignSelf: "stretch",
-                              background: b.color, borderRadius: 4,
-                              transition: "filter 0.15s ease",
                             }} />
-                            {/* Right: bucket name */}
-                            <div className="aging-row-label" style={{
-                              flex: 1, paddingLeft: 12,
-                              transition: "transform 0.15s ease, opacity 0.15s ease",
-                              opacity: 0.85,
+                          ))}
+                        </div>
+                        {/* Right labels */}
+                        <div style={{ display: "flex", flexDirection: "column", paddingLeft: 14, flex: 1, justifyContent: "center" }}>
+                          {agingRows.map((b, bi) => (
+                            <div key={b.label} className="aging-row-label" data-aging-idx={bi} style={{
+                              flex: Math.max(b.cents, 1), display: "flex", flexDirection: "column", justifyContent: "center",
+                              opacity: 0.85, transition: "transform 0.15s ease, opacity 0.15s ease",
                             }}>
-                              <div className="text-primary" style={{ fontSize: 14, fontWeight: 700 }}>{b.label}</div>
+                              <div className="text-primary" style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.2 }}>{b.label}</div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
                     ) : (
                       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
