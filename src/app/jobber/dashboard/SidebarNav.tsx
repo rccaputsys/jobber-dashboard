@@ -88,49 +88,65 @@ export function SidebarNav({ adminConnectionId, companyName, connectionId, lastS
     </div>
   );
 
+  const btnStyle: React.CSSProperties = {
+    display: "flex", alignItems: "center", justifyContent: "center",
+    flex: 1, gap: 6, padding: "8px 0", borderRadius: 6,
+    background: isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+    border: `1px solid ${isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"}`,
+    color: isLight ? "#64748b" : "rgba(255,255,255,0.65)",
+    fontSize: 10, fontWeight: 600, cursor: "pointer",
+    transition: "all 0.15s ease",
+  };
+
   const bottomSection = (
-    <div style={{ padding: "12px 12px 16px", borderTop: `1px solid ${isLight ? "#e2e8f0" : "rgba(255,255,255,0.06)"}` }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
-        {connectionId && <SyncButton connectionId={connectionId} autoSync={autoSync} />}
-        <div style={{ flex: 1 }} />
-        <ThemeToggle />
-        <LogoutButton />
-      </div>
-      {lastSyncPretty && (
-        <div className="text-muted" style={{ fontSize: 9, marginTop: 4, paddingLeft: 2 }}>{lastSyncPretty}</div>
+    <div style={{ padding: "12px 12px 14px", borderTop: `1px solid ${isLight ? "#e2e8f0" : "rgba(255,255,255,0.06)"}` }}>
+      {/* Sync row */}
+      {connectionId && (
+        <div style={{ marginBottom: 8 }}>
+          <SyncButton connectionId={connectionId} autoSync={autoSync} />
+          {lastSyncPretty && (
+            <div className="text-muted" style={{ fontSize: 9, marginTop: 3, paddingLeft: 2 }}>{lastSyncPretty}</div>
+          )}
+        </div>
       )}
+
+      {/* Action buttons — 3 across: Dark/Light | Restart Tour | Logout */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+        <div style={btnStyle}>
+          <ThemeToggle />
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            try {
+              Object.keys(localStorage)
+                .filter(k => k.startsWith("tour_") || k.startsWith("welcome_") || k.startsWith("aha_") || k.startsWith("checklist_"))
+                .forEach(k => localStorage.removeItem(k));
+            } catch {}
+            window.location.reload();
+          }}
+          style={btnStyle}
+        >
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+            <polygon points="6.5,5 11,8 6.5,11" fill="currentColor" />
+          </svg>
+          Tour
+        </button>
+        <div style={btnStyle}>
+          <LogoutButton />
+        </div>
+      </div>
+
+      {/* Subscription */}
       {billingStatus && trialEndsAt !== undefined && subscriptionActive !== undefined && (
-        <div style={{ marginTop: 10 }}>
+        <div style={{ marginBottom: 10 }}>
           <SubscriptionStatus billingStatus={billingStatus} trialEndsAt={trialEndsAt} subscriptionActive={subscriptionActive} />
         </div>
       )}
-      <button
-        type="button"
-        onClick={() => {
-          try {
-            Object.keys(localStorage)
-              .filter(k => k.startsWith("tour_") || k.startsWith("welcome_") || k.startsWith("aha_") || k.startsWith("checklist_"))
-              .forEach(k => localStorage.removeItem(k));
-          } catch {}
-          window.location.reload();
-        }}
-        style={{
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-          width: "100%", marginTop: 10,
-          padding: "6px 10px", borderRadius: 6,
-          background: "transparent",
-          border: `1px solid ${isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"}`,
-          color: isLight ? "#64748b" : "rgba(255,255,255,0.65)",
-          fontSize: 11, fontWeight: 600, cursor: "pointer",
-        }}
-      >
-        <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
-          <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
-          <polygon points="6.5,5 11,8 6.5,11" fill="currentColor" />
-        </svg>
-        Restart tour
-      </button>
-      <div className="text-muted" style={{ marginTop: 12, paddingTop: 8, borderTop: `1px solid ${isLight ? "#e2e8f0" : "rgba(255,255,255,0.06)"}`, fontSize: 9, lineHeight: 1.5, textAlign: "center" }}>
+
+      {/* Footer */}
+      <div className="text-muted" style={{ fontSize: 9, lineHeight: 1.5, textAlign: "center" }}>
         <div>&copy; {new Date().getFullYear()} OwnerView</div>
         <div style={{ marginTop: 2 }}>
           <a href="/terms" className="text-muted" style={{ textDecoration: "none" }}>Terms</a>
