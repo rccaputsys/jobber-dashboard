@@ -67,13 +67,14 @@ export function SidebarNav({ adminConnectionId, companyName, connectionId, lastS
             key={tab.href}
             href={href}
             onClick={() => setMobileOpen(false)}
+            className="sidebar-link"
             style={{
               display: "flex", alignItems: "center", gap: 10,
-              padding: "10px 12px", borderRadius: 8,
+              padding: "11px 12px", borderRadius: 8,
               textDecoration: "none",
               background: isActive ? (isLight ? "rgba(90,166,255,0.1)" : "rgba(90,166,255,0.12)") : "transparent",
               color: isActive ? "#5aa6ff" : (isLight ? "#64748b" : "rgba(255,255,255,0.65)"),
-              fontSize: 13, fontWeight: isActive ? 700 : 600,
+              fontSize: 14, fontWeight: isActive ? 700 : 600,
               transition: "all 0.15s ease",
               borderLeft: isActive ? "3px solid #5aa6ff" : "3px solid transparent",
             }}

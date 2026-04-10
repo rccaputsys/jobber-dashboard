@@ -864,6 +864,16 @@ export const globalStyles = `
     overflow-x: hidden;
     overflow-y: auto;
   }
+  /* Sidebar nav link hover — obvious background + text shift */
+  .sidebar-link:hover {
+    background: rgba(90,166,255,0.08) !important;
+    color: #5aa6ff !important;
+    transform: translateX(2px);
+  }
+  html[data-theme="light"] .sidebar-link:hover {
+    background: rgba(90,166,255,0.06) !important;
+    color: #2563eb !important;
+  }
   html[data-theme="light"] .sidebar-nav {
     background: #ffffff !important;
     border-right-color: #e2e5ea !important;
