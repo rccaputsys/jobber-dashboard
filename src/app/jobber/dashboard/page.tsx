@@ -5,6 +5,7 @@ import { SyncButton } from "./SyncButton";
 import { getUser } from "@/lib/supabaseAuth";
 import { redirect } from "next/navigation";
 import { AnalyticsProvider } from "./AnalyticsProvider";
+import { AttentionList } from "./AttentionList";
 import { CapacityTargetDisplay } from "./CapacityTargetDisplay";
 import { InlineCapacityEditor } from "./InlineCapacityEditor";
 import { FlipCard } from "./FlipCard";
@@ -1516,54 +1517,55 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 const adminQs = adminConnectionId ? `?admin_connection_id=${adminConnectionId}` : "";
                 const todayActions: { text: string; why: string; href: string; color: string; priority: number }[] = [];
 
+                // P1 — Urgent collections
                 if (b15p > 0) todayActions.push({ text: `Call on ${money(b15p)} in overdue invoices (30+ days)`, why: "This money is yours — a phone call could collect it today", href: `/jobber/invoices${adminQs}`, color: "#ef4444", priority: 1 });
-                else if (b8_14 > 0) todayActions.push({ text: `Follow up on ${money(b8_14)} in late invoices`, why: "This money is yours — a phone call could collect it today", href: `/jobber/invoices${adminQs}`, color: "#f59e0b", priority: 2 });
+                if (b8_14 > 0) todayActions.push({ text: `Follow up on ${money(b8_14)} in late invoices (8\u201330 days)`, why: "Getting stale — send a firm reminder before they go 30+", href: `/jobber/invoices${adminQs}`, color: "#f59e0b", priority: 2 });
 
-                if (goingColdQuotes.length > 0) todayActions.push({ text: `Follow up on ${goingColdQuotes.length} quote${goingColdQuotes.length !== 1 ? "s" : ""} before they go stale (${money(sumCents(goingColdQuotes))})`, why: "These customers were interested but haven't heard from you", href: `/jobber/sales${adminQs}`, color: "#ef4444", priority: 1 });
-                else if (warmQuotes.length > 3) todayActions.push({ text: `Check in on ${warmQuotes.length} warm quotes (${money(sumCents(warmQuotes))})`, why: "They're still interested — a quick check-in could close the deal", href: `/jobber/sales${adminQs}`, color: "#f59e0b", priority: 3 });
+                // P1 — Cooling quotes
+                if (goingColdQuotes.length > 0) todayActions.push({ text: `Follow up on ${goingColdQuotes.length} cooling quote${goingColdQuotes.length !== 1 ? "s" : ""} (${money(sumCents(goingColdQuotes))})`, why: "30+ days quiet — one call could save the deal", href: `/jobber/sales${adminQs}`, color: "#ef4444", priority: 1 });
 
+                // P2 — Capacity gap
                 if (effectiveWeeklyTarget > 0 && thisWeekSnap.scheduledRevenue < effectiveWeeklyTarget * 0.7) {
                   const gap = effectiveWeeklyTarget - thisWeekSnap.scheduledRevenue;
-                  todayActions.push({ text: `You have ${money(gap)} in open capacity this week — schedule more work`, why: "Open slots mean lost revenue — fill them now", href: `/jobber/capacity${adminQs}`, color: "#f59e0b", priority: 2 });
+                  todayActions.push({ text: `Fill ${money(gap)} in open capacity this week`, why: "Open slots mean lost revenue — pull from approved quotes or reach out to leads", href: `/jobber/capacity${adminQs}`, color: "#f59e0b", priority: 2 });
                 }
 
-                if (needsInvoiceCount > 0) todayActions.push({ text: `Send invoices for ${needsInvoiceCount} completed job${needsInvoiceCount !== 1 ? "s" : ""} (${money(needsInvoiceCents)})`, why: "Work is done, you just haven't billed yet", href: `/jobber/invoices${adminQs}`, color: "#5aa6ff", priority: 3 });
+                // P2 — Approved quotes ready to book
+                if (approvedNoJobCount > 0) todayActions.push({ text: `Book ${approvedNoJobCount} approved quote${approvedNoJobCount !== 1 ? "s" : ""} (${money(approvedNoJobCents)})`, why: "Customers said yes — get them on the schedule before they reconsider", href: `/jobber/capacity${adminQs}`, color: "#10b981", priority: 2 });
 
-                if (draftInvoiceCount > 0) todayActions.push({ text: `Send ${draftInvoiceCount} draft invoice${draftInvoiceCount !== 1 ? "s" : ""} (${money(draftInvoiceCents)})`, why: "These are ready to send — takes 2 minutes", href: `/jobber/invoices${adminQs}`, color: "#5aa6ff", priority: 3 });
+                // P3 — Work done, not billed
+                if (needsInvoiceCount > 0) todayActions.push({ text: `Invoice ${needsInvoiceCount} completed job${needsInvoiceCount !== 1 ? "s" : ""} (${money(needsInvoiceCents)})`, why: "Work is done — get the bill out so you can get paid", href: `/jobber/invoices${adminQs}`, color: "#5aa6ff", priority: 3 });
 
-                if (approvedNoJobCount > 0) todayActions.push({ text: `Book ${approvedNoJobCount} approved quote${approvedNoJobCount !== 1 ? "s" : ""} (${money(approvedNoJobCents)})`, why: "Customers said yes — get them on the schedule", href: `/jobber/capacity${adminQs}`, color: "#10b981", priority: 2 });
+                // P3 — Warm quotes
+                if (warmQuotes.length > 0) todayActions.push({ text: `Check in on ${warmQuotes.length} warm quote${warmQuotes.length !== 1 ? "s" : ""} (${money(sumCents(warmQuotes))})`, why: "14\u201330 days — a friendly check-in keeps you top of mind", href: `/jobber/sales${adminQs}`, color: "#f59e0b", priority: 3 });
 
-                if (unscheduledCount > 3) todayActions.push({ text: `Schedule ${unscheduledCount} unscheduled jobs`, why: "These jobs are waiting for a date", href: `/jobber/capacity${adminQs}`, color: "#5aa6ff", priority: 4 });
+                // P3 — Draft invoices
+                if (draftInvoiceCount > 0) todayActions.push({ text: `Send ${draftInvoiceCount} draft invoice${draftInvoiceCount !== 1 ? "s" : ""} (${money(draftInvoiceCents)})`, why: "Written and ready — hit send", href: `/jobber/invoices${adminQs}`, color: "#5aa6ff", priority: 3 });
 
-                if (openRequestsCount > 0) todayActions.push({ text: `Respond to ${openRequestsCount} new request${openRequestsCount !== 1 ? "s" : ""}`, why: "New leads — respond fast before they call someone else", href: `/jobber/sales${adminQs}`, color: "#10b981", priority: 3 });
+                // P3 — New requests
+                if (openRequestsCount > 0) todayActions.push({ text: `Respond to ${openRequestsCount} new request${openRequestsCount !== 1 ? "s" : ""}`, why: "Fresh leads — speed wins the job", href: `/jobber/sales${adminQs}`, color: "#10b981", priority: 3 });
+
+                // P3 — Changes requested
+                if (changesRequestedCount > 0) todayActions.push({ text: `Reply to ${changesRequestedCount} change request${changesRequestedCount !== 1 ? "s" : ""}`, why: "Customers asked for changes — quick replies close deals", href: `/jobber/sales${adminQs}`, color: "#ef4444", priority: 3 });
+
+                // P4 — Unscheduled jobs
+                if (unscheduledCount > 0) todayActions.push({ text: `Schedule ${unscheduledCount} unscheduled job${unscheduledCount !== 1 ? "s" : ""}`, why: "Sitting in your queue without a date", href: `/jobber/capacity${adminQs}`, color: "#5aa6ff", priority: 4 });
+
+                // P4 — Recently overdue (1-7 days)
+                if (b0_7 > 0 && b15p === 0 && b8_14 === 0) todayActions.push({ text: `Friendly reminder for ${money(b0_7)} just past due`, why: "Still recent — a polite nudge usually clears it up", href: `/jobber/invoices${adminQs}`, color: "#5aa6ff", priority: 4 });
+
+                // P4 — Hot quotes (informational)
+                if (hotQuotes.length >= 5) todayActions.push({ text: `${hotQuotes.length} hot quotes in play (${money(sumCents(hotQuotes))})`, why: "Fresh and looking good — no action needed yet", href: `/jobber/sales${adminQs}`, color: "#94a3b8", priority: 4 });
 
                 todayActions.sort((a, b) => a.priority - b.priority);
-                const topActions = todayActions.slice(0, 3);
 
-                return topActions.length > 0 ? (
-                  <div data-tour="overview-actions" className="panel" style={{ padding: "12px 16px", marginBottom: 12 }}>
-                    <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 800, margin: "0 0 8px" }}>
-                      What to Do Today
-                    </h2>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      {topActions.map((action, i) => (
-                        <a key={i} href={action.href} style={{
-                          display: "flex", alignItems: "flex-start", gap: 8,
-                          padding: "8px 10px", borderRadius: 6, textDecoration: "none",
-                          borderLeft: `3px solid ${action.color}`,
-                          background: `${action.color}08`,
-                          transition: "all 0.15s ease",
-                        }} className="hover-lift">
-                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: action.color, flexShrink: 0, marginTop: 5 }} />
-                          <div style={{ flex: 1 }}>
-                            <span className="text-primary" style={{ fontSize: 14, fontWeight: 600 }}>{action.text}</span>
-                            <div className="text-muted" style={{ fontSize: 11, marginTop: 1, lineHeight: 1.3 }}>{action.why}</div>
-                          </div>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: action.color, flexShrink: 0, marginTop: 3 }}>&#8594;</span>
-                        </a>
-                      ))}
-                    </div>
-                  </div>
+                return todayActions.length > 0 ? (
+                  <AttentionList
+                    actions={todayActions}
+                    title="What to Do Today"
+                    tourId="overview-actions"
+                    emptyMessage="Nothing urgent — your business is running clean today."
+                  />
                 ) : null;
               })()}
 
