@@ -1752,15 +1752,6 @@ const quoteWonPct = quotesInLast30Days.length > 0
 
                 const invPage2 = (
                   <div style={{ display: "flex", flex: 1, padding: 0, flexDirection: "column" }}>
-                    {totalAR > 0 && (
-                      <div style={{
-                        fontSize: 11, fontWeight: 600, color: pastDueColor,
-                        marginBottom: 6, lineHeight: 1.3,
-                        textAlign: "center", width: "100%",
-                      }}>
-                        {pastDueCommentary}
-                      </div>
-                    )}
                     {agingRows.length > 0 ? (
                       <div style={{ display: "flex", flexDirection: "column", width: "100%", flex: 1 }}>
                         <div style={{ display: "flex", flex: 1 }}>
@@ -1791,11 +1782,6 @@ const quoteWonPct = quotesInLast30Days.length > 0
                             ))}
                           </div>
                         </div>
-                        {b15p > 0 && (
-                          <a href={`/jobber/invoices${adminQs}`} style={{ display: "block", textAlign: "center", marginTop: 8, fontSize: 12, fontWeight: 700, color: "#ef4444", textDecoration: "none" }}>
-                            Collect your overdue invoices today
-                          </a>
-                        )}
                       </div>
                     ) : (
                       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1836,7 +1822,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
                       </span>
                     </div>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                      <span style={{ fontSize: 18, fontWeight: 800, color: collected30Cents > 0 ? "#10b981" : "#8590a2", lineHeight: 1 }}>
+                      <span style={{ fontSize: 18, fontWeight: 800, color: collected30Cents > 0 ? "#10b981" : "#a8b3c4", lineHeight: 1 }}>
                         {money(collected30Cents)}
                       </span>
                       <span className="text-muted" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
@@ -1999,10 +1985,10 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 ];
                 const healthTotal = healthBuckets.filter(b => b.label !== "Stale").reduce((s, b) => s + b.count, 0) || 1;
 
-                // SVG donut for quote health
-                const donutSize = 195;
-                const donutR = 72;
-                const donutStroke = 21;
+                // SVG donut for quote health (+30% from 195)
+                const donutSize = 254;
+                const donutR = 94;
+                const donutStroke = 27;
                 const donutCirc = 2 * Math.PI * donutR;
                 const activeBuckets = healthBuckets.filter(b => b.label !== "Stale" && b.count > 0);
                 const activeTotal = activeBuckets.reduce((s, b) => s + b.count, 0) || 1;
@@ -2042,19 +2028,6 @@ const quoteWonPct = quotesInLast30Days.length > 0
 
                 const page2 = (
                   <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-                    {/* Guidance line */}
-                    <div style={{ marginBottom: 6, textAlign: "center", width: "100%" }}>
-                      <span style={{
-                        fontSize: 11, fontWeight: 700,
-                        color: realOpps > 0 ? "#10b981" : goingColdQuotes.length > 0 ? "#ef4444" : "#8590a2",
-                      }}>
-                        {realOpps > 0
-                          ? `${realOpps} real opportunit${realOpps !== 1 ? "ies" : "y"} (${money(realOppsCents)}) — follow up now`
-                          : goingColdQuotes.length > 0
-                          ? "Your pipeline is stale — follow up today"
-                          : "No active quotes right now"}
-                      </span>
-                    </div>
                     <div className="donut-group" style={{ display: "flex", flexDirection: "column", flex: 1 }}>
                     {/* Donut + center count */}
                     <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", marginTop: "5%", minWidth: 0, overflow: "hidden" }}>
@@ -2090,16 +2063,16 @@ const quoteWonPct = quotesInLast30Days.length > 0
                       </svg>
                     </div>
                     {/* Labels */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: "auto", paddingTop: 8 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: "auto", paddingTop: 4 }}>
                       {healthBuckets.map((b, bi) => (
-                        <div key={b.label} className={`donut-label di${bi}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", opacity: b.label === "Stale" ? 0.5 : 1 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ width: 10, height: 10, borderRadius: 3, background: b.label === "Stale" ? "rgba(107,114,128,0.3)" : b.color, flexShrink: 0 }} />
-                            <span className="text-primary" style={{ fontSize: 15, fontWeight: 800 }}>{b.count.toLocaleString()}</span>
-                            <span className="text-primary" style={{ fontSize: 14, fontWeight: 600 }}>{b.label}</span>
-                            <span className="text-muted" style={{ fontSize: 11 }}>({b.days})</span>
+                        <div key={b.label} className={`donut-label di${bi}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", opacity: b.label === "Stale" ? 0.5 : 1, lineHeight: 1.2 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                            <span style={{ width: 8, height: 8, borderRadius: 2, background: b.label === "Stale" ? "rgba(107,114,128,0.3)" : b.color, flexShrink: 0 }} />
+                            <span className="text-primary" style={{ fontSize: 13, fontWeight: 800 }}>{b.count.toLocaleString()}</span>
+                            <span className="text-primary" style={{ fontSize: 12, fontWeight: 600 }}>{b.label}</span>
+                            <span className="text-muted" style={{ fontSize: 10 }}>({b.days})</span>
                           </div>
-                          {!b.hideValue && <span style={{ fontSize: 14, fontWeight: 700, color: b.label === "Stale" ? undefined : b.color }} className={b.label === "Stale" ? "text-muted" : ""}>{money(b.cents)}</span>}
+                          {!b.hideValue && <span style={{ fontSize: 12, fontWeight: 700, color: b.label === "Stale" ? undefined : b.color }} className={b.label === "Stale" ? "text-muted" : ""}>{money(b.cents)}</span>}
                         </div>
                       ))}
                     </div>
@@ -2119,7 +2092,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 const quotesHeader = (
                   <div style={{ display: "flex", gap: 16, alignItems: "baseline", flexWrap: "wrap" }}>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                      <span style={{ fontSize: 18, fontWeight: 800, color: openPipelineCents > 0 ? "#5aa6ff" : "#8590a2", lineHeight: 1 }}>
+                      <span style={{ fontSize: 18, fontWeight: 800, color: openPipelineCents > 0 ? "#5aa6ff" : "#a8b3c4", lineHeight: 1 }}>
                         {money(openPipelineCents)}
                       </span>
                       <span className="text-muted" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
@@ -2133,7 +2106,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 const salesHeader = (
                   <div style={{ display: "flex", gap: 16, alignItems: "baseline", flexWrap: "wrap" }}>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                      <span style={{ fontSize: 18, fontWeight: 800, color: totalSales6moCents > 0 ? "#10b981" : "#8590a2", lineHeight: 1 }}>
+                      <span style={{ fontSize: 18, fontWeight: 800, color: totalSales6moCents > 0 ? "#10b981" : "#a8b3c4", lineHeight: 1 }}>
                         {money(totalSales6moCents)}
                       </span>
                       <span className="text-muted" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>

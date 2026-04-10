@@ -681,19 +681,22 @@ export function SalesActionTabs({
   const draftQuotes = pipelineQuotes?.["Draft"] || [];
   const awaitingQuotes = pipelineQuotes?.["Waiting on Customers"] || [];
   const approvedQuotes = pipelineQuotes?.["Won"] || [];
-  // Reference unused props so eslint/ts noUnusedParameters stays quiet
-  void requestCount;
-  void draftQuotes;
-  void awaitingQuotes;
-  void approvedQuotes;
 
-  // Pipeline → tab mapping (the pipeline above is the only slicer now;
-  // the inline toggle button row was removed)
+  // Bidirectional mapping — pipeline click syncs tab, tab click syncs pipeline
+  const tabToPipeline: Record<string, string> = {
+    requests: "Requests", draft: "Draft", awaiting: "Waiting on Customers",
+    changes: "Customer Wants Changes", approved: "Won",
+  };
   const pipelineToTab: Record<string, TabKey> = {
-    Requests: "requests", Draft: "draft", "Waiting on Customers": "awaiting", "Customer Wants Changes": "changes", Won: "approved",
+    Requests: "requests", Draft: "draft", "Waiting on Customers": "awaiting",
+    "Customer Wants Changes": "changes", Won: "approved",
   };
 
-  // Pipeline click → show that stage's quotes + sync tab
+  function handleTabClick(key: TabKey) {
+    setTab(key);
+    setPipelineSelected(tabToPipeline[key] || null);
+  }
+
   function handlePipelineClick(label: string | null) {
     if (label === pipelineSelected) { setPipelineSelected(null); setTab("awaiting"); return; }
     setPipelineSelected(label);
@@ -702,7 +705,14 @@ export function SalesActionTabs({
     else setTab("awaiting");
   }
 
-  // No longer need separate pipeline-filtered view — all stages are tabs
+  type ToggleCard = { key: TabKey; label: string; count: number; color: string };
+  const toggleCards: ToggleCard[] = [
+    { key: "requests", label: "Requests", count: requestCount, color: "#5aa6ff" },
+    { key: "draft", label: "Drafts", count: draftQuotes.length, color: "#6b7280" },
+    { key: "awaiting", label: "Waiting on Customers", count: awaitingQuotes.length, color: "#f59e0b" },
+    { key: "changes", label: "Customer Wants Changes", count: changesRequested.length, color: "#ef4444" },
+    { key: "approved", label: "Won — Ready to Book", count: approvedQuotes.length, color: "#10b981" },
+  ];
 
   return (
     <div>
@@ -720,11 +730,47 @@ export function SalesActionTabs({
         </div>
       )}
 
-      {/* Export buttons — pipeline above acts as the tab slicer */}
-      {((tab === "awaiting" && quoteExportData.length > 0) ||
-        (tab === "changes" && changesExportData.length > 0) ||
-        (tab === "requests" && requestExportData.length > 0)) && (
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+      {/* Toggle buttons (matches Book/Collect tabs) — also syncs with pipeline */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {toggleCards.map(card => {
+            const active = tab === card.key;
+            return (
+              <button
+                key={card.key}
+                className="toggle-btn"
+                onClick={() => handleTabClick(card.key)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "10px 18px", borderRadius: 12,
+                  border: "none",
+                  background: active
+                    ? `linear-gradient(135deg, ${card.color}25, ${card.color}12)`
+                    : (isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)"),
+                  boxShadow: active
+                    ? `0 0 0 2px ${card.color}, 0 4px 12px ${card.color}25`
+                    : `inset 0 0 0 1px ${isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"}`,
+                  cursor: "pointer", transition: "all 0.2s ease",
+                  opacity: active ? 1 : 0.65,
+                  transform: active ? "scale(1)" : "scale(0.97)",
+                }}
+              >
+                <span style={{
+                  width: 9, height: 9, borderRadius: "50%",
+                  background: card.color, flexShrink: 0,
+                  boxShadow: active ? `0 0 8px ${card.color}80` : "none",
+                }} />
+                <span style={{ fontSize: 14, fontWeight: 700, color: isLight ? "#334155" : "rgba(255,255,255,0.85)" }}>
+                  {card.label}
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 800, color: isLight ? "#1e293b" : "#EAF1FF" }}>
+                  {card.count.toLocaleString()}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
           {tab === "awaiting" && quoteExportData.length > 0 && (
             <ExportCSV data={quoteExportData} filename="quote-followup" label="Download" />
           )}
@@ -735,7 +781,7 @@ export function SalesActionTabs({
             <ExportCSV data={requestExportData} filename="open-requests" label="Download" />
           )}
         </div>
-      )}
+      </div>
 
       {/* Content */}
       <div style={{ minHeight: 200 }}>

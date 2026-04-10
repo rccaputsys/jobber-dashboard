@@ -119,7 +119,7 @@ export function InlineCapacityEditor({
         width: 26, height: 26, padding: 0, borderRadius: 6,
         background: "transparent",
         border: `1px solid ${isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"}`,
-        color: isLight ? "#64748b" : "#8590a2",
+        color: isLight ? "#64748b" : "#a8b3c4",
         cursor: "pointer", flexShrink: 0,
         transition: "all 0.15s ease",
       }}
@@ -129,7 +129,7 @@ export function InlineCapacityEditor({
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = "transparent";
-        e.currentTarget.style.color = isLight ? "#64748b" : "#8590a2";
+        e.currentTarget.style.color = isLight ? "#64748b" : "#a8b3c4";
       }}
     >
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

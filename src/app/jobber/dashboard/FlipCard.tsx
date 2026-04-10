@@ -80,7 +80,7 @@ export function FlipCard({
               style={{
                 background: "none", border: "none", cursor: "pointer",
                 padding: "5px 8px", fontSize: 12, fontWeight: idx === i ? 700 : 500,
-                color: idx === i ? (isLight ? "#1e293b" : "#ffffff") : (isLight ? "#6b7280" : "#8590a2"),
+                color: idx === i ? (isLight ? "#1e293b" : "#ffffff") : (isLight ? "#6b7280" : "#a8b3c4"),
                 borderBottom: idx === i ? `2px solid ${isLight ? "#1e293b" : "#ffffff"}` : "2px solid transparent",
                 transition: "all 0.15s ease",
               }}

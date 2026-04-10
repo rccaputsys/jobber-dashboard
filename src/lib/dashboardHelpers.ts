@@ -666,7 +666,7 @@ export const globalStyles = `
   /* Theme-aware text classes — 3 tiers only */
   .text-primary { color: #f1f4f9; }
   .text-secondary { color: #a0aab8; }
-  .text-muted { color: #8590a2; }
+  .text-muted { color: #a8b3c4; }
 
   html[data-theme="light"] .text-primary { color: #0f1729 !important; }
   html[data-theme="light"] .text-secondary { color: #4b5563 !important; }
@@ -1310,6 +1310,36 @@ export const globalStyles = `
   * { box-sizing: border-box; }
   html, body { overflow-x: hidden; max-width: 100vw; }
 
+  /* ===== TABLET OPTIMIZATION (481-768px) ===== */
+  @media (max-width: 768px) {
+    /* Overview 3-column card grid → stacked on tablet/mobile */
+    [data-tour="overview-cards"] {
+      grid-template-columns: 1fr !important;
+      gap: 10px !important;
+    }
+    /* Donut/gauge SVG responsive */
+    .rpm-gauge svg, .donut-group svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+    /* Toggle buttons wrap + smaller */
+    .toggle-btn {
+      padding: 8px 12px !important;
+      font-size: 12px !important;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .header-actions { gap: 4px !important; }
+    .header-subtitle { display: none !important; }
+    .kpi-grid-secondary { grid-template-columns: repeat(2, 1fr) !important; }
+    .data-table th:nth-child(4), .data-table td:nth-child(4) { display: none !important; }
+    .command-strip { grid-template-columns: 1fr 1fr !important; }
+
+    /* Funnel arrows hidden on narrow screens */
+    .funnel-arrow { display: none !important; }
+  }
+
   /* ===== MOBILE OPTIMIZATION (<480px) ===== */
   @media (max-width: 480px) {
     .dashboard-container { padding: 0 6px 16px !important; width: 100% !important; max-width: 100vw !important; }
@@ -1328,7 +1358,7 @@ export const globalStyles = `
     .nav-tabs::-webkit-scrollbar { display: none; }
     .nav-tab { padding: 8px 10px !important; font-size: 11px !important; flex-shrink: 0; }
 
-    .panel { padding: 12px !important; border-radius: 10px !important; overflow: hidden !important; }
+    .panel { padding: 10px !important; border-radius: 10px !important; overflow: hidden !important; }
     .side-by-side { gap: 10px !important; }
     .command-strip { gap: 6px !important; grid-template-columns: 1fr !important; }
 
@@ -1356,14 +1386,25 @@ export const globalStyles = `
     .quote-pipeline-bar { flex-direction: column !important; height: auto !important; gap: 6px !important; }
     .quote-pipeline-bar > div { min-width: 0 !important; }
     .funnel-stage { padding: 10px !important; }
-  }
 
-  /* ===== TABLET OPTIMIZATION (481-640px) ===== */
-  @media (max-width: 640px) {
-    .header-actions { gap: 4px !important; }
-    .header-subtitle { display: none !important; }
-    .kpi-grid-secondary { grid-template-columns: repeat(2, 1fr) !important; }
-    .data-table th:nth-child(4), .data-table td:nth-child(4) { display: none !important; }
-    .command-strip { grid-template-columns: 1fr 1fr !important; }
+    /* Toggle buttons: compact on small screens, allow wrapping */
+    .toggle-btn {
+      padding: 6px 10px !important;
+      font-size: 11px !important;
+      border-radius: 8px !important;
+    }
+
+    /* Day bars: narrower gap */
+    .day-bar-wrap {
+      gap: 2px !important;
+    }
+
+    /* Donut labels: tighter on mobile */
+    .donut-label {
+      font-size: 11px !important;
+    }
+
+    /* Sidebar bottom: hide restart tour and footer on very small screens */
+    .sidebar-nav > div:nth-child(3) { display: none !important; } /* spacer */
   }
 `;

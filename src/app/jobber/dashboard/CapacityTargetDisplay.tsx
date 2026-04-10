@@ -149,7 +149,7 @@ function RPMGauge({ pct, money, label, size = 180, isLight, mini }: {
         {/* Tick marks */}
         {!mini && tickMarks.map(t => (
           <line key={t.pct} x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2}
-            stroke={isLight ? "rgba(0,0,0,0.15)" : "#8590a2"} strokeWidth={1.5} />
+            stroke={isLight ? "rgba(0,0,0,0.15)" : "#a8b3c4"} strokeWidth={1.5} />
         ))}
 
         {/* Needle — wrapped in <g> with CSS rotate so it animates smoothly */}
@@ -173,7 +173,7 @@ function RPMGauge({ pct, money, label, size = 180, isLight, mini }: {
             </text>
             {label && (
               <text x={cx} y={cy - 14} textAnchor="middle" dominantBaseline="middle"
-                style={{ fontSize: 14, fontWeight: 600, fill: isLight ? "#9ca3af" : "#8590a2" }}>
+                style={{ fontSize: 14, fontWeight: 600, fill: isLight ? "#9ca3af" : "#a8b3c4" }}>
                 {label}
               </text>
             )}
@@ -189,7 +189,7 @@ function RPMGauge({ pct, money, label, size = 180, isLight, mini }: {
       {mini && label && (
         <div style={{ marginTop: -2, textAlign: "center" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: isLight ? "#0f1729" : "#e8ecf4" }}>{money}</div>
-          <div style={{ fontSize: 10, fontWeight: 600, color: isLight ? "#9ca3af" : "#8590a2" }}>{label}</div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: isLight ? "#9ca3af" : "#a8b3c4" }}>{label}</div>
         </div>
       )}
     </div>
@@ -274,7 +274,7 @@ function DayBars({
             {/* Day label */}
             <span style={{
               fontSize: 11, fontWeight: d.isToday ? 800 : 600,
-              color: d.isToday ? (isLight ? "#0f1729" : "#e8ecf4") : (isLight ? "#6b7280" : "#8590a2"),
+              color: d.isToday ? (isLight ? "#0f1729" : "#e8ecf4") : (isLight ? "#6b7280" : "#a8b3c4"),
             }}>
               {d.day}
             </span>
@@ -334,7 +334,7 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
   // user toggles $ ↔ #. Replaces the per-page-built headers since the page is
   // a server component and can't read the localStorage hook.
   const colorFor = (pct: number) =>
-    pct >= 80 ? "#10b981" : pct >= 50 ? "#f59e0b" : pct > 0 ? "#ef4444" : "#8590a2";
+    pct >= 80 ? "#10b981" : pct >= 50 ? "#f59e0b" : pct > 0 ? "#ef4444" : "#a8b3c4";
 
   const buildHeaderForWeek = (visibleDays: DayData[], label: string) => {
     const wBookedCents = visibleDays.reduce((s, d) => s + d.scheduledCents, 0);
@@ -344,10 +344,10 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
     const wPct = wTarget > 0 ? Math.round((wBooked / wTarget) * 100) : 0;
     return (
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-        <span style={{ fontSize: 26, fontWeight: 800, color: colorFor(wPct), lineHeight: 1, letterSpacing: -0.5 }}>
+        <span style={{ fontSize: 18, fontWeight: 800, color: colorFor(wPct), lineHeight: 1, letterSpacing: -0.5 }}>
           {wPct}%
         </span>
-        <span className="text-muted" style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+        <span className="text-muted" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
           {label}
         </span>
       </div>
@@ -375,10 +375,10 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
     const hmPct = hmTarget > 0 ? Math.round((hmBooked / hmTarget) * 100) : 0;
     internalHeaders.push(
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-        <span style={{ fontSize: 26, fontWeight: 800, color: colorFor(hmPct), lineHeight: 1, letterSpacing: -0.5 }}>
+        <span style={{ fontSize: 18, fontWeight: 800, color: colorFor(hmPct), lineHeight: 1, letterSpacing: -0.5 }}>
           {hmPct}%
         </span>
-        <span className="text-muted" style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+        <span className="text-muted" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
           Booked 6 weeks
         </span>
       </div>
@@ -407,25 +407,30 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
             </div>
           ))}
         </div>
-        {/* Quick measure toggle ($ / #) */}
-        <div style={{ display: "flex", flexShrink: 0, borderRadius: 6, border: `1px solid ${isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"}`, overflow: "hidden" }}>
+        {/* Quick measure toggle ($ / #) — sized for reliable touch/click */}
+        <div style={{
+          display: "flex", flexShrink: 0, borderRadius: 8, position: "relative", zIndex: 2,
+          border: `1.5px solid ${isLight ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.12)"}`,
+          overflow: "hidden",
+        }}>
           {(["dollars", "jobs"] as const).map((m) => {
             const active = measure === m;
             return (
               <button
                 key={m}
                 type="button"
-                onClick={() => setMeasure(m)}
+                onClick={(e) => { e.stopPropagation(); setMeasure(m); }}
                 aria-label={m === "dollars" ? "Show as dollars" : "Show as job count"}
                 title={m === "dollars" ? "Show as dollars" : "Show as job count"}
                 style={{
-                  padding: "3px 9px",
+                  padding: "6px 14px",
+                  minWidth: 36, minHeight: 28,
                   background: active
-                    ? (isLight ? "rgba(90,166,255,0.12)" : "rgba(90,166,255,0.18)")
+                    ? (isLight ? "rgba(90,166,255,0.15)" : "rgba(90,166,255,0.22)")
                     : "transparent",
-                  color: active ? "#5aa6ff" : (isLight ? "#94a3b8" : "rgba(255,255,255,0.4)"),
+                  color: active ? "#5aa6ff" : (isLight ? "#64748b" : "rgba(255,255,255,0.6)"),
                   border: "none", cursor: "pointer",
-                  fontSize: 12, fontWeight: 800, lineHeight: 1.2,
+                  fontSize: 14, fontWeight: 800, lineHeight: 1,
                   transition: "all 0.15s ease",
                 }}
               >
@@ -444,30 +449,8 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
       }}>
       {viewMode === "week" ? (
         <>
-          {/* Top-of-chart commentary (below the line) */}
-          {(() => {
-            const lowDays = visibleDays.filter(d => {
-              const p = d.targetCents > 0 ? Math.round((d.scheduledCents / d.targetCents) * 100) : (d.scheduledCents > 0 ? 100 : 0);
-              return p < 50;
-            });
-            if (weeklyTargetCents > 0 && fillPct >= 100) {
-              return (
-                <div style={{ width: "100%", textAlign: "center", fontSize: 11, fontWeight: 700, color: "#10b981", marginBottom: 2 }}>
-                  Fully booked {periodLabel} — nice work
-                </div>
-              );
-            }
-            if (lowDays.length === 0) return null;
-            const dayNames = lowDays.map(d => d.day).join(", ");
-            const totalGap = lowDays.reduce((s, d) => s + Math.max(0, d.targetCents - d.scheduledCents), 0);
-            return (
-              <div className="text-muted" style={{ width: "100%", textAlign: "center", fontSize: 11, fontWeight: 600, marginBottom: 2 }}>
-                Focus on filling {dayNames} ({moneyFn(totalGap)} needed)
-              </div>
-            );
-          })()}
-          {/* Big gauge */}
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", width: "100%", marginTop: 0 }}>
+          {/* Big gauge — pulled up 25% of its height via negative margin */}
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", width: "100%", marginTop: "-12%" }}>
             <RPMGauge
               pct={fillPct}
               money={fmtValue(booked)}
@@ -516,7 +499,7 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
                   {/* Week label */}
                   <div style={{
                     width: 52, flexShrink: 0, fontSize: 13, fontWeight: hw.isCurrent ? 800 : 600,
-                    color: hw.isCurrent ? (isLight ? "#0f1729" : "#e8ecf4") : (isLight ? "#6b7280" : "#8590a2"),
+                    color: hw.isCurrent ? (isLight ? "#0f1729" : "#e8ecf4") : (isLight ? "#6b7280" : "#a8b3c4"),
                   }}>
                     {hw.label}
                   </div>
@@ -545,7 +528,7 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
                   <div style={{
                     width: 52, textAlign: "right", flexShrink: 0,
                     fontSize: 14, fontWeight: 800,
-                    color: weekPct >= 80 ? "#10b981" : weekPct >= 50 ? "#f59e0b" : weekValue > 0 ? "#ef4444" : (isLight ? "#d1d5db" : "#8590a2"),
+                    color: weekPct >= 80 ? "#10b981" : weekPct >= 50 ? "#f59e0b" : weekValue > 0 ? "#ef4444" : (isLight ? "#d1d5db" : "#a8b3c4"),
                   }}>
                     {weekValue > 0 ? `${weekPct}%` : "—"}
                   </div>
@@ -577,7 +560,7 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
               style={{
                 background: "none", border: "none", cursor: "pointer",
                 padding: "5px 8px", fontSize: 12, fontWeight: isActive ? 700 : 500,
-                color: isActive ? (isLight ? "#0f1729" : "#e8ecf4") : (isLight ? "#9ca3af" : "#8590a2"),
+                color: isActive ? (isLight ? "#0f1729" : "#e8ecf4") : (isLight ? "#9ca3af" : "#a8b3c4"),
                 borderBottom: isActive ? `2px solid ${isLight ? "#0f1729" : "#e8ecf4"}` : "2px solid transparent",
                 transition: "all 0.15s ease",
               }}

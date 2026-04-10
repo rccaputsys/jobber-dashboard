@@ -84,7 +84,7 @@ export function SidebarNav({ adminConnectionId, companyName, connectionId, lastS
                 padding: "10px 12px", borderRadius: 8,
                 textDecoration: "none",
                 background: isActive ? (isLight ? "rgba(90,166,255,0.1)" : "rgba(90,166,255,0.12)") : "transparent",
-                color: isActive ? "#5aa6ff" : (isLight ? "#64748b" : "rgba(255,255,255,0.5)"),
+                color: isActive ? "#5aa6ff" : (isLight ? "#64748b" : "rgba(255,255,255,0.65)"),
                 fontSize: 13, fontWeight: isActive ? 700 : 600,
                 transition: "all 0.15s ease",
                 borderLeft: isActive ? "3px solid #5aa6ff" : "3px solid transparent",
@@ -140,7 +140,7 @@ export function SidebarNav({ adminConnectionId, companyName, connectionId, lastS
             padding: "6px 10px", borderRadius: 6,
             background: "transparent",
             border: `1px solid ${isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"}`,
-            color: isLight ? "#64748b" : "rgba(255,255,255,0.5)",
+            color: isLight ? "#64748b" : "rgba(255,255,255,0.65)",
             fontSize: 11, fontWeight: 600, cursor: "pointer",
             transition: "all 0.15s ease",
           }}
@@ -151,7 +151,7 @@ export function SidebarNav({ adminConnectionId, companyName, connectionId, lastS
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.color = isLight ? "#64748b" : "rgba(255,255,255,0.5)";
+            e.currentTarget.style.color = isLight ? "#64748b" : "rgba(255,255,255,0.65)";
             e.currentTarget.style.borderColor = isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)";
           }}
         >
