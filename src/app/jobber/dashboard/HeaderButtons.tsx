@@ -3,16 +3,19 @@ export function SubscriptionStatus({ billingStatus, trialEndsAt, subscriptionAct
   trialEndsAt: number;
   subscriptionActive: boolean;
 }) {
+  const pillStyle: React.CSSProperties = {
+    display: "flex", alignItems: "center", justifyContent: "center",
+    width: "100%", gap: 6, padding: "8px 0", borderRadius: 6,
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.06)",
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 10, fontWeight: 600, cursor: "pointer",
+  };
+
   if (subscriptionActive) {
     return (
-      <form action="/api/billing/portal" method="POST">
-        <button type="submit" className="btn" style={{
-          padding: "5px 10px", fontSize: 11, fontWeight: 600,
-          display: "flex", alignItems: "center", gap: 5,
-          background: "rgba(16,185,129,0.12)",
-          borderColor: "rgba(16,185,129,0.3)",
-          color: "#10b981",
-        }}>
+      <form action="/api/billing/portal" method="POST" style={{ width: "100%" }}>
+        <button type="submit" style={pillStyle}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", flexShrink: 0 }} />
           Pro &middot; Manage
         </button>
@@ -20,21 +23,9 @@ export function SubscriptionStatus({ billingStatus, trialEndsAt, subscriptionAct
     );
   }
 
-  const now = Date.now();
-  const daysLeft = Math.max(0, Math.ceil((trialEndsAt - now) / (1000 * 60 * 60 * 24)));
-  const urgent = daysLeft <= 3;
-  const warning = daysLeft <= 7;
-
   return (
-    <form action="/api/billing/checkout" method="POST">
-      <button type="submit" className="btn" style={{
-        padding: "5px 10px", fontSize: 11, fontWeight: 600,
-        display: "flex", alignItems: "center", gap: 5,
-        background: "rgba(90,166,255,0.12)",
-        borderColor: "rgba(90,166,255,0.3)",
-        color: "#5aa6ff",
-        whiteSpace: "nowrap",
-      }}>
+    <form action="/api/billing/checkout" method="POST" style={{ width: "100%" }}>
+      <button type="submit" style={pillStyle}>
         <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#5aa6ff", flexShrink: 0 }} />
         Manage Subscription
       </button>
