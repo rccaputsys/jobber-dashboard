@@ -866,9 +866,22 @@ export const globalStyles = `
   /* Mobile: hamburger menu replaces the sidebar */
   .sidebar-mobile-bar { display: none; }
   @media (max-width: 768px) {
-    .app-layout { flex-direction: column; }
+    .app-layout {
+      flex-direction: column;
+      height: auto !important;
+      min-height: 100dvh;
+      overflow: visible !important;
+    }
+    .app-main {
+      overflow-x: hidden !important;
+      overflow-y: visible !important;
+    }
     .sidebar-desktop { display: none !important; }
     .sidebar-mobile-bar { display: block; }
+    html, body {
+      overflow-x: hidden;
+      overflow-y: auto !important;
+    }
   }
 
   /* Nav tabs (legacy — kept for compatibility) */
