@@ -1748,34 +1748,43 @@ const quoteWonPct = quotesInLast30Days.length > 0
                   <div style={{ display: "flex", flex: 1, padding: 0, flexDirection: "column" }}>
                     {agingRows.length > 0 ? (
                       <div style={{ display: "flex", flexDirection: "column", width: "100%", flex: 1 }}>
-                        <div style={{ display: "flex", flex: 1 }}>
-                          {/* Labels on left — flex matches bar segments */}
-                          <div style={{ display: "flex", flexDirection: "column", paddingRight: 14, textAlign: "right", flex: 1 }}>
-                            {agingRows.map(b => (
-                              <div key={b.label} style={{ flex: Math.max(b.cents, 1), display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "flex-end" }}>
-                                <div style={{ fontSize: 17, fontWeight: 800, color: b.color }}>{money(b.cents)}</div>
-                                <div className="text-muted" style={{ fontSize: 11 }}>{b.count} invoices</div>
-                              </div>
-                            ))}
+                        {agingRows.map(b => (
+                          <div
+                            key={b.label}
+                            className="aging-row"
+                            style={{
+                              flex: Math.max(b.cents, 1), minHeight: 12,
+                              display: "flex", alignItems: "center", gap: 0,
+                              borderRadius: 6, padding: "2px 0",
+                              cursor: "default",
+                              transition: "all 0.15s ease",
+                            }}
+                          >
+                            {/* Left: $ + count */}
+                            <div className="aging-row-label" style={{
+                              flex: 1, textAlign: "right", paddingRight: 12,
+                              transition: "transform 0.15s ease, opacity 0.15s ease",
+                              opacity: 0.85,
+                            }}>
+                              <div style={{ fontSize: 17, fontWeight: 800, color: b.color }}>{money(b.cents)}</div>
+                              <div className="text-muted" style={{ fontSize: 11 }}>{b.count} invoice{b.count !== 1 ? "s" : ""}</div>
+                            </div>
+                            {/* Center: bar segment */}
+                            <div style={{
+                              width: 56, flexShrink: 0, alignSelf: "stretch",
+                              background: b.color, borderRadius: 4,
+                              transition: "filter 0.15s ease",
+                            }} />
+                            {/* Right: bucket name */}
+                            <div className="aging-row-label" style={{
+                              flex: 1, paddingLeft: 12,
+                              transition: "transform 0.15s ease, opacity 0.15s ease",
+                              opacity: 0.85,
+                            }}>
+                              <div className="text-primary" style={{ fontSize: 14, fontWeight: 700 }}>{b.label}</div>
+                            </div>
                           </div>
-                          {/* Vertical stacked bar */}
-                          <div style={{ width: 64, borderRadius: 10, overflow: "hidden", display: "flex", flexDirection: "column", flexShrink: 0, background: "rgba(255,255,255,0.03)" }}>
-                            {agingRows.map(b => (
-                              <div key={b.label} className="aging-bar-seg" style={{
-                                flex: Math.max(b.cents, 1), minHeight: 6,
-                                background: b.color,
-                              }} />
-                            ))}
-                          </div>
-                          {/* Labels on right — flex matches bar segments */}
-                          <div style={{ display: "flex", flexDirection: "column", paddingLeft: 14, flex: 1 }}>
-                            {agingRows.map(b => (
-                              <div key={b.label} style={{ flex: Math.max(b.cents, 1), display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                                <div className="text-primary" style={{ fontSize: 14, fontWeight: 700 }}>{b.label}</div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                        ))}
                       </div>
                     ) : (
                       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1833,7 +1842,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
 
                 return (
                   <div className="panel" style={{ padding: "12px 14px 8px", display: "flex", flexDirection: "column", minWidth: 0 }}>
-                    <a href={`/jobber/invoices${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <a href={`/jobber/invoices${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, minHeight: 28 }}>
                       <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>
                         Cash You Need to Collect
                       </h2>
@@ -1920,7 +1929,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
 
                 return (
                   <div className="panel" style={{ padding: "12px 14px 8px", display: "flex", flexDirection: "column", minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6, minHeight: 28 }}>
                       <a href={`/jobber/capacity${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
                         <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>
                           Weekly Capacity
@@ -2112,7 +2121,7 @@ const quoteWonPct = quotesInLast30Days.length > 0
 
                 return (
                   <div className="panel" style={{ padding: "12px 14px 8px", display: "flex", flexDirection: "column", minWidth: 0 }}>
-                    <a href={`/jobber/sales${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <a href={`/jobber/sales${adminQs}`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, minHeight: 28 }}>
                       <h2 className="text-primary" style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>
                         Sales Pipeline
                       </h2>

@@ -235,6 +235,11 @@ export const globalStyles = `
   .chart-bar-hover:hover .chart-bar-tooltip { opacity: 1 !important; }
   .chart-bar-hover:hover .bar-label { opacity: 1 !important; transform: scale(1.08); font-weight: 800; }
 
+  /* Aging distribution bar — row hover pops labels */
+  .aging-row:hover { background: rgba(255,255,255,0.03); }
+  .aging-row:hover .aging-row-label { opacity: 1 !important; transform: scale(1.04); }
+  html[data-theme="light"] .aging-row:hover { background: rgba(0,0,0,0.02); }
+
   /* Donut segment hover */
   .donut-seg { transition: opacity 0.15s ease, filter 0.15s ease; cursor: pointer; }
   .donut-seg:hover { filter: brightness(1.25); }
