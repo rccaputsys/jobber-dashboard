@@ -1307,7 +1307,6 @@ export const globalStyles = `
     .header-actions { gap: 4px !important; }
     .header-subtitle { display: none !important; }
     .kpi-grid-secondary { grid-template-columns: repeat(2, 1fr) !important; }
-    .data-table th:nth-child(4), .data-table td:nth-child(4) { display: none !important; }
     .command-strip { grid-template-columns: 1fr 1fr !important; }
 
     /* Funnel arrows hidden on narrow screens */
@@ -1348,13 +1347,11 @@ export const globalStyles = `
       transform: none !important;
     }
 
-    /* Tables: remove min-width, hide columns 3+4 */
-    .data-table { min-width: 0 !important; font-size: 11px !important; }
-    .data-table th:nth-child(3), .data-table td:nth-child(3),
-    .data-table th:nth-child(4), .data-table td:nth-child(4) { display: none !important; }
-    .data-table th, .data-table td { padding: 6px 4px !important; }
+    /* Tables: compact but scrollable — no data hidden */
+    .data-table { min-width: 500px !important; font-size: 11px !important; }
+    .data-table th, .data-table td { padding: 6px 6px !important; }
     .data-table th:first-child, .data-table td:first-child { width: 50px !important; }
-    .table-container { overflow-x: hidden !important; }
+    .table-container { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
 
     /* Quote pipeline: stack vertically */
     .quote-pipeline-bar { flex-direction: column !important; height: auto !important; gap: 6px !important; }
