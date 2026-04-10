@@ -88,15 +88,11 @@ export function SidebarNav({ adminConnectionId, companyName, connectionId, lastS
     </div>
   );
 
-  const btnStyle: React.CSSProperties = {
-    display: "flex", alignItems: "center", justifyContent: "center",
-    flex: 1, gap: 6, padding: "8px 0", borderRadius: 6,
-    background: isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
-    border: `1px solid ${isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"}`,
-    color: isLight ? "#64748b" : "rgba(255,255,255,0.65)",
-    fontSize: 10, fontWeight: 600, cursor: "pointer",
-    transition: "all 0.15s ease",
-  };
+  // Shared style for the three bottom action pills — applied via CSS class
+  // so inner buttons fill the full container area.
+  const pillBg = isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)";
+  const pillBorder = isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)";
+  const pillColor = isLight ? "#64748b" : "rgba(255,255,255,0.65)";
 
   const bottomSection = (
     <div style={{ padding: "12px 12px 14px", borderTop: `1px solid ${isLight ? "#e2e8f0" : "rgba(255,255,255,0.06)"}` }}>
@@ -110,11 +106,11 @@ export function SidebarNav({ adminConnectionId, companyName, connectionId, lastS
         </div>
       )}
 
-      {/* Action buttons — 3 across: Dark/Light | Restart Tour | Logout */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-        <div style={btnStyle}>
-          <ThemeToggle />
-        </div>
+      {/* Action buttons — 3 across: Dark/Light | Tour | Logout
+          Each pill is a real button/form so the ENTIRE area is clickable,
+          not just the icon in the center. */}
+      <div className="sidebar-actions" style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+        <ThemeToggle />
         <button
           type="button"
           onClick={() => {
@@ -125,7 +121,12 @@ export function SidebarNav({ adminConnectionId, companyName, connectionId, lastS
             } catch {}
             window.location.reload();
           }}
-          style={btnStyle}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flex: 1, gap: 6, padding: "8px 0", borderRadius: 6,
+            background: pillBg, border: `1px solid ${pillBorder}`,
+            color: pillColor, fontSize: 10, fontWeight: 600, cursor: "pointer",
+          }}
         >
           <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
             <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
@@ -133,15 +134,38 @@ export function SidebarNav({ adminConnectionId, companyName, connectionId, lastS
           </svg>
           Tour
         </button>
-        <div style={btnStyle}>
-          <LogoutButton />
-        </div>
+        <LogoutButton />
       </div>
+      {/* CSS to make ThemeToggle and LogoutButton fill their flex slot */}
+      <style>{`
+        .sidebar-actions > button,
+        .sidebar-actions > form {
+          flex: 1;
+        }
+        .sidebar-actions > form > button,
+        .sidebar-actions > button {
+          width: 100%;
+          padding: 8px 0 !important;
+          border-radius: 6px !important;
+          min-width: 0 !important;
+          background: ${pillBg} !important;
+          border: 1px solid ${pillBorder} !important;
+          color: ${pillColor} !important;
+          font-size: 10px !important;
+          font-weight: 600 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 4px !important;
+          cursor: pointer !important;
+          box-shadow: none !important;
+        }
+      `}</style>
 
       {/* Subscription */}
       {billingStatus && trialEndsAt !== undefined && subscriptionActive !== undefined && (
         <div style={{ marginBottom: 10 }}>
-          <SubscriptionStatus billingStatus={billingStatus} trialEndsAt={trialEndsAt} subscriptionActive={subscriptionActive} />
+          <SubscriptionStatus billingStatus={billingStatus} trialEndsAt={trialEndsAt} subscriptionActive={subscriptionActive} isLight={isLight} />
         </div>
       )}
 

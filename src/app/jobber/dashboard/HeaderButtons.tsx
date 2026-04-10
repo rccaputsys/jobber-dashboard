@@ -1,14 +1,15 @@
-export function SubscriptionStatus({ billingStatus, trialEndsAt, subscriptionActive }: {
+export function SubscriptionStatus({ billingStatus, trialEndsAt, subscriptionActive, isLight }: {
   billingStatus: string;
   trialEndsAt: number;
   subscriptionActive: boolean;
+  isLight?: boolean;
 }) {
   const pillStyle: React.CSSProperties = {
     display: "flex", alignItems: "center", justifyContent: "center",
     width: "100%", gap: 6, padding: "8px 0", borderRadius: 6,
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.06)",
-    color: "rgba(255,255,255,0.65)",
+    background: isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+    border: `1px solid ${isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"}`,
+    color: isLight ? "#64748b" : "rgba(255,255,255,0.65)",
     fontSize: 10, fontWeight: 600, cursor: "pointer",
   };
 
