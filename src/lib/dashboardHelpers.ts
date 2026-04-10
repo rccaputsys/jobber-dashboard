@@ -229,9 +229,11 @@ export const globalStyles = `
   }
 
   .chart-bar-hover .chart-bar-tooltip { opacity: 0 !important; }
+  .chart-bar-hover .bar-label { opacity: 0.7; transform: scale(1); }
   .chart-bar-hover { transition: opacity 0.15s ease, filter 0.15s ease, transform 0.15s ease; }
   .chart-bar-hover:hover { opacity: 1 !important; filter: brightness(1.15); transform: scale(1.03); }
   .chart-bar-hover:hover .chart-bar-tooltip { opacity: 1 !important; }
+  .chart-bar-hover:hover .bar-label { opacity: 1 !important; transform: scale(1.08); font-weight: 800; }
 
   /* Donut segment hover */
   .donut-seg { transition: opacity 0.15s ease, filter 0.15s ease; cursor: pointer; }

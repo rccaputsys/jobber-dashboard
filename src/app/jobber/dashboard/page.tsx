@@ -1687,10 +1687,8 @@ const quoteWonPct = quotesInLast30Days.length > 0
                             {/* Bar: invoiced is the container, collected fills it from the bottom */}
                             {(() => {
                               const over = m.collectedCents > m.invoicedCents && m.invoicedCents > 0;
-                              // Container height = max(invoiced, collected) so we always see both
                               const maxAmount = Math.max(m.invoicedCents, m.collectedCents);
                               const containerH = cfMax > 0 ? Math.max((maxAmount / cfMax) * 100, maxAmount > 0 ? 6 : 1) : 1;
-                              // Fill % within the container
                               const fillH = maxAmount > 0 ? Math.min((m.collectedCents / maxAmount) * 100, 100) : 0;
                               return (
                                 <div style={{
@@ -1702,7 +1700,6 @@ const quoteWonPct = quotesInLast30Days.length > 0
                                   position: "relative", overflow: "hidden",
                                   transition: "height 0.5s ease",
                                 }}>
-                                  {/* Collected fill from bottom */}
                                   {m.collectedCents > 0 && (
                                     <div style={{
                                       position: "absolute", bottom: 0, left: 0, right: 0,
@@ -1714,19 +1711,16 @@ const quoteWonPct = quotesInLast30Days.length > 0
                                 </div>
                               );
                             })()}
+                            {/* Month label + values — inside the bar column so
+                                they react to the hover (pop out effect) */}
+                            <div className="bar-label" style={{ textAlign: "center", marginTop: 4, transition: "transform 0.15s ease, opacity 0.15s ease" }}>
+                              <div className="text-muted" style={{ fontSize: 10, fontWeight: m.isCurrent ? 700 : 500 }}>{m.label}</div>
+                              <div className="text-primary" style={{ fontSize: 9, fontWeight: 700, marginTop: 1 }}>{m.invoicedCents > 0 ? money(m.invoicedCents) : "—"}</div>
+                              <div style={{ fontSize: 9, fontWeight: 700, color: "#10b981" }}>{m.collectedCents > 0 ? money(m.collectedCents) : "—"}</div>
+                            </div>
                           </div>
                         );
                       })}
-                    </div>
-                    {/* Month labels + data under each bar */}
-                    <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
-                      {cashFlowMonths.map((m, i) => (
-                        <div key={i} style={{ flex: 1, textAlign: "center" }}>
-                          <div className="text-muted" style={{ fontSize: 10, fontWeight: m.isCurrent ? 700 : 500 }}>{m.label}</div>
-                          <div className="text-primary" style={{ fontSize: 9, fontWeight: 700, marginTop: 2 }}>{m.invoicedCents > 0 ? money(m.invoicedCents) : "—"}</div>
-                          <div style={{ fontSize: 9, fontWeight: 700, color: "#10b981" }}>{m.collectedCents > 0 ? money(m.collectedCents) : "—"}</div>
-                        </div>
-                      ))}
                     </div>
                   </div>
                 );
