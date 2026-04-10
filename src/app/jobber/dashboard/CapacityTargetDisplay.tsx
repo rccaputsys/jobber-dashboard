@@ -245,7 +245,7 @@ function DayBars({
                 {filled ? (
                   <>
                     <div style={{
-                      fontSize: 11, fontWeight: 800,
+                      fontSize: 11, fontWeight: 600,
                       color: isLight ? "#0f1729" : "#ffffff",
                       textShadow: pct >= 25 ? "0 1px 2px rgba(0,0,0,0.35)" : "none",
                       whiteSpace: "nowrap",
@@ -253,7 +253,7 @@ function DayBars({
                       {isJobs ? `${d.jobCount} job${d.jobCount !== 1 ? "s" : ""}` : money(d.scheduledCents)}
                     </div>
                     <div style={{
-                      fontSize: 9, fontWeight: 700,
+                      fontSize: 9, fontWeight: 500,
                       color: isLight ? "rgba(15,23,41,0.7)" : "rgba(255,255,255,0.85)",
                       textShadow: pct >= 25 ? "0 1px 2px rgba(0,0,0,0.35)" : "none",
                       whiteSpace: "nowrap",
