@@ -449,8 +449,8 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
       }}>
       {viewMode === "week" ? (
         <>
-          {/* Big gauge — pulled up 25% of its height via negative margin */}
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", width: "100%", marginTop: "-12%" }}>
+          {/* Big gauge — pulled up on desktop, normal on mobile */}
+          <div className="gauge-container" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", width: "100%", marginTop: "-12%" }}>
             <RPMGauge
               pct={fillPct}
               money={fmtValue(booked)}

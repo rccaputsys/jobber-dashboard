@@ -1383,6 +1383,11 @@ export const globalStyles = `
       gap: 2px !important;
     }
 
+    /* Gauge: remove negative margin that clips into header on mobile */
+    .gauge-container {
+      margin-top: 0 !important;
+    }
+
     /* Donut labels: tighter on mobile */
     .donut-label {
       font-size: 11px !important;
