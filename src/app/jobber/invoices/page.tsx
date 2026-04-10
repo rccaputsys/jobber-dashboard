@@ -4,7 +4,6 @@ import { getUser } from "@/lib/supabaseAuth";
 import { redirect } from "next/navigation";
 import { DashboardTopbar } from "../dashboard/DashboardTopbar";
 import { OnboardingOverlay } from "../dashboard/OnboardingOverlay";
-import { ActionStrip } from "../dashboard/ActionStrip";
 import { AttentionList } from "../dashboard/AttentionList";
 import { OutstandingInvoices } from "./OutstandingInvoices";
 import { ErrorBoundary } from "../dashboard/ErrorBoundary";
@@ -202,49 +201,10 @@ export default async function InvoicesPage({
     })
     .sort((a, b) => b.days_overdue - a.days_overdue);
 
-  const outstandingBalance = outstanding.reduce((s, i) => s + i.balance_cents, 0);
-  const pastDueCount = outstanding.filter(i => i.days_overdue > 0).length;
-  const pastDueBalance = outstanding.filter(i => i.days_overdue > 0).reduce((s, i) => s + i.balance_cents, 0);
-
-  // Aging buckets for donut chart (matches OutstandingInvoices categories)
-  const agingBuckets = [
-    { label: "30+ Days", color: "#ef4444", balanceCents: 0, count: 0 },
-    { label: "8\u201330 Days", color: "#f59e0b", balanceCents: 0, count: 0 },
-    { label: "1\u20137 Days", color: "#5aa6ff", balanceCents: 0, count: 0 },
-    { label: "Current", color: "#10b981", balanceCents: 0, count: 0 },
-  ];
-  for (const inv of outstanding) {
-    const b = inv.days_overdue >= 30 ? agingBuckets[0] : inv.days_overdue >= 7 ? agingBuckets[1] : inv.days_overdue > 0 ? agingBuckets[2] : agingBuckets[3];
-    b.balanceCents += inv.balance_cents;
-    b.count++;
-  }
-
   // Draft invoices (not sent yet)
   const draftInvoices = invoices.filter((i: any) => (i.status || "").toLowerCase() === "draft");
   const draftCount = draftInvoices.length;
   const draftCents = draftInvoices.reduce((s: number, i: any) => s + Number(i.total_amount_cents ?? 0), 0);
-
-  // Trend events — use due_at for "sent" (when invoice became active), not created_at
-  // This prevents the mismatch where invoices created in month A show as "invoiced" in A
-  // but collected in month B, making B look >100% collected
-  const invoiceEvents = invoices
-    .filter((i: any) => (i.status || "").toLowerCase() !== "draft") // exclude drafts
-    .map((i: any) => {
-      const events: { ts: number; amount: number; type: "sent" | "paid" }[] = [];
-      const due = safeDate(i.due_at) || safeDate(i.created_at_jobber);
-      if (due) events.push({ ts: due.getTime(), amount: Number(i.total_amount_cents ?? 0), type: "sent" });
-      if (i.status === "paid") {
-        const paid = safeDate(i.paid_at);
-        if (paid) events.push({ ts: paid.getTime(), amount: Number(i.total_amount_cents ?? 0), type: "paid" });
-      }
-      return events;
-    })
-    .flat();
-
-  // Payment timings for avg days to pay (reactive to range slicer)
-  const paymentTimings = invoices
-    .filter((i: any) => i.status === "paid" && safeDate(i.due_at) && safeDate(i.paid_at))
-    .map((i: any) => ({ paidTs: safeDate(i.paid_at)!.getTime(), dueTs: safeDate(i.due_at)!.getTime() }));
 
   // Jobs needing invoicing — include completed visits for context
   const needsInvoicingJobIds = new Set(needsInvoicingRaw.map((j: any) => j.jobber_job_id).filter(Boolean));

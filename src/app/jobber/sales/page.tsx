@@ -182,9 +182,6 @@ export default async function SalesPage({
     const s = (q.quote_status || "").toUpperCase();
     return s.includes("APPROV") || s.includes("ACCEPT");
   });
-  const wonQuotes = quotes.filter((q: any) => statusLooksWon(q.quote_status || ""));
-  const lostQuotes = quotes.filter((q: any) => statusLooksLost(q.quote_status || ""));
-
   function sumCents(arr: any[]) {
     return arr.reduce((s: number, q: any) => s + Number(q.quote_total_cents ?? 0), 0);
   }
@@ -220,90 +217,12 @@ export default async function SalesPage({
     Won: approvedQuotes.map(quoteToRow),
   };
 
-  // Pipeline value (all open/sent, not won/lost)
+  // Open quotes (all sent/in-progress, not won/lost) — used by the
+  // follow-up table below
   const openQuotes = quotes.filter((q: any) => {
     const s = (q.quote_status || "").toUpperCase();
     return !statusLooksWon(s) && !statusLooksLost(s);
   });
-  const pipelineValue = sumCents(openQuotes);
-
-  /* ----------- Period-scoped KPI computation ----------- */
-  const thisMonthStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth(), 1));
-  const lastMonthStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() - 1, 1));
-  const thisMonthName = new Date().toLocaleString(undefined, { month: "long" });
-  const lastMonthName = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() - 1, 15)).toLocaleString(undefined, { month: "long" });
-
-  function computeKpi(periodStart: Date | null, periodEnd: Date | null, periodLabel: string, winRateLabel: string) {
-    const inPeriod = (d: Date | null) => {
-      if (!d || !periodStart || !periodEnd) return true; // all-time
-      return d >= periodStart && d < periodEnd;
-    };
-
-    // Win Rate: won / (won + lost + sent-still-open) — includes unresolved quotes
-    // so owners who don't archive quotes still see an honest rate
-    const periodWon = wonQuotes.filter((q: any) => inPeriod(safeDate(q.updated_at_jobber)));
-    const periodLost = lostQuotes.filter((q: any) => inPeriod(safeDate(q.updated_at_jobber)));
-    const periodSentOpen = sentQuotes.filter((q: any) => {
-      const sent = safeDate(q.sent_at);
-      return periodStart ? (sent && sent >= periodStart && sent < (periodEnd || todayUTC)) : true;
-    });
-    const winDenom = periodWon.length + periodLost.length + periodSentOpen.length;
-    const winRate = winDenom > 0 ? periodWon.length / winDenom : 0;
-
-    // Avg days to close for won quotes in period
-    const wonWithDates = periodWon.filter((q: any) => safeDate(q.sent_at) && safeDate(q.updated_at_jobber));
-    const avgDaysToClose = wonWithDates.length > 0
-      ? Math.round(
-          wonWithDates.reduce((s: number, q: any) => {
-            const sent = safeDate(q.sent_at)!;
-            const closed = safeDate(q.updated_at_jobber)!;
-            return s + (closed.getTime() - sent.getTime()) / 86400000;
-          }, 0) / wonWithDates.length
-        )
-      : 0;
-
-    // Quotes sent in period
-    const periodQuotesSent = quotes.filter((q: any) => {
-      const sent = safeDate(q.sent_at);
-      return sent && inPeriod(sent);
-    });
-    const quotesSent = periodQuotesSent.length;
-    const quotesSentValue = sumCents(periodQuotesSent);
-
-    const wonRevenue = sumCents(periodWon);
-
-    return {
-      winRate,
-      winRateLabel,
-      avgDaysToClose,
-      wonCount: periodWon.length,
-      wonRevenue: money(wonRevenue),
-      quotesSent,
-      quotesSentValue: money(quotesSentValue),
-      monthLabel: periodLabel,
-    };
-  }
-
-  const thisWeekStart = startOfWeekUTC(todayUTC);
-  const lastWeekStart = addDaysUTC(thisWeekStart, -7);
-
-  const thisWeekKpi = computeKpi(thisWeekStart, addDaysUTC(todayUTC, 1), "This Week", "Win Rate (This Week)");
-  const lastWeekKpi = computeKpi(lastWeekStart, thisWeekStart, "Last Week", "Win Rate (Last Week)");
-  const thisMonthKpi = computeKpi(thisMonthStart, addDaysUTC(todayUTC, 1), thisMonthName, "Win Rate (This Month)");
-  const lastMonthKpi = computeKpi(lastMonthStart, thisMonthStart, lastMonthName, "Win Rate (Last Month)");
-  const allTimeKpi = computeKpi(null, null, "All Time", "Win Rate (All Time)");
-
-  // Event arrays for SalesTrendsSection
-  const wonQuoteEvents = wonQuotes
-    .filter((q: any) => safeDate(q.updated_at_jobber))
-    .map((q: any) => ({ closedAt: safeDate(q.updated_at_jobber)!.getTime(), amount: Number(q.quote_total_cents ?? 0) }));
-  const allClosureEvents = quotes
-    .filter((q: any) => (statusLooksWon(q.quote_status) || statusLooksLost(q.quote_status)) && safeDate(q.updated_at_jobber))
-    .map((q: any) => ({ closedAt: safeDate(q.updated_at_jobber)!.getTime(), won: statusLooksWon(q.quote_status) }));
-  // Sent-but-still-open quotes — bucketed by sent_at so they count in the period they were sent
-  const sentOpenEvents = sentQuotes
-    .filter((q: any) => safeDate(q.sent_at))
-    .map((q: any) => ({ sentAt: safeDate(q.sent_at)!.getTime() }));
 
   // Quote follow-up table: open quotes sorted by staleness
   const followUpQuotes = openQuotes

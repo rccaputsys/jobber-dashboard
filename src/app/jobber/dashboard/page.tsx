@@ -2,35 +2,16 @@
 import React from "react";
 import { supabaseAdmin, fetchAllRows } from "@/lib/supabaseAdmin";
 import { SyncButton } from "./SyncButton";
-import { ThemeToggle } from "./ThemeToggle";
 import { getUser } from "@/lib/supabaseAuth";
 import { redirect } from "next/navigation";
-import { DisconnectJobberButton } from "./DisconnectButton";
-import { TrendsSection } from "./TrendsSection";
 import { AnalyticsProvider } from "./AnalyticsProvider";
-import { NavTabs } from "./NavTabs";
-import { AccuScore } from "./AccuScore";
-import { MoneyFlowFunnel } from "./MoneyFlowFunnel";
-import { MoneyFlowList } from "./MoneyFlowList";
-import { CommandStrip } from "./CommandStrip";
-import { WeekGlance } from "./WeekGlance";
-import { CapacityChart } from "../capacity/CapacityChart";
-import { type AgingBucket } from "../invoices/InvoiceTrendsSection";
-import { AgingDonutWrapper } from "./AgingDonutWrapper";
 import { CapacityTargetDisplay } from "./CapacityTargetDisplay";
 import { InlineCapacityEditor } from "./InlineCapacityEditor";
 import { FlipCard } from "./FlipCard";
-import { InsightTip } from "./InsightTip";
-import { ActionStrip } from "./ActionStrip";
-import { DashboardTopbar } from "./DashboardTopbar";
 import { OnboardingOverlay } from "./OnboardingOverlay";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { DashboardLayout } from "./DashboardLayout";
-import {
-  safeDate as _safeDate,
-  globalStyles,
-  theme,
-} from "@/lib/dashboardHelpers";
+import { globalStyles, theme } from "@/lib/dashboardHelpers";
 
 /* --------------------------------- helpers --------------------------------- */
 type Granularity = "day" | "week" | "month" | "quarter";
@@ -175,62 +156,6 @@ function statusLooksLost(status: string) {
   const s = status.toUpperCase();
   return s.includes("REJECTED") || s.includes("DECLINED") || s.includes("LOST") || s.includes("EXPIRED") || s.includes("ARCHIVED");
 }
-/* --------------------------------- DEMO DATA --------------------------------- */
-const DEMO_DATA = {
-  companyName: "Greenscape Lawn & Garden",
-  currencyCode: "USD",
-  lastSyncPretty: "2 hours ago",
-  totalAR: 484700,
-  b15p: 215500,
-  leakDollars: 1234000,
-  leakCount: 8,
-  changesRequestedCount: 2,
-  approvedNoJobCount: 3,
-  unscheduledCount: 7,
-  quoteWonPct: 0.34,
-  quotesWonLast30Days: 11,
-  quotesInLast30Days: 32,
-  allOverdueCount: 9,
-  agedARInvoices: [
-    { invoice_number: "1247", client_name: "Johnson Residence", amount_cents: 85000, days_overdue: 34, due_date: "2025-12-30", jobber_url: "#" },
-    { invoice_number: "1251", client_name: "Oakwood HOA", amount_cents: 62500, days_overdue: 28, due_date: "2026-01-05", jobber_url: "#" },
-    { invoice_number: "1258", client_name: "Martinez Property", amount_cents: 34500, days_overdue: 21, due_date: "2026-01-12", jobber_url: "#" },
-    { invoice_number: "1263", client_name: "Thompson Estate", amount_cents: 18500, days_overdue: 18, due_date: "2026-01-15", jobber_url: "#" },
-    { invoice_number: "1267", client_name: "Riverside Church", amount_cents: 15000, days_overdue: 16, due_date: "2026-01-17", jobber_url: "#" },
-  ],
-  unscheduledRows: [
-    { job_number: "3847", job_title: "Spring cleanup & mulching", created_at_jobber: "2026-01-15", jobber_url: "#", total_amount_cents: 125000 },
-    { job_number: "3851", job_title: "Irrigation system repair", created_at_jobber: "2026-01-18", jobber_url: "#", total_amount_cents: 85000 },
-    { job_number: "3854", job_title: "Tree trimming - backyard oaks", created_at_jobber: "2026-01-22", jobber_url: "#", total_amount_cents: 45000 },
-    { job_number: "3858", job_title: "Weekly maintenance setup", created_at_jobber: "2026-01-25", jobber_url: "#", total_amount_cents: 32000 },
-    { job_number: "3861", job_title: "Fence line clearing", created_at_jobber: "2026-01-28", jobber_url: "#", total_amount_cents: 28000 },
-  ],
-  leakCandidates: [
-    { quote_number: "Q-892", quote_title: "Full landscape redesign", sent_at: "2026-01-08", quote_total_cents: 485000, quote_url: "#", quote_status: "awaiting_response" },
-    { quote_number: "Q-897", quote_title: "Patio & retaining wall", sent_at: "2026-01-12", quote_total_cents: 325000, quote_url: "#", quote_status: "awaiting_response" },
-    { quote_number: "Q-901", quote_title: "Drainage solution - side yard", sent_at: "2026-01-15", quote_total_cents: 175000, quote_url: "#", quote_status: "awaiting_response" },
-    { quote_number: "Q-904", quote_title: "Seasonal flower installation", sent_at: "2026-01-19", quote_total_cents: 125000, quote_url: "#", quote_status: "awaiting_response" },
-    { quote_number: "Q-908", quote_title: "Lawn renovation & seeding", sent_at: "2026-01-24", quote_total_cents: 124000, quote_url: "#", quote_status: "awaiting_response" },
-  ],
-  openRequests: [
-    { title: "New lawn care estimate", client_name: "Sarah Mitchell", source: "website", created_at_jobber: "2026-01-30", jobber_url: "#" },
-    { title: "Spring cleanup quote needed", client_name: "Oak Valley HOA", source: "phone", created_at_jobber: "2026-01-28", jobber_url: "#" },
-    { title: "Irrigation repair assessment", client_name: "Tom Henderson", source: "website", created_at_jobber: "2026-01-25", jobber_url: "#" },
-  ],
-  openRequestsCount: 3,
-  trendLabels: ["Dec 9", "Dec 16", "Dec 23", "Dec 30", "Jan 6", "Jan 13", "Jan 20", "Jan 27"],
-  leakTrend: [1850000, 1720000, 1580000, 1450000, 1380000, 1290000, 1260000, 1234000],
-  ar15Trend: [385000, 342000, 298000, 275000, 248000, 232000, 218000, 215500],
-  unschedTrend: [
-    { cnt: 12, cents: 480000 }, { cnt: 11, cents: 420000 }, { cnt: 10, cents: 385000 }, { cnt: 9, cents: 340000 },
-    { cnt: 8, cents: 295000 }, { cnt: 8, cents: 280000 }, { cnt: 7, cents: 250000 }, { cnt: 7, cents: 245000 },
-  ],
-  recommendations: [
-    { icon: "🔴", text: "$2,155 overdue 15+ days (5 invoices). Priority: Call top 3 oldest accounts today.", priority: "high" as const },
-    { icon: "✏️", text: "2 quotes waiting for revisions. Hot leads - respond within 24hrs.", priority: "high" as const },
-    { icon: "💰", text: "8 quotes pending ($12,340 total). Follow up on top 5 - potential $3,085 recovery.", priority: "medium" as const },
-  ],
-};
 /* -------------------------------- Page -------------------------------- */
 export default async function DashboardPage({
   searchParams,
@@ -243,218 +168,14 @@ export default async function DashboardPage({
     chart?: ChartType;
     unscheduled_min_days?: string;
     checkout?: string;
-    demo?: string;
     sync_error?: string;
     admin_connection_id?: string;
     retry_sync?: string;
   }>;
 }) {
   const sp = await searchParams;
-  const isDemo = sp.demo === "true";
   const syncError = sp.sync_error;
   const retrySync = sp.retry_sync === "true";
-
-  if (isDemo) {
-    const money = moneyFactory(DEMO_DATA.currencyCode);
-
-    // Convert demo data to event arrays for TrendsSection
-    const demoLeakEvents = DEMO_DATA.leakCandidates.map((q) => ({
-      enterAt: new Date(q.sent_at).getTime(),
-      exitAt: null,
-      amount: q.quote_total_cents,
-    }));
-    const demoArEvents = DEMO_DATA.agedARInvoices.map((inv) => ({
-      enterAt: new Date(inv.due_date).getTime() + 15 * 86400000,
-      exitAt: null,
-      amount: inv.amount_cents,
-    }));
-    const demoUnschedEvents = DEMO_DATA.unscheduledRows.map((j) => ({
-      enterAt: new Date(j.created_at_jobber).getTime(),
-      exitAt: null,
-      amount: j.total_amount_cents,
-    }));
-
-    const demoHealthScore = 66;
-    const demoBreakdown = [
-      { label: "Sales", score: 68, detail: "34% win rate \u2022 8 open quotes \u2022 5 pending action", action: "Follow up on cold quotes", href: "/jobber/sales" },
-      { label: "Capacity", score: 65, detail: "15% of jobs unscheduled \u2022 target: under 10%", action: "Schedule unbooked jobs", href: "/jobber/capacity" },
-      { label: "Invoices", score: 60, detail: "25% of overdue amount is 15+ days old \u2022 target: under 10%", action: "Send payment reminders", href: "/jobber/invoices" },
-    ];
-    const demoFunnel = [
-      { label: "Leads", count: 3, value: null, icon: "\uD83D\uDCE5", href: "/jobber/sales", color: "#5aa6ff", unitLabel: "requests" },
-      { label: "Quoting", count: 8, value: money(1234000), icon: "\uD83D\uDCDD", href: "/jobber/sales", color: "#5aa6ff", unitLabel: "quotes" },
-      { label: "Won", count: 3, value: money(475000), icon: "\uD83C\uDFC6", href: "/jobber/sales", color: "#10b981", unitLabel: "quotes" },
-      { label: "Scheduled", count: 14, value: money(890000), icon: "\uD83D\uDCC5", href: "/jobber/capacity", color: "#06b6d4", unitLabel: "jobs" },
-      { label: "Needs Invoice", count: 4, value: money(245000), icon: "\uD83D\uDCC4", href: "/jobber/invoices", color: "#f59e0b", unitLabel: "jobs" },
-      { label: "Outstanding", count: 9, value: money(484700), icon: "\uD83D\uDCB0", href: "/jobber/invoices", color: "#ef4444", unitLabel: "invoices" },
-    ];
-
-    return (
-      <main className="dashboard-main" style={{
-        minHeight: "100%",
-        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        background: "linear-gradient(180deg, #0b0e14 0%, #0f1219 100%)",
-      }}>
-        <style>{globalStyles}</style>
-
-        <div className="dashboard-container" data-testid="DEMO-MODE-ACTIVE">
-          <div className="dashboard-topbar animate-in">
-            <header className="dashboard-header">
-              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <svg width="32" height="32" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-                    <defs><linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#7c5cff" /><stop offset="100%" stopColor="#5aa6ff" /></linearGradient></defs>
-                    <circle cx="25" cy="25" r="22" fill="none" stroke="url(#logoGrad)" strokeWidth="3"/>
-                    <polyline points="8,25 16,25 21,12 29,38 34,20 42,25" fill="none" stroke="url(#logoGrad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", background: "linear-gradient(135deg, #7c5cff, #5aa6ff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>AccuInsight</div>
-                    <div className="text-primary" style={{ fontSize: 16, fontWeight: 800, letterSpacing: -0.3, lineHeight: 1.1 }}>{DEMO_DATA.companyName}</div>
-                  </div>
-                </div>
-              </div>
-              <div className="header-actions">
-                <span className="header-subtitle" style={{ fontSize: 10 }}>{DEMO_DATA.lastSyncPretty}</span>
-                <button className="btn" disabled style={{ opacity: 0.5, fontSize: 11, padding: "5px 10px" }}>Sync</button>
-                <ThemeToggle />
-                <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
-                <div className="status-pill" style={{ borderRadius: 8, fontWeight: 600, fontSize: 11, padding: "4px 10px", background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.4)" }}>Pro</div>
-              </div>
-            </header>
-            <NavTabs />
-          </div>
-
-          {/* AccuScore */}
-          <div className="panel animate-in delay-1" style={{ marginTop: 20, padding: "20px 24px" }}>
-            <AccuScore score={demoHealthScore} breakdown={demoBreakdown} />
-          </div>
-
-          {/* Primary KPIs */}
-          <div className="kpi-grid-primary animate-in delay-1" style={{ marginTop: 16 }}>
-            <div className="kpi-primary gradient-purple hover-lift">
-              <div style={{ position: "relative", zIndex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <span className="kpi-label" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>Revenue March</span>
-                </div>
-                <div className="kpi-value-large text-primary">{money(1245000)}</div>
-                <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>
-                  <span style={{ color: "#10b981", fontWeight: 600 }}>{"\u25B2"} 18% vs last month</span>
-                </div>
-              </div>
-            </div>
-            <div className="kpi-primary hover-lift" style={{ background: "linear-gradient(145deg, rgba(90,166,255,0.1) 0%, rgba(255,255,255,0.02) 100%)", borderColor: "rgba(90,166,255,0.3)" }}>
-              <div style={{ position: "relative", zIndex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <span className="kpi-label" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>Pipeline Value</span>
-                </div>
-                <div className="kpi-value-large" style={{ color: "#5aa6ff" }}>{money(1234000)}</div>
-                <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>8 open quotes</div>
-              </div>
-            </div>
-            <div className="kpi-primary hover-lift" style={{ background: "linear-gradient(145deg, rgba(245,158,11,0.15) 0%, rgba(255,255,255,0.02) 100%)", borderColor: "rgba(245,158,11,0.4)" }}>
-              <div style={{ position: "relative", zIndex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <span className="kpi-label" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>Overdue Invoices</span>
-                </div>
-                <div className="kpi-value-large text-warning">{money(484700)}</div>
-                <div className="kpi-sublabel" style={{ fontSize: 12, marginTop: 8 }}>9 invoices past due</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Secondary KPIs */}
-          <div className="kpi-grid-secondary animate-in delay-2" style={{ marginTop: 16 }}>
-            <div className="kpi-secondary">
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
-                <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Win Rate (30d)</span>
-              </div>
-              <div className="kpi-value-medium text-warning">{pct(0.34)}</div>
-              <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>11 won of 32 quotes</div>
-            </div>
-            <div className="kpi-secondary">
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
-                <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Unscheduled</span>
-              </div>
-              <div className="kpi-value-medium text-warning">{money(315000)}</div>
-              <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>7 jobs in backlog</div>
-            </div>
-            <div className="kpi-secondary">
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
-                <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Needs Invoicing</span>
-              </div>
-              <div className="kpi-value-medium text-warning">{money(245000)}</div>
-              <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>4 jobs completed, not billed</div>
-            </div>
-            <div className="kpi-secondary">
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minHeight: 32 }}>
-                <span className="kpi-label" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>Open Requests</span>
-              </div>
-              <div className="kpi-value-medium text-success">3</div>
-              <div className="kpi-sublabel" style={{ fontSize: 11, marginTop: 4 }}>3 pending requests</div>
-            </div>
-          </div>
-
-          {/* Recommendations */}
-          <div className="panel animate-in delay-2" style={{ marginTop: 20 }}>
-            <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>This Week&apos;s Focus</h2>
-            </div>
-            <div style={{ padding: "10px 16px" }}>
-              {[
-                { headline: `Collect ${money(215500)}`, detail: "5 invoices overdue 15+ days. Call your oldest accounts today.", priority: "high" as const, href: "/jobber/invoices" },
-                { headline: "Close $3,500 faster", detail: "2 quotes need your revisions. These clients are ready to buy.", priority: "high" as const, href: "/jobber/sales" },
-                { headline: `Win back ${money(308500)}`, detail: `8 quotes worth ${money(1234000)} going cold. Follow up on the largest ones today.`, priority: "medium" as const, href: "/jobber/sales" },
-              ].map((rec, i) => {
-                const prioClass = rec.priority === "high" ? "rec-card-high" : "rec-card-medium";
-                return (
-                  <a key={i} href={rec.href} className={`rec-card ${prioClass}`} style={{ borderLeft: `3px solid ${rec.priority === "high" ? "#ef4444" : "#f59e0b"}`, flexDirection: "column", gap: 2 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                      <span className="text-primary" style={{ fontSize: 13, fontWeight: 700 }}>{rec.headline}</span>
-                      <span className="text-muted" style={{ fontSize: 11, flexShrink: 0, fontWeight: 600 }}>&rarr;</span>
-                    </div>
-                    <span className="text-muted" style={{ fontSize: 11, lineHeight: 1.4 }}>{rec.detail}</span>
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Money Flow */}
-          <div className="panel animate-in delay-3" style={{ marginTop: 20, overflow: "visible" }}>
-            <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              <h2 className="text-primary" style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Money Flow</h2>
-              <p className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>Track jobs from lead to collected payment</p>
-            </div>
-            <div style={{ padding: "16px 20px" }}>
-              <MoneyFlowFunnel stages={demoFunnel} />
-            </div>
-          </div>
-
-          <div className="animate-in delay-4" style={{ marginTop: 20 }}>
-            <TrendsSection
-              leakEvents={demoLeakEvents}
-              arEvents={demoArEvents}
-              unschedEvents={demoUnschedEvents}
-              currencyCode={DEMO_DATA.currencyCode}
-            />
-          </div>
-
-          <footer style={{
-            marginTop: 40, paddingTop: 24,
-            borderTop: "1px solid rgba(255,255,255,0.06)",
-            textAlign: "center", fontSize: 12, color: "rgba(234,241,255,0.4)",
-          }}>
-            <p style={{ margin: 0 }}>&copy; 2026 OwnerView. All rights reserved.</p>
-            <p style={{ margin: "8px 0 0" }}>
-              <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms</a>
-              {" \u00B7 "}
-              <a href="/privacy" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Privacy</a>
-            </p>
-          </footer>
-        </div>
-      </main>
-    );
-  }
 
   const user = await getUser();
   if (!user) redirect("/login");
@@ -2446,17 +2167,15 @@ const quoteWonPct = quotesInLast30Days.length > 0
 
       </div>
       {/* Onboarding overlay */}
-      {!isDemo && (
-        <OnboardingOverlay
-          state={{
-            hasData: jobs.length > 0 || invoices.length > 0,
-            weeklyTargetSet: !!(conn?.weekly_capacity_cents),
-            trialDaysLeft: trialEndsAt > Date.now() ? Math.ceil((trialEndsAt - Date.now()) / 86400000) : 0,
-          }}
-          connectionId={connectionId}
-          adminConnectionId={adminConnectionId}
-        />
-      )}
+      <OnboardingOverlay
+        state={{
+          hasData: jobs.length > 0 || invoices.length > 0,
+          weeklyTargetSet: !!(conn?.weekly_capacity_cents),
+          trialDaysLeft: trialEndsAt > Date.now() ? Math.ceil((trialEndsAt - Date.now()) / 86400000) : 0,
+        }}
+        connectionId={connectionId}
+        adminConnectionId={adminConnectionId}
+      />
       </ErrorBoundary>
       </DashboardLayout>
     </main>

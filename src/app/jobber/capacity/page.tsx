@@ -2,20 +2,15 @@
 import { supabaseAdmin, fetchAllRows } from "@/lib/supabaseAdmin";
 import { getUser } from "@/lib/supabaseAuth";
 import { redirect } from "next/navigation";
-import { DashboardTopbar } from "../dashboard/DashboardTopbar";
 import { OnboardingOverlay } from "../dashboard/OnboardingOverlay";
-import { CapacityWeekBreakdown } from "./CapacityWeekBreakdown";
-import { CapacityKpiCards } from "./CapacityKpiCards";
 import { CapacityActionList } from "./CapacityActionList";
 import { AttentionList } from "../dashboard/AttentionList";
-import { ActionStrip } from "../dashboard/ActionStrip";
 import { ErrorBoundary } from "../dashboard/ErrorBoundary";
 import { DashboardLayout } from "../dashboard/DashboardLayout";
 import {
   safeDate,
   startOfDayUTC,
   startOfWeekUTC,
-  startOfMonthUTC,
   addDaysUTC,
   moneyFactory,
   formatSyncTime,
@@ -263,13 +258,6 @@ export default async function CapacityPage({
   const now = new Date();
   const todayUTC = startOfDayUTC(now);
   const thisWeekStart = startOfWeekUTC(todayUTC);
-  const thisWeekEnd = addDaysUTC(thisWeekStart, 7);
-  const nextWeekStart = thisWeekEnd;
-  const nextWeekEnd = addDaysUTC(nextWeekStart, 7);
-  const thisMonthStart = startOfMonthUTC(todayUTC);
-  const thisMonthEnd = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() + 1, 1));
-  const nextMonthStart = thisMonthEnd;
-  const nextMonthEnd = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() + 2, 1));
 
   function periodItems(start: Date, end: Date) {
     return scheduleItems.filter((item) => {
@@ -278,57 +266,6 @@ export default async function CapacityPage({
     });
   }
 
-  // For monthly periods: use monthlyCapacityCents if set, otherwise fall back to weekly × weeks-in-period
-  function computePeriodMetrics(start: Date, end: Date, weeklyTarget: number | null, periodLabel: string, monthlyTarget?: number | null) {
-    const pItems = periodItems(start, end);
-    const revenueCents = pItems.reduce((s: number, item) => s + item.amountCents, 0);
-
-    const daysInPeriod = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    const weeksInPeriod = daysInPeriod / 7;
-
-    // Use explicit monthly target for month-length periods, otherwise scale weekly
-    const periodTargetCents = monthlyTarget
-      ? monthlyTarget
-      : weeklyTarget ? Math.round(weeklyTarget * weeksInPeriod) : 0;
-
-    const fillRate = periodTargetCents > 0 ? revenueCents / periodTargetCents : 0;
-    const gapCents = periodTargetCents - revenueCents;
-    const workingDays = Math.max(1, Math.round(daysInPeriod * 5 / 7));
-    const avgPerDayCents = Math.round(revenueCents / workingDays);
-    const dailyTargetCents = periodTargetCents > 0 ? Math.round(periodTargetCents / workingDays) : 0;
-
-    // Prior period comparison (same duration, shifted back)
-    const priorStart = addDaysUTC(start, -daysInPeriod);
-    const priorEnd = start;
-    const priorItems = periodItems(priorStart, priorEnd);
-    const priorRevenueCents = priorItems.reduce((s: number, item) => s + item.amountCents, 0);
-    const priorJobCount = priorItems.length;
-
-    // Revenue per item
-    const revenuePerJobCents = pItems.length > 0 ? Math.round(revenueCents / pItems.length) : 0;
-    const priorRevenuePerJobCents = priorJobCount > 0 ? Math.round(priorRevenueCents / priorJobCount) : 0;
-
-    return {
-      scheduledRevenue: money(revenueCents),
-      scheduledRevenueCents: revenueCents,
-      targetCents: periodTargetCents,
-      fillRate,
-      gapCents,
-      gapLabel: gapCents > 0 ? `${money(gapCents)} to go` : `Over by ${money(Math.abs(gapCents))}`,
-      avgRevenuePerDay: money(avgPerDayCents),
-      avgRevenuePerDayCents: avgPerDayCents,
-      dailyTargetCents,
-      jobCount: pItems.length,
-      periodLabel,
-      priorRevenueCents,
-      revenuePerJobCents,
-      priorJobCount,
-      priorRevenuePerJobCents,
-    };
-  }
-
-  const lastWeekStart = addDaysUTC(thisWeekStart, -7);
-
   // Auto weekly target: average work-day revenue of last 4 completed weeks
   const _workDays: string[] = (connDetails as any)?.capacity_work_days || ["Mon", "Tue", "Wed", "Thu", "Fri"];
   const autoWeeklyTarget = (() => {
@@ -336,7 +273,6 @@ export default async function CapacityPage({
     const dayLabelsAll = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     for (let w = 1; w <= 4; w++) {
       const wStart = addDaysUTC(thisWeekStart, -7 * w);
-      // Only count work days
       for (let d = 0; d < 7; d++) {
         const dayLabel = dayLabelsAll[d];
         if (!_workDays.includes(dayLabel)) continue;
@@ -348,105 +284,17 @@ export default async function CapacityPage({
     return total > 0 ? Math.round(total / 4) : 0;
   })();
   const effectiveWeeklyTarget = weeklyCapacityCents || autoWeeklyTarget;
-  const isAutoCapacity = !weeklyCapacityCents && autoWeeklyTarget > 0;
 
-  const kpiLastWeek = computePeriodMetrics(lastWeekStart, thisWeekStart, effectiveWeeklyTarget, "Last Week");
-  const kpiThisWeek = computePeriodMetrics(thisWeekStart, thisWeekEnd, effectiveWeeklyTarget, "This Week");
-  const kpiNextWeek = computePeriodMetrics(nextWeekStart, nextWeekEnd, effectiveWeeklyTarget, "Next Week");
-  const kpiThisMonth = computePeriodMetrics(thisMonthStart, thisMonthEnd, effectiveWeeklyTarget, "This Month", monthlyCapacityCents);
-  const lastMonthStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() - 1, 1));
-  const kpiLastMonth = computePeriodMetrics(lastMonthStart, thisMonthStart, effectiveWeeklyTarget, "Last Month", monthlyCapacityCents);
-  const kpiNextMonth = computePeriodMetrics(nextMonthStart, nextMonthEnd, effectiveWeeklyTarget, "Next Month", monthlyCapacityCents);
-  const kpiAllTime = computePeriodMetrics(new Date(0), new Date(Date.now() + 86400000), effectiveWeeklyTarget, "All Time");
 
-  // Fixed 7-day revenue average (always last 7 days, weekdays only)
-  const sevenDaysAgo = addDaysUTC(todayUTC, -7);
-  const last7dItems = periodItems(sevenDaysAgo, addDaysUTC(todayUTC, 1));
-  const last7dRevenue = last7dItems.reduce((s: number, item) => s + item.amountCents, 0);
-  const avgRevenuePerDay7d = Math.round(last7dRevenue / 5); // 5 weekdays
 
-  // 8-week capacity chart data: 4 weeks back + current + 3 forward
-  const capacityWeeks: { label: string; revenueCents: number; count: number; isCurrent: boolean; isFuture: boolean }[] = [];
-  for (let w = -4; w <= 3; w++) {
-    const wStart = addDaysUTC(thisWeekStart, w * 7);
-    const wEnd = addDaysUTC(wStart, 7);
-    const items = periodItems(wStart, wEnd);
-    const rev = items.reduce((s: number, item) => s + item.amountCents, 0);
-    const month = wStart.toLocaleString(undefined, { month: "short", timeZone: "UTC" });
-    const day = wStart.getUTCDate();
-    capacityWeeks.push({
-      label: `${month} ${day}`,
-      revenueCents: rev,
-      count: items.length,
-      isCurrent: w === 0,
-      isFuture: w > 0,
-    });
-  }
 
-  // Monthly capacity data: 3 months back + current + 2 forward
-  const capacityMonths: { label: string; revenueCents: number; count: number; isCurrent: boolean; isFuture: boolean }[] = [];
-  for (let m = -3; m <= 2; m++) {
-    const mStart = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() + m, 1));
-    const mEnd = new Date(Date.UTC(mStart.getUTCFullYear(), mStart.getUTCMonth() + 1, 1));
-    const items = periodItems(mStart, mEnd);
-    const rev = items.reduce((s: number, item) => s + item.amountCents, 0);
-    const label = mStart.toLocaleString(undefined, { month: "short", timeZone: "UTC" });
-    capacityMonths.push({
-      label,
-      revenueCents: rev,
-      count: items.length,
-      isCurrent: m === 0,
-      isFuture: m > 0,
-    });
-  }
 
-  // 8-week projection summary (for the hero callout)
-  let projectionSummary: { fillPct: number; gapCents: number; weeks: number } | null = null;
-  if (effectiveWeeklyTarget) {
-    const PROJ_WEEKS = 8;
-    let totalScheduled = 0;
-    for (let i = 0; i < PROJ_WEEKS; i++) {
-      const wStart = addDaysUTC(thisWeekStart, i * 7);
-      const wEnd = addDaysUTC(wStart, 7);
-      const rev = periodItems(wStart, wEnd).reduce((s: number, item) => s + item.amountCents, 0);
-      totalScheduled += rev;
-    }
-    const totalTarget = effectiveWeeklyTarget * PROJ_WEEKS;
-    projectionSummary = {
-      fillPct: totalTarget > 0 ? totalScheduled / totalTarget : 0,
-      gapCents: totalTarget - totalScheduled,
-      weeks: PROJ_WEEKS,
-    };
-  }
-
-  // Daily breakdown
-  const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const lastWeekDaily = dayLabels.map((label, i) => {
-    const dayStart = addDaysUTC(lastWeekStart, i);
-    const dayEnd = addDaysUTC(dayStart, 1);
-    const dayItems = periodItems(dayStart, dayEnd);
-    const revenue = dayItems.reduce((s: number, item) => s + item.amountCents, 0);
-    return { label, revenue, jobCount: dayItems.length, date: dayStart.toISOString() };
-  });
-  const thisWeekDaily = dayLabels.map((label, i) => {
-    const dayStart = addDaysUTC(thisWeekStart, i);
-    const dayEnd = addDaysUTC(dayStart, 1);
-    const dayItems = periodItems(dayStart, dayEnd);
-    const revenue = dayItems.reduce((s: number, item) => s + item.amountCents, 0);
-    return { label, revenue, jobCount: dayItems.length, date: dayStart.toISOString() };
-  });
-  const nextWeekDaily = dayLabels.map((label, i) => {
-    const dayStart = addDaysUTC(nextWeekStart, i);
-    const dayEnd = addDaysUTC(dayStart, 1);
-    const dayItems = periodItems(dayStart, dayEnd);
-    const revenue = dayItems.reduce((s: number, item) => s + item.amountCents, 0);
-    return { label, revenue, jobCount: dayItems.length, date: dayStart.toISOString() };
-  });
 
   // 8-week heatmap data (this week + 7 forward)
   const workDaysList: string[] = (connDetails as any)?.capacity_work_days || ["Mon", "Tue", "Wed", "Thu", "Fri"];
   const dailyTargets: Record<string, number> = (connDetails as any)?.capacity_daily_targets || {};
   const todayDayLabel = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date().getDay()];
+  const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   const heatmapWeeks = Array.from({ length: 6 }, (_, w) => {
     const wStart = addDaysUTC(thisWeekStart, w * 7);
@@ -471,10 +319,6 @@ export default async function CapacityPage({
     return { label: monthDay, isCurrent: w === 0, days };
   });
 
-  // Historical events for trends (from unified schedule items)
-  const jobEvents = scheduleItems
-    .filter((item) => safeDate(item.startAt))
-    .map((item) => ({ scheduledAt: safeDate(item.startAt)!.getTime(), amount: item.amountCents }));
 
   // Unscheduled: jobs without visits that have no schedule, plus visits with no startAt
   const unscheduledJobs = [
