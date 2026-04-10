@@ -28,26 +28,16 @@ export function SubscriptionStatus({ billingStatus, trialEndsAt, subscriptionAct
   return (
     <form action="/api/billing/checkout" method="POST">
       <button type="submit" className="btn" style={{
-        padding: "6px 14px", fontSize: 12, fontWeight: 700,
-        display: "flex", alignItems: "center", gap: 6,
-        background: urgent
-          ? "linear-gradient(135deg, rgba(239,68,68,0.2), rgba(239,68,68,0.1))"
-          : warning
-          ? "linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.1))"
-          : "linear-gradient(135deg, rgba(90,166,255,0.2), rgba(90,166,255,0.15))",
-        borderColor: urgent ? "rgba(239,68,68,0.4)" : warning ? "rgba(245,158,11,0.4)" : "rgba(90,166,255,0.3)",
-        color: urgent ? "#ef4444" : warning ? "#f59e0b" : "#5aa6ff",
-        boxShadow: urgent ? "0 2px 8px rgba(239,68,68,0.2)" : "0 2px 8px rgba(90,166,255,0.15)",
+        padding: "5px 10px", fontSize: 11, fontWeight: 600,
+        display: "flex", alignItems: "center", gap: 5,
+        background: "rgba(90,166,255,0.12)",
+        borderColor: "rgba(90,166,255,0.3)",
+        color: "#5aa6ff",
         whiteSpace: "nowrap",
       }}>
-        <span style={{
-          width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
-          background: urgent ? "#ef4444" : warning ? "#f59e0b" : "#5aa6ff",
-          animation: urgent ? "pulse-dot 1.5s ease-in-out infinite" : "none",
-        }} />
-        {daysLeft}d left &middot; Upgrade
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#5aa6ff", flexShrink: 0 }} />
+        Manage Subscription
       </button>
-      <style>{`@keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:0.4; } }`}</style>
     </form>
   );
 }

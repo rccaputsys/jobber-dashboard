@@ -168,7 +168,7 @@ export function SidebarNav({ adminConnectionId, companyName, connectionId, lastS
         <div style={{ padding: "16px 14px 12px" }}>
           {logoBlock}
           {companyName && (
-            <div className="text-primary" style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingLeft: 32, marginTop: 6 }}>
+            <div className="text-primary" style={{ fontSize: 13, fontWeight: 700, paddingLeft: 32, marginTop: 6, lineHeight: 1.3, wordBreak: "break-word" }}>
               {companyName}
             </div>
           )}
