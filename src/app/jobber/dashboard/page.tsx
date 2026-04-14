@@ -230,6 +230,12 @@ export default async function DashboardPage({
     .eq("id", connectionId)
     .maybeSingle();
 
+  // Brand-new connections (never synced) go through the onboarding sync page.
+  // Admin impersonation skips this so we can still inspect empty connections.
+  if (!adminConnectionId && conn && !conn.last_sync_at) {
+    redirect("/jobber/syncing");
+  }
+
   const companyName = conn?.jobber_account_name || conn?.company_name || "Your Company";
 
   // Check billing status for paywall

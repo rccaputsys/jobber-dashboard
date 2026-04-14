@@ -41,6 +41,40 @@ export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+export type SyncEntity = "jobs" | "visits" | "quotes" | "invoices" | "requests";
+
+async function markEntityStatus(
+  connectionId: string,
+  entity: SyncEntity,
+  status: "pending" | "syncing" | "done" | "error",
+  count?: number,
+): Promise<void> {
+  const update: Record<string, unknown> = { [`sync_status_${entity}`]: status };
+  if (typeof count === "number") update[`sync_count_${entity}`] = count;
+  await supabaseAdmin
+    .from("jobber_connections")
+    .update(update)
+    .eq("id", connectionId);
+}
+
+export async function resetEntityStatuses(connectionId: string): Promise<void> {
+  await supabaseAdmin
+    .from("jobber_connections")
+    .update({
+      sync_status_jobs: "pending",
+      sync_status_visits: "pending",
+      sync_status_quotes: "pending",
+      sync_status_invoices: "pending",
+      sync_status_requests: "pending",
+      sync_count_jobs: 0,
+      sync_count_visits: 0,
+      sync_count_quotes: 0,
+      sync_count_invoices: 0,
+      sync_count_requests: 0,
+    })
+    .eq("id", connectionId);
+}
+
 /**
  * GraphQL client that tolerates partial errors and retries on rate-limit /
  * 5xx / THROTTLED responses. Used by the sync path; the webhook path uses
@@ -414,6 +448,8 @@ export async function runFullSyncForCron(connectionId: string): Promise<{
       })
       .eq("id", connectionId);
 
+    await resetEntityStatuses(connectionId);
+
     // Backfill account name if missing
     let accountName: string | null = connectionData?.jobber_account_name || null;
     if (!accountName) {
@@ -432,13 +468,25 @@ export async function runFullSyncForCron(connectionId: string): Promise<{
       } catch { /* non-critical */ }
     }
 
-    // Fetch all 5 entities in parallel — full sync, no updatedAt filter
+    // Per-entity pipeline: mark syncing, fetch, then mark done with count.
+    // Upsert happens after Promise.all so we can still reconcile in one pass.
+    const fetchEntity = async <T>(
+      entity: SyncEntity,
+      resource: string,
+      fields: string,
+    ): Promise<{ nodes: T[]; errors: unknown[] }> => {
+      await markEntityStatus(connectionId, entity, "syncing");
+      const result = await fetchAllPages<T>(token, resource, fields, null);
+      await markEntityStatus(connectionId, entity, "done", result.nodes.length);
+      return result;
+    };
+
     const [jobResult, visitResult, invoiceResult, quoteResult, requestResult] = await Promise.all([
-      fetchAllPages<JobNode>(token, "jobs", JOB_FIELDS, null),
-      fetchAllPages<VisitNode>(token, "visits", VISIT_FIELDS, null),
-      fetchAllPages<InvoiceNode>(token, "invoices", INVOICE_FIELDS, null),
-      fetchAllPages<QuoteNode>(token, "quotes", QUOTE_FIELDS, null),
-      fetchAllPages<RequestNode>(token, "requests", REQUEST_FIELDS, null),
+      fetchEntity<JobNode>("jobs", "jobs", JOB_FIELDS),
+      fetchEntity<VisitNode>("visits", "visits", VISIT_FIELDS),
+      fetchEntity<InvoiceNode>("invoices", "invoices", INVOICE_FIELDS),
+      fetchEntity<QuoteNode>("quotes", "quotes", QUOTE_FIELDS),
+      fetchEntity<RequestNode>("requests", "requests", REQUEST_FIELDS),
     ]);
 
     const totalErrors =
