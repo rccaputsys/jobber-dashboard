@@ -100,11 +100,14 @@ function LoginForm() {
         <a href="/forgot-password" style={styles.link}>
           Forgot password?
         </a>
-        <span style={styles.divider}>•</span>
-        <a href="/jobber" style={styles.link}>
-          Connect new Jobber account
-        </a>
       </div>
+
+      <p style={{ marginTop: 24, fontSize: 13, color: "rgba(234,241,255,0.55)", textAlign: "center" }}>
+        Don&apos;t have an account?{" "}
+        <a href="https://accuinsight.io" style={{ ...styles.link, fontWeight: 600 }}>
+          Sign up
+        </a>
+      </p>
 
       <p style={{ marginTop: 20, fontSize: 12, color: "rgba(234,241,255,0.4)", textAlign: "center" }}>
         <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms</a>
