@@ -1,8 +1,14 @@
 // src/app/api/billing/init-trial/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getUser } from "@/lib/supabaseAuth";
 
 export async function GET(req: Request) {
+  const user = await getUser();
+  if (!user) {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const connectionId = searchParams.get("connection_id");
   if (!connectionId) {
@@ -12,16 +18,18 @@ export async function GET(req: Request) {
   const now = new Date();
   const ends = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
 
-  // Only set trial fields if not already set
   const { data: existing, error: selErr } = await supabaseAdmin
     .from("jobber_connections")
-    .select("trial_started_at,trial_ends_at,billing_status")
+    .select("trial_started_at,trial_ends_at,billing_status,user_id")
     .eq("id", connectionId)
     .maybeSingle();
 
-  if (selErr) return NextResponse.json({ ok: false, error: selErr.message }, { status: 500 });
+  if (selErr) return NextResponse.json({ ok: false, error: "Database error" }, { status: 500 });
   if (!existing) {
     return NextResponse.json({ ok: false, error: "Connection not found" }, { status: 404 });
+  }
+  if (existing.user_id !== user.id) {
+    return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
   }
 
   const needsInit = !existing.trial_started_at || !existing.trial_ends_at;
@@ -36,7 +44,7 @@ export async function GET(req: Request) {
       })
       .eq("id", connectionId);
 
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ ok: false, error: "Database error" }, { status: 500 });
 
     return NextResponse.json({
       ok: true,

@@ -1,32 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getUser } from "@/lib/supabaseAuth";
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").split(",").map(e => e.trim()).filter(Boolean);
 
-async function isAdmin(req: NextRequest): Promise<boolean> {
-  const { createServerClient } = await import("@supabase/ssr");
-  const cookieHeader = req.headers.get("cookie") || "";
-  const cookies: { name: string; value: string }[] = [];
-  cookieHeader.split(";").forEach((c) => {
-    const [name, ...rest] = c.trim().split("=");
-    if (name) cookies.push({ name, value: rest.join("=") });
-  });
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookies;
-        },
-      },
-    },
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+async function isAdmin(): Promise<boolean> {
+  const user = await getUser();
   return !!user && ADMIN_EMAILS.includes(user.email || "");
 }
 
@@ -87,7 +66,7 @@ function computeSessions(events: any[]): { count: number; avgSeconds: number } {
 }
 
 export async function GET(req: NextRequest) {
-  if (!(await isAdmin(req))) {
+  if (!(await isAdmin())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

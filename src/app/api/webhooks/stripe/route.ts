@@ -26,6 +26,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
+  // Idempotency: Stripe retries on timeouts, so the same event.id can arrive
+  // multiple times. Table PK is event_id — duplicate insert throws 23505 and
+  // we bail. We insert *before* doing any work so a retry hits the dedup guard
+  // even if the first attempt is still processing.
+  const { error: dedupErr } = await supabaseAdmin
+    .from("stripe_webhook_events")
+    .insert({ event_id: event.id, event_type: event.type });
+  if (dedupErr) {
+    if (dedupErr.code === "23505") {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+    console.error("Stripe dedup insert failed:", dedupErr);
+    // Fail open — processing twice is better than not processing at all if
+    // the dedup table itself is broken.
+  }
+
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;

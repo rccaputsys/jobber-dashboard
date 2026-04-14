@@ -125,17 +125,31 @@ export function SyncingClient({ connectionId }: { connectionId: string }) {
 
   useEffect(() => {
     let cancelled = false;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const schedule = () => {
+      // 2s for the first 5 polls, then ease back to 5s — cuts server hits
+      // in half over a 60-90s sync while staying snappy at the start.
+      const delay = attempts < 5 ? 2000 : 5000;
+      timer = setTimeout(poll, delay);
+    };
+
     const poll = async () => {
+      if (cancelled) return;
+      attempts++;
       try {
         const res = await fetch(`/api/sync/status?connection_id=${connectionId}`, { cache: "no-store" });
-        if (!res.ok) return;
-        const json = (await res.json()) as StatusResp;
-        if (!cancelled) setData(json);
+        if (res.ok) {
+          const json = (await res.json()) as StatusResp;
+          if (!cancelled) setData(json);
+        }
       } catch {}
+      if (!cancelled) schedule();
     };
+
     poll();
-    const id = setInterval(poll, 2000);
-    return () => { cancelled = true; clearInterval(id); };
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [connectionId]);
 
   const entities: Entity[] = data?.entities || [

@@ -188,8 +188,8 @@ async function handleStepSync(
       // Prevent concurrent syncs
       if (connectionData?.sync_status === "syncing" && connectionData?.sync_started_at) {
         const startedAt = new Date(connectionData.sync_started_at).getTime();
-        const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-        if (startedAt > fiveMinutesAgo) {
+        const staleCutoff = Date.now() - 10 * 60 * 1000;
+        if (startedAt > staleCutoff) {
           return NextResponse.json({ ok: false, error: "Sync already in progress" }, { status: 409 });
         }
       }

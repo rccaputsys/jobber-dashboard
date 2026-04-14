@@ -121,7 +121,25 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL("/jobber?err=missing_code_state", req.url));
   }
 
-  await decryptText(state);
+  // Verify state is a valid self-signed JWT…
+  let stateNonce: string | null = null;
+  try {
+    const decoded = await decryptText(state);
+    const parsed = JSON.parse(decoded) as { nonce?: string };
+    stateNonce = parsed.nonce ?? null;
+  } catch {
+    return NextResponse.redirect(new URL("/jobber?err=invalid_state", req.url));
+  }
+
+  // …AND matches the nonce cookie set on /api/jobber/connect. This is the
+  // CSRF binding: an attacker can't pre-compute a state for another user's
+  // browser because their browser won't have the matching cookie.
+  const cookieStore = await cookies();
+  const expectedNonce = cookieStore.get("jobber_oauth_state")?.value;
+  cookieStore.delete("jobber_oauth_state");
+  if (!stateNonce || !expectedNonce || stateNonce !== expectedNonce) {
+    return NextResponse.redirect(new URL("/jobber?err=state_mismatch", req.url));
+  }
 
   const token = await tokenExchange(code);
 
@@ -147,9 +165,8 @@ export async function GET(req: Request) {
   }
 
   if (!token.access_token || !token.refresh_token) {
-    throw new Error(
-      `Token response missing access_token/refresh_token. keys=${Object.keys(token ?? {}).join(",")}`
-    );
+    console.error("Token response missing access_token/refresh_token", Object.keys(token ?? {}));
+    throw new Error("Token response incomplete");
   }
 
   // Fetch account info from Jobber

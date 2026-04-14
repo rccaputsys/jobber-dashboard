@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getValidAccessToken } from "@/lib/jobberAuth";
 import { jobberGraphQL } from "@/lib/jobberGraphQL";
+import { getUser } from "@/lib/supabaseAuth";
 
 async function tryCurrencyQuery(accessToken: string, query: string) {
   return jobberGraphQL<any>(accessToken, query);
@@ -10,11 +11,27 @@ async function tryCurrencyQuery(accessToken: string, query: string) {
 
 export async function GET(req: Request) {
   try {
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const connection_id = searchParams.get("connection_id");
 
     if (!connection_id) {
       return NextResponse.json({ ok: false, error: "Missing connection_id" }, { status: 400 });
+    }
+
+    const { data: ownerCheck } = await supabaseAdmin
+      .from("jobber_connections")
+      .select("id")
+      .eq("id", connection_id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!ownerCheck) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
     const accessToken = await getValidAccessToken(connection_id);
@@ -103,9 +120,10 @@ export async function GET(req: Request) {
       currency_code: currency,
       source,
     });
-  } catch (e: any) {
+  } catch (e) {
+    console.error("Currency endpoint error:", e);
     return NextResponse.json(
-      { ok: false, error: String(e?.message ?? e) },
+      { ok: false, error: "Unable to fetch currency" },
       { status: 500 }
     );
   }

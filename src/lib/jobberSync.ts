@@ -8,6 +8,7 @@
 // + a small set of config exports). Anything else needs to live elsewhere
 // so it can be imported across files.
 
+import { revalidateTag } from "next/cache";
 import { supabaseAdmin, fetchAllRows } from "@/lib/supabaseAdmin";
 import { getValidAccessToken } from "@/lib/jobberAuth";
 import {
@@ -213,13 +214,19 @@ export async function fetchAllPages<T>(
     pageCount++;
   }
 
-  // Dedup — Jobber occasionally returns the same node on multiple pages
-  const deduped = new Map<string, T>();
+  // Dedup — Jobber occasionally returns the same node on multiple pages.
+  // Walk once, Set tracks ids so we keep the first occurrence in order.
+  const seen = new Set<string>();
+  const deduped: T[] = [];
   for (const node of allNodes) {
-    deduped.set((node as { id: string }).id, node);
+    const id = (node as { id: string }).id;
+    if (!seen.has(id)) {
+      seen.add(id);
+      deduped.push(node);
+    }
   }
 
-  return { nodes: Array.from(deduped.values()), errors: allErrors };
+  return { nodes: deduped, errors: allErrors };
 }
 
 // ---------------------------------------------------------------------------
@@ -390,6 +397,13 @@ export async function syncMetricsAndHeartbeat(
     .eq("id", connectionId);
 
   if (hbErr) throw new Error(`jobber_connections update failed: ${hbErr.message}`);
+
+  // Bust the dashboard's unstable_cache so the user sees fresh numbers on
+  // their next page load instead of waiting up to 60s. Next 16 requires a
+  // profile arg; {expire:0} means "expire immediately".
+  try {
+    revalidateTag(`dashboard-facts:${connectionId}`, { expire: 0 });
+  } catch { /* best-effort — revalidateTag can't fail in practice */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -427,8 +441,10 @@ export async function runFullSyncForCron(connectionId: string): Promise<{
     // Skip if a sync is already running and started recently
     if (connectionData?.sync_status === "syncing" && connectionData?.sync_started_at) {
       const startedAt = new Date(connectionData.sync_started_at).getTime();
-      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-      if (startedAt > fiveMinutesAgo) {
+      // Window > Vercel maxDuration (300s) so we don't racily start a second
+      // sync while the first is still legitimately running.
+      const staleCutoff = Date.now() - 10 * 60 * 1000;
+      if (startedAt > staleCutoff) {
         return {
           ok: false,
           jobs: 0, visits: 0, invoices: 0, quotes: 0, requests: 0,

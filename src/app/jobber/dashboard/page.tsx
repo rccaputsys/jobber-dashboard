@@ -1,5 +1,6 @@
 ﻿// src/app/jobber/dashboard/page.tsx
 import React from "react";
+import { unstable_cache } from "next/cache";
 import { supabaseAdmin, fetchAllRows } from "@/lib/supabaseAdmin";
 import { SyncButton } from "./SyncButton";
 import { getUser } from "@/lib/supabaseAuth";
@@ -346,26 +347,24 @@ export default async function DashboardPage({
 
   const lastSyncPretty = conn?.last_sync_at ? formatSyncTime(new Date(conn.last_sync_at)) : "Not synced yet";
 
-  // Fetch facts IN PARALLEL (paginated to bypass PostgREST max_rows=100)
-  const [invoices, jobs, quotes, requests, visits] = await Promise.all([
-    fetchAllRows("fact_invoices", "status,balance_cents,total_amount_cents,due_at,paid_at,invoice_number,client_name,jobber_invoice_id,jobber_url", connectionId),
-    fetchAllRows("fact_jobs", "jobber_job_id,status,total_amount_cents,job_revenue_cents,job_cost_cents,job_profit_cents,scheduled_start_at,scheduled_end_at,created_at_jobber,updated_at_jobber,jobber_url,job_number,job_title", connectionId),
-    fetchAllRows(
-      "fact_quotes",
-      "jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,sent_at,updated_at_jobber,created_at_jobber",
-      connectionId,
-    ),
-    fetchAllRows(
-      "fact_requests",
-      "jobber_request_id,title,request_status,source,client_name,jobber_url,created_at_jobber",
-      connectionId,
-    ),
-    fetchAllRows(
-      "fact_visits",
-      "jobber_visit_id,jobber_job_id,title,visit_status,is_complete,start_at,completed_at,duration_minutes,visit_revenue_cents",
-      connectionId,
-    ),
-  ]);
+  // Fetch facts IN PARALLEL (paginated to bypass PostgREST max_rows=100).
+  // Cache per-connection for 60s — webhook updates show up within a minute,
+  // and a page reload is free in the meantime. Keyed by connection_id so
+  // users never see each other's data. Tag allows future explicit busting.
+  const fetchFacts = unstable_cache(
+    async (connId: string) => {
+      return Promise.all([
+        fetchAllRows("fact_invoices", "status,balance_cents,total_amount_cents,due_at,paid_at,invoice_number,client_name,jobber_invoice_id,jobber_url", connId),
+        fetchAllRows("fact_jobs", "jobber_job_id,status,total_amount_cents,job_revenue_cents,job_cost_cents,job_profit_cents,scheduled_start_at,scheduled_end_at,created_at_jobber,updated_at_jobber,jobber_url,job_number,job_title", connId),
+        fetchAllRows("fact_quotes", "jobber_quote_id,quote_number,quote_title,quote_status,quote_total_cents,quote_url,sent_at,updated_at_jobber,created_at_jobber", connId),
+        fetchAllRows("fact_requests", "jobber_request_id,title,request_status,source,client_name,jobber_url,created_at_jobber", connId),
+        fetchAllRows("fact_visits", "jobber_visit_id,jobber_job_id,title,visit_status,is_complete,start_at,completed_at,duration_minutes,visit_revenue_cents", connId),
+      ]);
+    },
+    ["dashboard-facts"],
+    { revalidate: 60, tags: [`dashboard-facts:${connectionId}`] },
+  );
+  const [invoices, jobs, quotes, requests, visits] = await fetchFacts(connectionId);
   // Open requests count (PENDING = not yet converted/archived/closed)
   const openRequestsCount = requests.filter((r: any) => {
   const status = (r.request_status || "").toUpperCase();

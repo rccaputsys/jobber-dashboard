@@ -56,14 +56,30 @@ export async function POST(req: Request) {
     const eqField = connectionId ? "id" : "user_id";
     const eqValue = connectionId || user.id;
 
+    // Sanity bounds — reject negative or absurdly large values. Max cents
+    // is 100 billion ($1B) which is well beyond any realistic service
+    // business. Prevents DB pollution from a fat-fingered or malicious input.
+    const MAX_CENTS = 100_000_000_000; // $1,000,000,000
+    const boundedCents = (v: unknown): number | null => {
+      if (typeof v !== "number" || !Number.isFinite(v)) return null;
+      const n = Math.round(v);
+      if (n < 0 || n > MAX_CENTS) return null;
+      return n;
+    };
+    const boundedRate = (v: unknown): number | null => {
+      if (typeof v !== "number" || !Number.isFinite(v)) return null;
+      if (v < 0 || v > 1) return null;
+      return v;
+    };
+
     // Build update object with only provided fields
     const update: Record<string, any> = {};
 
     if ("weekly_capacity_cents" in body) {
-      update.weekly_capacity_cents = typeof body.weekly_capacity_cents === "number" ? Math.round(body.weekly_capacity_cents) : null;
+      update.weekly_capacity_cents = boundedCents(body.weekly_capacity_cents);
     }
     if ("monthly_capacity_cents" in body) {
-      update.monthly_capacity_cents = typeof body.monthly_capacity_cents === "number" ? Math.round(body.monthly_capacity_cents) : null;
+      update.monthly_capacity_cents = boundedCents(body.monthly_capacity_cents);
     }
     if ("capacity_daily_targets" in body) {
       update.capacity_daily_targets = body.capacity_daily_targets || {};
@@ -75,10 +91,10 @@ export async function POST(req: Request) {
       update.capacity_targets_set = !!body.capacity_targets_set;
     }
     if ("annual_sales_target_cents" in body) {
-      update.annual_sales_target_cents = typeof body.annual_sales_target_cents === "number" ? Math.round(body.annual_sales_target_cents) : null;
+      update.annual_sales_target_cents = boundedCents(body.annual_sales_target_cents);
     }
     if ("close_rate_target" in body) {
-      update.close_rate_target = typeof body.close_rate_target === "number" ? body.close_rate_target : null;
+      update.close_rate_target = boundedRate(body.close_rate_target);
     }
 
     if (Object.keys(update).length === 0) {
