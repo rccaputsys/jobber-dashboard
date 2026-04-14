@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useIsLight } from "@/lib/hooks";
 import { track } from "@/lib/analytics";
@@ -358,10 +359,12 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
             textAlign: "left",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-              <img
+              <Image
                 src="/ryan-headshot.jpg"
                 alt="Ryan"
-                style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover" }}
+                width={40}
+                height={40}
+                style={{ borderRadius: "50%", objectFit: "cover" }}
               />
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: primary }}>Ryan</div>

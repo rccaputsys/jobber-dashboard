@@ -7,7 +7,7 @@ import { rateLimit, getClientIp } from "@/lib/rateLimit";
 export async function POST(req: Request) {
   // Rate limit: 5 attempts per 15 minutes per IP
   const ip = getClientIp(req);
-  const limit = rateLimit(`login:${ip}`, { maxAttempts: 5, windowMs: 15 * 60 * 1000 });
+  const limit = await rateLimit(`login:${ip}`, { maxAttempts: 5, windowMs: 15 * 60 * 1000 });
   if (!limit.allowed) {
     return NextResponse.json(
       { error: "Too many login attempts. Please try again later." },
