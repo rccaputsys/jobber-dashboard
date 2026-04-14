@@ -364,7 +364,7 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
                 alt="Ryan"
                 width={40}
                 height={40}
-                style={{ borderRadius: "50%", objectFit: "cover" }}
+                style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
               />
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: primary }}>Ryan</div>
