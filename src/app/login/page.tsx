@@ -4,11 +4,33 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+const BG = "#fbfaf7";
+const FG = "#1a1a1a";
+const MUTED = "#6b6b6b";
+const BORDER = "#e8e5df";
+const CARD = "#ffffff";
+const ACCENT = "#c2410c";
+const ACCENT_SOFT = "#fff1e6";
+const SUCCESS = "#15803d";
+
+function LogoMark() {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", justifyContent: "center",
+      width: 32, height: 32, borderRadius: 7, background: ACCENT, color: "#fff",
+    }}>
+      <svg viewBox="0 0 24 24" fill="none" width="18" height="18">
+        <path d="M4 14l4-4 4 4 8-8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const message = searchParams.get("message");
-  
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -35,7 +57,7 @@ function LoginForm() {
       }
 
       router.push("/jobber/dashboard");
-    } catch (err) {
+    } catch {
       setError("Something went wrong");
       setLoading(false);
     }
@@ -43,24 +65,23 @@ function LoginForm() {
 
   return (
     <div style={styles.card}>
-      <div style={styles.logoWrapper}>
-        <span style={{ fontSize: 28 }}>📊</span>
+      <div style={styles.brandRow}>
+        <LogoMark />
+        <span style={styles.brandName}>AccuInsight</span>
       </div>
-      
+
       <h1 style={styles.title}>Welcome back</h1>
-      <p style={styles.subtitle}>
-        Sign in to your AccuInsight dashboard
-      </p>
+      <p style={styles.subtitle}>Sign in to your dashboard</p>
 
       {message === "jobber_reconnected" && (
         <div style={styles.info}>
-          Jobber reconnected! Please log in to continue.
+          Jobber reconnected. Please log in to continue.
         </div>
       )}
 
       {message === "password_reset" && (
         <div style={styles.success}>
-          Password reset! You can now log in with your new password.
+          Password reset. You can now log in with your new password.
         </div>
       )}
 
@@ -74,6 +95,7 @@ function LoginForm() {
             required
             style={styles.input}
             placeholder="you@company.com"
+            autoComplete="email"
           />
         </div>
 
@@ -86,13 +108,14 @@ function LoginForm() {
             required
             style={styles.input}
             placeholder="Your password"
+            autoComplete="current-password"
           />
         </div>
 
         {error && <div style={styles.error}>{error}</div>}
 
         <button type="submit" disabled={loading} style={styles.button}>
-          {loading ? "Signing in..." : "Sign In"}
+          {loading ? "Signing in\u2026" : "Sign in"}
         </button>
       </form>
 
@@ -102,17 +125,15 @@ function LoginForm() {
         </a>
       </div>
 
-      <p style={{ marginTop: 24, fontSize: 13, color: "rgba(234,241,255,0.55)", textAlign: "center" }}>
+      <p style={styles.signupPrompt}>
         Don&apos;t have an account?{" "}
-        <a href="https://accuinsight.io" style={{ ...styles.link, fontWeight: 600 }}>
-          Sign up
-        </a>
+        <a href="https://accuinsight.io" style={styles.linkStrong}>Sign up</a>
       </p>
 
-      <p style={{ marginTop: 20, fontSize: 12, color: "rgba(234,241,255,0.4)", textAlign: "center" }}>
-        <a href="/terms" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Terms</a>
-        {" · "}
-        <a href="/privacy" style={{ color: "rgba(234,241,255,0.5)", textDecoration: "none" }}>Privacy</a>
+      <p style={styles.legal}>
+        <a href="/terms" style={styles.legalLink}>Terms</a>
+        <span style={styles.divider}>\u00B7</span>
+        <a href="/privacy" style={styles.legalLink}>Privacy</a>
       </p>
     </div>
   );
@@ -121,7 +142,8 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <main style={styles.page}>
-      <Suspense fallback={<div style={styles.card}>Loading...</div>}>
+      <div style={styles.glow} />
+      <Suspense fallback={<div style={styles.card}>Loading\u2026</div>}>
         <LoginForm />
       </Suspense>
     </main>
@@ -134,120 +156,161 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background: `
-      radial-gradient(ellipse 80% 60% at 50% -20%, rgba(124,92,255,0.15), transparent),
-      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(90,166,255,0.1), transparent),
-      linear-gradient(180deg, #060811 0%, #0a1020 100%)
-    `,
+    background: BG,
+    color: FG,
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     padding: 20,
+    position: "relative",
+    overflow: "hidden",
+  },
+  glow: {
+    position: "absolute",
+    top: "-20%",
+    left: "50%",
+    width: 800,
+    height: 500,
+    transform: "translateX(-50%)",
+    borderRadius: "50%",
+    background: ACCENT_SOFT,
+    opacity: 0.55,
+    filter: "blur(80px)",
+    pointerEvents: "none",
+    zIndex: 0,
   },
   card: {
+    position: "relative",
+    zIndex: 1,
     width: "100%",
     maxWidth: 400,
-    background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)",
-    border: "1px solid rgba(255,255,255,0.10)",
-    borderRadius: 24,
-    padding: "40px 32px",
-    boxShadow: "0 32px 64px rgba(0,0,0,0.4)",
+    background: CARD,
+    border: `1px solid ${BORDER}`,
+    borderRadius: 16,
+    padding: "36px 32px",
+    boxShadow: "0 1px 2px rgba(0,0,0,0.03), 0 20px 40px -10px rgba(0,0,0,0.08)",
   },
-  logoWrapper: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    background: "linear-gradient(135deg, rgba(124,92,255,0.2), rgba(90,166,255,0.2))",
-    border: "1px solid rgba(124,92,255,0.3)",
+  brandRow: {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    margin: "0 auto 20px",
+    gap: 10,
+    marginBottom: 20,
+  },
+  brandName: {
+    fontSize: 15,
+    fontWeight: 600,
+    color: FG,
+    letterSpacing: -0.2,
   },
   title: {
-    fontSize: 26,
-    fontWeight: 800,
-    color: "#EAF1FF",
-    marginBottom: 8,
+    fontSize: 24,
+    fontWeight: 600,
+    color: FG,
+    marginBottom: 6,
     textAlign: "center",
-    letterSpacing: -0.5,
+    letterSpacing: -0.4,
   },
   subtitle: {
     fontSize: 14,
-    color: "rgba(234,241,255,0.6)",
+    color: MUTED,
     marginBottom: 28,
     textAlign: "center",
   },
   form: {
     display: "flex",
     flexDirection: "column",
-    gap: 18,
+    gap: 16,
   },
   label: {
     display: "block",
     fontSize: 13,
-    fontWeight: 600,
-    color: "rgba(234,241,255,0.8)",
-    marginBottom: 8,
+    fontWeight: 500,
+    color: FG,
+    marginBottom: 6,
   },
   input: {
     width: "100%",
-    padding: "14px 16px",
-    fontSize: 15,
-    borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(0,0,0,0.3)",
-    color: "#EAF1FF",
+    padding: "11px 14px",
+    fontSize: 14,
+    borderRadius: 8,
+    border: `1px solid ${BORDER}`,
+    background: CARD,
+    color: FG,
     outline: "none",
+    transition: "border-color 0.15s, box-shadow 0.15s",
+    boxSizing: "border-box",
   },
   button: {
-    marginTop: 8,
-    padding: "16px 24px",
-    fontSize: 15,
-    fontWeight: 700,
-    borderRadius: 14,
+    marginTop: 4,
+    padding: "12px 24px",
+    fontSize: 14,
+    fontWeight: 600,
+    borderRadius: 8,
     border: "none",
-    background: "linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95))",
-    color: "white",
+    background: ACCENT,
+    color: "#fff",
     cursor: "pointer",
-    boxShadow: "0 8px 24px rgba(90,166,255,0.25)",
+    boxShadow: "0 4px 12px rgba(194,65,12,0.2)",
+    transition: "opacity 0.15s",
   },
   error: {
-    padding: "12px 16px",
-    borderRadius: 10,
-    background: "rgba(239,68,68,0.15)",
-    border: "1px solid rgba(239,68,68,0.3)",
-    color: "#fca5a5",
+    padding: "10px 14px",
+    borderRadius: 8,
+    background: "#fdecec",
+    border: "1px solid #f4c4c4",
+    color: "#b91c1c",
     fontSize: 13,
   },
   info: {
-    padding: "12px 16px",
-    borderRadius: 10,
-    background: "rgba(90,166,255,0.15)",
-    border: "1px solid rgba(90,166,255,0.3)",
-    color: "#93c5fd",
+    padding: "10px 14px",
+    borderRadius: 8,
+    background: ACCENT_SOFT,
+    border: `1px solid #fcd6b4`,
+    color: ACCENT,
     fontSize: 13,
-    marginBottom: 16,
+    marginBottom: 18,
     textAlign: "center",
   },
   success: {
-    padding: "12px 16px",
-    borderRadius: 10,
-    background: "rgba(16,185,129,0.15)",
-    border: "1px solid rgba(16,185,129,0.3)",
-    color: "#6ee7b7",
+    padding: "10px 14px",
+    borderRadius: 8,
+    background: "#e8f5ec",
+    border: "1px solid #c7e2cf",
+    color: SUCCESS,
     fontSize: 13,
-    marginBottom: 16,
+    marginBottom: 18,
     textAlign: "center",
   },
   links: {
-    marginTop: 24,
+    marginTop: 20,
     textAlign: "center",
     fontSize: 13,
-    color: "rgba(234,241,255,0.5)",
   },
   link: {
-    color: "#5aa6ff",
+    color: MUTED,
+    textDecoration: "none",
+  },
+  linkStrong: {
+    color: ACCENT,
+    textDecoration: "none",
+    fontWeight: 600,
+  },
+  signupPrompt: {
+    marginTop: 24,
+    fontSize: 13,
+    color: MUTED,
+    textAlign: "center",
+  },
+  legal: {
+    marginTop: 20,
+    fontSize: 12,
+    color: MUTED,
+    textAlign: "center",
+  },
+  legalLink: {
+    color: MUTED,
     textDecoration: "none",
   },
   divider: {
-    margin: "0 10px",
+    margin: "0 8px",
   },
 };

@@ -1,15 +1,35 @@
-﻿// src/app/complete-signup/page.tsx
+// src/app/complete-signup/page.tsx
 "use client";
 
 import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
+const BG = "#fbfaf7";
+const FG = "#1a1a1a";
+const MUTED = "#6b6b6b";
+const BORDER = "#e8e5df";
+const CARD = "#ffffff";
+const ACCENT = "#c2410c";
+const ACCENT_SOFT = "#fff1e6";
+const SUCCESS = "#15803d";
+
+function LogoMark() {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", justifyContent: "center",
+      width: 32, height: 32, borderRadius: 7, background: ACCENT, color: "#fff",
+    }}>
+      <svg viewBox="0 0 24 24" fill="none" width="18" height="18">
+        <path d="M4 14l4-4 4 4 8-8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
 
 function CompleteSignupForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const signupToken = searchParams.get("signup_token");
-  // Legacy support: if old connection_id param is used, treat as invalid
   const connectionId = signupToken;
 
   const [email, setEmail] = useState("");
@@ -22,260 +42,153 @@ function CompleteSignupForm() {
   const [loading, setLoading] = useState(false);
   const [agreed, setAgreed] = useState(false);
 
-  const getInputStyle = (value: string) => ({
-    ...styles.input,
-    borderColor: value ? "rgba(124,92,255,0.4)" : "rgba(255,255,255,0.12)",
-    background: value ? "rgba(124,92,255,0.08)" : "rgba(0,0,0,0.3)",
-  });
-
-  const getSelectStyle = (value: string) => ({
-    ...styles.select,
-    borderColor: value ? "rgba(124,92,255,0.4)" : "rgba(255,255,255,0.12)",
-    background: value 
-      ? `rgba(124,92,255,0.08) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237c5cff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 16px center`
-      : `rgba(0,0,0,0.5) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237c5cff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 16px center`,
-  });
-
   const businessTypes = [
-    "Lawn Care / Landscaping",
-    "HVAC",
-    "Plumbing",
-    "Electrical",
-    "Cleaning / Janitorial",
-    "Pest Control",
-    "Pool Service",
-    "Roofing",
-    "Painting",
-    "Handyman",
-    "Pressure Washing",
-    "Window Cleaning",
-    "Tree Service / Arborist",
-    "Fencing",
-    "Flooring",
-    "Appliance Repair",
-    "Locksmith",
-    "Junk Removal",
-    "Moving Services",
-    "Snow Removal",
-    "Other",
+    "Lawn Care / Landscaping", "HVAC", "Plumbing", "Electrical",
+    "Cleaning / Janitorial", "Pest Control", "Pool Service", "Roofing",
+    "Painting", "Handyman", "Pressure Washing", "Window Cleaning",
+    "Tree Service / Arborist", "Fencing", "Flooring", "Appliance Repair",
+    "Locksmith", "Junk Removal", "Moving Services", "Snow Removal", "Other",
   ];
 
-  const teamSizes = [
-    "Just me",
-    "2-5 employees",
-    "6-10 employees",
-    "11-25 employees",
-    "25+ employees",
-  ];
+  const teamSizes = ["Just me", "2-5 employees", "6-10 employees", "11-25 employees", "25+ employees"];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
-    if (password !== confirmPassword) {
-      setError("Passwords don't match");
-      return;
-    }
-
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
+    if (password !== confirmPassword) return setError("Passwords don't match");
+    if (password.length < 8) return setError("Password must be at least 8 characters");
 
     setLoading(true);
-
     try {
       const res = await fetch("/api/auth/complete-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, signupToken, ownerName, businessType, teamSize }),
       });
-
       const data = await res.json();
-
       if (!res.ok) {
         setError(data.error || "Signup failed");
         setLoading(false);
         return;
       }
-
       router.push("/jobber/dashboard");
-    } catch (err) {
+    } catch {
       setError("Something went wrong");
       setLoading(false);
     }
   }
 
-  const isEmailExistsError = error.toLowerCase().includes("already registered") || 
-                              error.toLowerCase().includes("already exists") ||
-                              error.toLowerCase().includes("email already");
+  const isEmailExistsError =
+    error.toLowerCase().includes("already registered") ||
+    error.toLowerCase().includes("already exists") ||
+    error.toLowerCase().includes("email already");
 
   if (!connectionId) {
     return (
       <div style={styles.card}>
-        <h1 style={styles.title}>Invalid Link</h1>
-        <p style={styles.subtitle}>
-          This signup link is invalid or has expired. Please try again.
-        </p>
-        <a href="/jobber" style={styles.button as any}>
-          See Your Numbers Now →
-        </a>
+        <div style={styles.brandRow}><LogoMark /><span style={styles.brandName}>AccuInsight</span></div>
+        <h1 style={styles.title}>Invalid link</h1>
+        <p style={styles.subtitle}>This signup link is invalid or has expired. Please try again.</p>
+        <a href="https://accuinsight.io" style={styles.buttonLink}>Back to accuinsight.io</a>
       </div>
     );
   }
 
   return (
     <div style={styles.card}>
-      <div style={styles.iconWrapper}>
-        <span style={{ fontSize: 32 }}>🎉</span>
-      </div>
-      
-      <h1 style={styles.title}>Jobber Connected!</h1>
+      <div style={styles.brandRow}><LogoMark /><span style={styles.brandName}>AccuInsight</span></div>
+
+      <h1 style={styles.title}>Jobber connected.</h1>
       <p style={styles.subtitle}>
-        Create your AccuInsight login to access your dashboard anytime.
+        Create your AccuInsight login so you can come back to your dashboard anytime.
       </p>
 
       <form onSubmit={handleSubmit} style={styles.form}>
         <div>
-          <label style={styles.label}>Your Name</label>
-          <input
-            type="text"
-            value={ownerName}
-            onChange={(e) => setOwnerName(e.target.value)}
-            required
-            style={getInputStyle(ownerName)}
-            placeholder="John Smith"
-          />
+          <label style={styles.label}>Your name</label>
+          <input type="text" value={ownerName} onChange={(e) => setOwnerName(e.target.value)}
+            required style={styles.input} placeholder="John Smith" autoComplete="name" />
         </div>
 
         <div>
           <label style={styles.label}>Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={getInputStyle(email)}
-            placeholder="you@company.com"
-          />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+            required style={styles.input} placeholder="you@company.com" autoComplete="email" />
         </div>
 
         <div>
           <label style={styles.label}>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={8}
-            style={getInputStyle(password)}
-            placeholder="At least 8 characters"
-          />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+            required minLength={8} style={styles.input}
+            placeholder="At least 8 characters" autoComplete="new-password" />
         </div>
 
         <div>
-          <label style={styles.label}>Confirm Password</label>
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-            minLength={8}
-            style={getInputStyle(confirmPassword)}
-            placeholder="Confirm your password"
-          />
+          <label style={styles.label}>Confirm password</label>
+          <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+            required minLength={8} style={styles.input}
+            placeholder="Confirm your password" autoComplete="new-password" />
         </div>
 
         <div>
-          <label style={styles.label}>Business Type</label>
-          <select
-            value={businessType}
-            onChange={(e) => setBusinessType(e.target.value)}
-            required
-            style={getSelectStyle(businessType)}
-          >
-            <option value="" style={styles.option}>Select your industry...</option>
-            {businessTypes.map((type) => (
-              <option key={type} value={type} style={styles.option}>{type}</option>
-            ))}
+          <label style={styles.label}>Business type</label>
+          <select value={businessType} onChange={(e) => setBusinessType(e.target.value)}
+            required style={styles.select}>
+            <option value="">Select your industry\u2026</option>
+            {businessTypes.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
 
         <div>
-          <label style={styles.label}>Team Size</label>
-          <select
-            value={teamSize}
-            onChange={(e) => setTeamSize(e.target.value)}
-            required
-            style={getSelectStyle(teamSize)}
-          >
-            <option value="" style={styles.option}>Select team size...</option>
-            {teamSizes.map((size) => (
-              <option key={size} value={size} style={styles.option}>{size}</option>
-            ))}
+          <label style={styles.label}>Team size</label>
+          <select value={teamSize} onChange={(e) => setTeamSize(e.target.value)}
+            required style={styles.select}>
+            <option value="">Select team size\u2026</option>
+            {teamSizes.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
-
 
         {error && (
           <div style={styles.error}>
             {error}
             {isEmailExistsError && (
-              <a href="/login" style={styles.loginLink}>
-                Go to Login →
-              </a>
+              <a href="/login" style={styles.errorLink}>Go to login \u2192</a>
             )}
           </div>
         )}
 
-        <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13, color: "rgba(234,241,255,0.7)", cursor: "pointer" }}>
-          <input
-            type="checkbox"
-            checked={agreed}
-            onChange={(e) => setAgreed(e.target.checked)}
-            required
-            style={{ marginTop: 2, accentColor: "#7c5cff" }}
-          />
-          <span>
+        <label style={styles.checkboxRow}>
+          <input type="checkbox" checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)} required
+            style={{ marginTop: 2, accentColor: ACCENT }} />
+          <span style={{ fontSize: 13, color: MUTED, lineHeight: 1.5 }}>
             I agree to the{" "}
-            <a href="/terms" target="_blank" style={{ color: "#a5b4fc", textDecoration: "none" }}>Terms of Service</a>
+            <a href="/terms" target="_blank" style={styles.inlineLink}>Terms of Service</a>
             {" "}and{" "}
-            <a href="/privacy" target="_blank" style={{ color: "#a5b4fc", textDecoration: "none" }}>Privacy Policy</a>
+            <a href="/privacy" target="_blank" style={styles.inlineLink}>Privacy Policy</a>.
           </span>
         </label>
 
         <button type="submit" disabled={loading || !agreed} style={{
           ...styles.button,
-          opacity: agreed ? 1 : 0.5,
-          cursor: agreed ? "pointer" : "not-allowed",
+          opacity: agreed && !loading ? 1 : 0.6,
+          cursor: agreed && !loading ? "pointer" : "not-allowed",
         }}>
-          {loading ? "Creating account..." : "Create Account & View Dashboard"}
+          {loading ? "Creating account\u2026" : "Create account & view dashboard"}
         </button>
       </form>
 
-      <p style={styles.loginPrompt}>
+      <p style={styles.altPrompt}>
         Already have an account?{" "}
-        <a href="/login" style={styles.loginLinkAlt}>Log in</a>
+        <a href="/login" style={styles.linkStrong}>Log in</a>
       </p>
 
       <div style={styles.features}>
-        <div style={styles.feature}>
-          <span>✓</span> 14-day free trial
-        </div>
-        <div style={styles.feature}>
-          <span>✓</span> No credit card required
-        </div>
-        <div style={styles.feature}>
-          <span>✓</span> Cancel anytime
-        </div>
+        <span style={styles.feature}><span style={styles.check}>\u2713</span> 14-day free trial</span>
+        <span style={styles.feature}><span style={styles.check}>\u2713</span> No credit card required</span>
+        <span style={styles.feature}><span style={styles.check}>\u2713</span> Cancel anytime</span>
       </div>
-
-      <p style={{ marginTop: 24, fontSize: 12, color: "rgba(234,241,255,0.5)", textAlign: "center" }}>
-        By signing up, you agree to our{" "}
-        <a href="/terms" style={{ color: "#a5b4fc", textDecoration: "none" }}>Terms of Service</a>
-        {" "}and{" "}
-        <a href="/privacy" style={{ color: "#a5b4fc", textDecoration: "none" }}>Privacy Policy</a>
-      </p>
     </div>
   );
 }
@@ -283,7 +196,8 @@ function CompleteSignupForm() {
 export default function CompleteSignupPage() {
   return (
     <main style={styles.page}>
-      <Suspense fallback={<div style={styles.card}>Loading...</div>}>
+      <div style={styles.glow} />
+      <Suspense fallback={<div style={styles.card}>Loading\u2026</div>}>
         <CompleteSignupForm />
       </Suspense>
     </main>
@@ -292,151 +206,70 @@ export default function CompleteSignupPage() {
 
 const styles: { [key: string]: React.CSSProperties } = {
   page: {
-    minHeight: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: `
-      radial-gradient(ellipse 80% 60% at 50% -20%, rgba(124,92,255,0.15), transparent),
-      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(90,166,255,0.1), transparent),
-      linear-gradient(180deg, #060811 0%, #0a1020 100%)
-    `,
-    padding: 20,
+    minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+    background: BG, color: FG,
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    padding: 20, position: "relative", overflow: "hidden",
+  },
+  glow: {
+    position: "absolute", top: "-20%", left: "50%",
+    width: 900, height: 520, transform: "translateX(-50%)",
+    borderRadius: "50%", background: ACCENT_SOFT, opacity: 0.55,
+    filter: "blur(80px)", pointerEvents: "none", zIndex: 0,
   },
   card: {
-    width: "100%",
-    maxWidth: 420,
-    background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)",
-    border: "1px solid rgba(255,255,255,0.10)",
-    borderRadius: 24,
-    padding: "40px 32px",
-    boxShadow: "0 32px 64px rgba(0,0,0,0.4)",
+    position: "relative", zIndex: 1,
+    width: "100%", maxWidth: 440,
+    background: CARD, border: `1px solid ${BORDER}`,
+    borderRadius: 16, padding: "36px 32px",
+    boxShadow: "0 1px 2px rgba(0,0,0,0.03), 0 20px 40px -10px rgba(0,0,0,0.08)",
   },
-  iconWrapper: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    background: "linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.05))",
-    border: "1px solid rgba(16,185,129,0.3)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    margin: "0 auto 20px",
+  brandRow: {
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+    marginBottom: 20,
   },
+  brandName: { fontSize: 15, fontWeight: 600, color: FG, letterSpacing: -0.2 },
   title: {
-    fontSize: 26,
-    fontWeight: 800,
-    color: "#EAF1FF",
-    marginBottom: 8,
-    textAlign: "center",
-    letterSpacing: -0.5,
+    fontSize: 24, fontWeight: 600, color: FG, marginBottom: 6,
+    textAlign: "center", letterSpacing: -0.4,
   },
-  subtitle: {
-    fontSize: 14,
-    color: "rgba(234,241,255,0.6)",
-    marginBottom: 28,
-    textAlign: "center",
-    lineHeight: 1.5,
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 18,
-  },
-  label: {
-    display: "block",
-    fontSize: 13,
-    fontWeight: 600,
-    color: "rgba(234,241,255,0.8)",
-    marginBottom: 8,
-  },
-   input: {
-    width: "100%",
-    padding: "14px 16px",
-    fontSize: 15,
-    borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(0,0,0,0.3)",
-    color: "#EAF1FF",
-    outline: "none",
-    transition: "border-color 0.2s, box-shadow 0.2s",
+  subtitle: { fontSize: 14, color: MUTED, marginBottom: 24, textAlign: "center", lineHeight: 1.5 },
+  form: { display: "flex", flexDirection: "column", gap: 14 },
+  label: { display: "block", fontSize: 13, fontWeight: 500, color: FG, marginBottom: 6 },
+  input: {
+    width: "100%", padding: "11px 14px", fontSize: 14, borderRadius: 8,
+    border: `1px solid ${BORDER}`, background: CARD, color: FG, outline: "none",
+    boxSizing: "border-box",
   },
   select: {
-    width: "100%",
-    padding: "14px 16px",
-    fontSize: 15,
-    borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(0,0,0,0.5)",
-    color: "#EAF1FF",
-    outline: "none",
-    transition: "border-color 0.2s, box-shadow 0.2s",
-    cursor: "pointer",
-    appearance: "none",
-    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237c5cff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-    backgroundRepeat: "no-repeat",
-    backgroundPosition: "right 16px center",
-    paddingRight: 48,
-  },
-  option: {
-    background: "#1a1f2e",
-    color: "#EAF1FF",
-    padding: "12px 16px",
+    width: "100%", padding: "11px 14px", fontSize: 14, borderRadius: 8,
+    border: `1px solid ${BORDER}`, background: CARD, color: FG, outline: "none",
+    boxSizing: "border-box", cursor: "pointer",
   },
   button: {
-    marginTop: 8,
-    padding: "16px 24px",
-    fontSize: 15,
-    fontWeight: 700,
-    borderRadius: 14,
-    border: "none",
-    background: "linear-gradient(135deg, rgba(124,92,255,0.95), rgba(90,166,255,0.95))",
-    color: "white",
-    cursor: "pointer",
-    boxShadow: "0 8px 24px rgba(90,166,255,0.25)",
-    transition: "transform 0.2s, box-shadow 0.2s",
-    textAlign: "center",
-    textDecoration: "none",
-    display: "block",
+    marginTop: 4, padding: "12px 24px", fontSize: 14, fontWeight: 600,
+    borderRadius: 8, border: "none", background: ACCENT, color: "#fff",
+    boxShadow: "0 4px 12px rgba(194,65,12,0.2)",
   },
+  buttonLink: {
+    display: "inline-block", padding: "12px 24px", fontSize: 14, fontWeight: 600,
+    borderRadius: 8, background: ACCENT, color: "#fff", textDecoration: "none",
+    boxShadow: "0 4px 12px rgba(194,65,12,0.2)",
+    marginTop: 4,
+  },
+  checkboxRow: { display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" },
+  inlineLink: { color: ACCENT, textDecoration: "none", fontWeight: 500 },
   error: {
-    padding: "12px 16px",
-    borderRadius: 10,
-    background: "rgba(239,68,68,0.15)",
-    border: "1px solid rgba(239,68,68,0.3)",
-    color: "#fca5a5",
-    fontSize: 13,
+    padding: "10px 14px", borderRadius: 8,
+    background: "#fdecec", border: "1px solid #f4c4c4",
+    color: "#b91c1c", fontSize: 13,
   },
-  loginLink: {
-    display: "block",
-    marginTop: 8,
-    color: "#a5b4fc",
-    textDecoration: "none",
-    fontWeight: 600,
-  },
-  loginPrompt: {
-    marginTop: 20,
-    fontSize: 14,
-    color: "rgba(234,241,255,0.6)",
-    textAlign: "center",
-  },
-  loginLinkAlt: {
-    color: "#a5b4fc",
-    textDecoration: "none",
-    fontWeight: 600,
-  },
+  errorLink: { display: "block", marginTop: 6, color: "#b91c1c", textDecoration: "underline", fontWeight: 600 },
+  altPrompt: { marginTop: 20, fontSize: 13, color: MUTED, textAlign: "center" },
+  linkStrong: { color: ACCENT, textDecoration: "none", fontWeight: 600 },
   features: {
-    display: "flex",
-    justifyContent: "center",
-    gap: 16,
-    marginTop: 24,
-    flexWrap: "wrap",
+    display: "flex", justifyContent: "center", gap: 16, marginTop: 20, flexWrap: "wrap",
   },
-  feature: {
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-    fontSize: 12,
-    color: "rgba(234,241,255,0.5)",
-  },
+  feature: { display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: MUTED },
+  check: { color: SUCCESS, fontWeight: 700 },
 };
