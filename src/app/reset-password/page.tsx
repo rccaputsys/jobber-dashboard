@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 
 const BG = "#fbfaf7";
@@ -28,6 +28,7 @@ function LogoMark() {
 
 function ResetPasswordForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -41,6 +42,22 @@ function ResetPasswordForm() {
   );
 
   useEffect(() => {
+    // Supabase has two password-reset flows depending on project settings:
+    //   1. PKCE flow:   ?code=<...>  as a query param
+    //   2. Legacy flow: #access_token=…&refresh_token=…&type=recovery as a hash
+    // We handle both so either configuration works.
+
+    const fail = () => setError("Invalid or expired reset link. Please request a new one.");
+
+    const codeParam = searchParams.get("code");
+    if (codeParam) {
+      supabase.auth.exchangeCodeForSession(codeParam).then(({ error }) => {
+        if (error) fail();
+        else setReady(true);
+      });
+      return;
+    }
+
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const accessToken = hashParams.get("access_token");
     const refreshToken = hashParams.get("refresh_token");
@@ -51,15 +68,18 @@ function ResetPasswordForm() {
         access_token: accessToken,
         refresh_token: refreshToken,
       }).then(({ error }) => {
-        if (error) setError("Invalid or expired reset link. Please request a new one.");
+        if (error) fail();
         else setReady(true);
       });
-    } else {
-      supabase.auth.getSession().then(({ data }) => {
-        if (data.session) setReady(true);
-        else setError("Invalid or expired reset link. Please request a new one.");
-      });
+      return;
     }
+
+    // No token in URL — maybe the user already has a session from clicking
+    // the link in the same browser tab.
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) setReady(true);
+      else fail();
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
