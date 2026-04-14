@@ -12,10 +12,19 @@ type StatusResp = {
   entities: Entity[];
 };
 
+const BG = "#fbfaf7";
+const FG = "#1a1a1a";
+const MUTED = "#6b6b6b";
+const BORDER = "#e8e5df";
+const CARD = "#ffffff";
+const ACCENT = "#c2410c";
+const ACCENT_SOFT = "#fff1e6";
+const SUCCESS = "#15803d";
+
 const FEATURES = [
   {
     title: "Sell — close more quotes",
-    body: "See cooling quotes that need a follow-up, drafts to send, and approved quotes ready to book. Sorted by urgency.",
+    body: "Cooling quotes that need a follow-up, drafts to send, and approved quotes ready to book. Sorted by urgency.",
   },
   {
     title: "Book — fill the schedule",
@@ -26,23 +35,37 @@ const FEATURES = [
     body: "Past-due invoices to chase, completed work that hasn't been billed, and drafts ready to send.",
   },
   {
-    title: "Today — your top three priorities",
+    title: "Today — your top three",
     body: "Every morning, AccuInsight surfaces the three things that move money or fill the schedule. No digging required.",
   },
 ];
 
+function LogoMark() {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", justifyContent: "center",
+      width: 28, height: 28, borderRadius: 6, background: ACCENT, color: "#fff",
+    }}>
+      <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
+        <path d="M4 14l4-4 4 4 8-8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
 function StatusPill({ status }: { status: string }) {
-  const map: Record<string, { label: string; bg: string; fg: string }> = {
-    pending: { label: "Waiting", bg: "rgba(255,255,255,0.06)", fg: "rgba(255,255,255,0.5)" },
-    syncing: { label: "Syncing\u2026", bg: "rgba(90,166,255,0.18)", fg: "#5aa6ff" },
-    done:    { label: "Done", bg: "rgba(16,185,129,0.18)", fg: "#10b981" },
-    error:   { label: "Error", bg: "rgba(239,68,68,0.18)", fg: "#ef4444" },
+  const map: Record<string, { label: string; bg: string; fg: string; border: string }> = {
+    pending: { label: "Waiting",  bg: "#f5f3ef",     fg: MUTED,   border: BORDER },
+    syncing: { label: "Syncing",  bg: ACCENT_SOFT,   fg: ACCENT,  border: "#fcd6b4" },
+    done:    { label: "Done",     bg: "#e8f5ec",     fg: SUCCESS, border: "#c7e2cf" },
+    error:   { label: "Error",    bg: "#fdecec",     fg: "#b91c1c", border: "#f4c4c4" },
   };
   const s = map[status] || map.pending;
   return (
     <span style={{
-      fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999,
-      background: s.bg, color: s.fg, letterSpacing: 0.3,
+      fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 999,
+      background: s.bg, color: s.fg, border: `1px solid ${s.border}`,
+      letterSpacing: 0.2,
     }}>{s.label}</span>
   );
 }
@@ -52,25 +75,19 @@ function EntityRow({ entity }: { entity: Entity }) {
   const isSyncing = entity.status === "syncing";
   const isError = entity.status === "error";
 
-  const barColor = isError
-    ? "linear-gradient(90deg, #ef4444, #f87171)"
-    : isDone
-      ? "linear-gradient(90deg, #10b981, #34d399)"
-      : "linear-gradient(90deg, #5aa6ff, #38bdf8)";
-
+  const barColor = isError ? "#b91c1c" : isDone ? SUCCESS : ACCENT;
   const widthPct = isDone ? 100 : isSyncing ? 70 : isError ? 100 : 0;
 
   return (
     <div style={{
-      padding: "16px 18px", borderRadius: 12,
-      background: "rgba(255,255,255,0.03)",
-      border: "1px solid rgba(255,255,255,0.06)",
+      padding: "14px 16px", borderRadius: 10,
+      background: CARD, border: `1px solid ${BORDER}`,
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "#EAF1FF" }}>{entity.label}</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: FG }}>{entity.label}</span>
           {(isDone || isSyncing) && entity.count > 0 && (
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
+            <span style={{ fontSize: 12, color: MUTED }}>
               {entity.count.toLocaleString()} {isSyncing ? "so far" : "synced"}
             </span>
           )}
@@ -78,15 +95,16 @@ function EntityRow({ entity }: { entity: Entity }) {
         <StatusPill status={entity.status} />
       </div>
       <div style={{
-        height: 6, borderRadius: 999, overflow: "hidden",
-        background: "rgba(255,255,255,0.05)",
+        height: 5, borderRadius: 999, overflow: "hidden",
+        background: "#f0ece5",
       }}>
         <div style={{
           height: "100%",
           width: `${widthPct}%`,
           background: barColor,
           transition: "width 0.6s ease",
-          animation: isSyncing ? "pulse 1.6s ease-in-out infinite" : "none",
+          opacity: isSyncing ? 0.85 : 1,
+          animation: isSyncing ? "ai-pulse 1.6s ease-in-out infinite" : "none",
         }} />
       </div>
     </div>
@@ -99,16 +117,13 @@ export function SyncingClient({ connectionId }: { connectionId: string }) {
   const [redirecting, setRedirecting] = useState(false);
   const triggered = useRef(false);
 
-  // Kick off the sync once on mount (fire-and-forget). The function runs on the
-  // server until completion; we don't await the response on the client.
   useEffect(() => {
     if (triggered.current) return;
     triggered.current = true;
     fetch(`/api/sync/onboarding?connection_id=${connectionId}`, { method: "POST" })
-      .catch(() => { /* surfaced via /api/sync/status */ });
+      .catch(() => {});
   }, [connectionId]);
 
-  // Poll status every 2s
   useEffect(() => {
     let cancelled = false;
     const poll = async () => {
@@ -117,21 +132,22 @@ export function SyncingClient({ connectionId }: { connectionId: string }) {
         if (!res.ok) return;
         const json = (await res.json()) as StatusResp;
         if (!cancelled) setData(json);
-      } catch { /* keep polling */ }
+      } catch {}
     };
     poll();
     const id = setInterval(poll, 2000);
     return () => { cancelled = true; clearInterval(id); };
   }, [connectionId]);
 
-  // When sync completes, redirect to dashboard after a short pause
+  // Only redirect once the heartbeat writes sync_status='complete' (and
+  // last_sync_at). That guarantees data is actually in the fact tables —
+  // per-entity "done" fires earlier, before the final upsert pass finishes.
   useEffect(() => {
     if (!data || redirecting) return;
-    const allDone = data.entities.every((e) => e.status === "done");
-    const isComplete = data.status === "complete" || allDone;
+    const isComplete = data.status === "complete" && !!data.last_sync_at;
     if (isComplete) {
       setRedirecting(true);
-      const t = setTimeout(() => router.push("/jobber/dashboard"), 1200);
+      const t = setTimeout(() => router.push("/jobber/dashboard"), 1400);
       return () => clearTimeout(t);
     }
   }, [data, redirecting, router]);
@@ -146,110 +162,144 @@ export function SyncingClient({ connectionId }: { connectionId: string }) {
 
   const doneCount = entities.filter((e) => e.status === "done").length;
   const totalProgress = Math.round((doneCount / entities.length) * 100);
+  const allFetched = doneCount === entities.length;
+  const finalizing = allFetched && data?.status !== "complete";
   const errorMsg = data?.error || (entities.some((e) => e.status === "error") ? "One or more entities failed to sync." : null);
 
   return (
     <div style={{
-      minHeight: "100vh",
-      background: "radial-gradient(circle at 20% 10%, rgba(90,166,255,0.08), transparent 60%), #060811",
-      color: "#EAF1FF",
-      padding: "48px 24px",
+      minHeight: "100vh", background: BG, color: FG,
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     }}>
       <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.65; }
-        }
+        @keyframes ai-pulse { 0%, 100% { opacity: 0.85; } 50% { opacity: 0.55; } }
+        @keyframes ai-fade  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
       `}</style>
 
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 40 }}>
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 10, padding: "6px 14px",
-            borderRadius: 999, background: "rgba(90,166,255,0.12)",
-            border: "1px solid rgba(90,166,255,0.25)", marginBottom: 18,
-          }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#5aa6ff", animation: "pulse 1.5s infinite" }} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#5aa6ff", letterSpacing: 0.4 }}>
-              {redirecting ? "ALL DONE" : "PULLING IN YOUR DATA"}
-            </span>
-          </div>
-          <h1 style={{ fontSize: 32, fontWeight: 800, margin: "0 0 12px" }}>
-            {redirecting ? "Welcome to AccuInsight." : "Connecting to Jobber\u2026"}
-          </h1>
-          <p style={{ fontSize: 15, color: "rgba(234,241,255,0.6)", maxWidth: 600, margin: "0 auto" }}>
-            {redirecting
-              ? "Your dashboard is ready. Redirecting now\u2026"
-              : "We're pulling your jobs, visits, quotes, invoices, and requests. This usually takes 1\u20132 minutes. Feel free to read up while you wait."}
-          </p>
+      {/* Nav */}
+      <header style={{
+        borderBottom: `1px solid ${BORDER}`, background: `${BG}cc`, backdropFilter: "blur(8px)",
+      }}>
+        <div style={{
+          maxWidth: 1100, margin: "0 auto", padding: "16px 24px",
+          display: "flex", alignItems: "center", gap: 10,
+        }}>
+          <LogoMark />
+          <span style={{ fontWeight: 600 }}>AccuInsight</span>
         </div>
+      </header>
 
-        {/* Two-column layout */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 28 }}>
-          {/* Left: progress */}
-          <div>
+      {/* Subtle hero glow */}
+      <div style={{ position: "relative", overflow: "hidden" }}>
+        <div style={{
+          position: "absolute", left: "50%", top: "-10%",
+          width: 900, height: 420, transform: "translateX(-50%)",
+          borderRadius: "50%", background: ACCENT_SOFT, opacity: 0.5,
+          filter: "blur(80px)", pointerEvents: "none", zIndex: 0,
+        }} />
+
+        <div style={{ position: "relative", zIndex: 1, maxWidth: 1100, margin: "0 auto", padding: "56px 24px 80px" }}>
+          {/* Header */}
+          <div style={{ textAlign: "center", marginBottom: 40 }}>
             <div style={{
-              padding: 24, borderRadius: 16,
-              background: "rgba(255,255,255,0.02)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              display: "inline-flex", alignItems: "center", gap: 8,
+              padding: "4px 12px", borderRadius: 999,
+              background: ACCENT_SOFT, border: `1px solid #fcd6b4`,
+              marginBottom: 18,
             }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(234,241,255,0.7)", letterSpacing: 0.4 }}>
-                  SYNC PROGRESS
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#5aa6ff" }}>
-                  {totalProgress}%
-                </div>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {entities.map((e) => <EntityRow key={e.key} entity={e} />)}
-              </div>
-
-              {errorMsg && (
-                <div style={{
-                  marginTop: 16, padding: "12px 14px", borderRadius: 10,
-                  background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)",
-                  fontSize: 13, color: "#ef4444",
-                }}>
-                  {errorMsg}{" "}
-                  <a
-                    href="/jobber/dashboard"
-                    style={{ color: "#ef4444", textDecoration: "underline", fontWeight: 700 }}
-                  >
-                    Continue to dashboard
-                  </a>
-                </div>
-              )}
+              <span style={{
+                width: 7, height: 7, borderRadius: "50%", background: ACCENT,
+                animation: redirecting ? "none" : "ai-pulse 1.4s infinite",
+              }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: ACCENT, letterSpacing: 0.3 }}>
+                {redirecting ? "ALL DONE" : finalizing ? "FINALIZING" : "PULLING IN YOUR DATA"}
+              </span>
             </div>
-
-            <div style={{
-              marginTop: 16, fontSize: 12, color: "rgba(234,241,255,0.4)", textAlign: "center",
+            <h1 style={{
+              fontSize: "clamp(30px, 5vw, 44px)",
+              fontWeight: 600, letterSpacing: "-0.02em", margin: "0 0 12px",
             }}>
-              You can leave this page open or come back later \u2014 the sync runs on our servers.
-            </div>
+              {redirecting ? "Welcome to AccuInsight." : "Connecting to Jobber"}
+            </h1>
+            <p style={{
+              fontSize: 16, color: MUTED, maxWidth: 640, margin: "0 auto", lineHeight: 1.6,
+            }}>
+              {redirecting
+                ? "Your dashboard is ready. Redirecting now."
+                : "Most businesses take a couple of minutes. For larger businesses with years of Jobber history, pulling all your data can take a while. The good news: you only do this once."}
+            </p>
           </div>
 
-          {/* Right: features */}
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(234,241,255,0.7)", letterSpacing: 0.4, marginBottom: 18 }}>
-              WHAT YOU&apos;LL SEE WHEN IT&apos;S DONE
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {FEATURES.map((f) => (
-                <div key={f.title} style={{
-                  padding: "18px 20px", borderRadius: 14,
-                  background: "rgba(255,255,255,0.02)",
-                  border: "1px solid rgba(255,255,255,0.06)",
+          {/* Two-column grid */}
+          <div style={{
+            display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24,
+          }}>
+            {/* Left: progress */}
+            <div>
+              <div style={{
+                padding: 24, borderRadius: 14,
+                background: CARD, border: `1px solid ${BORDER}`,
+                boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+              }}>
+                <div style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "baseline",
+                  marginBottom: 18,
                 }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 6, color: "#EAF1FF" }}>
-                    {f.title}
+                  <div style={{ fontSize: 12, fontWeight: 600, color: MUTED, letterSpacing: 0.4 }}>
+                    SYNC PROGRESS
                   </div>
-                  <div style={{ fontSize: 13, color: "rgba(234,241,255,0.6)", lineHeight: 1.6 }}>
-                    {f.body}
+                  <div style={{ fontSize: 14, fontWeight: 700, color: ACCENT }}>
+                    {totalProgress}%
                   </div>
                 </div>
-              ))}
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {entities.map((e) => <EntityRow key={e.key} entity={e} />)}
+                </div>
+
+                {errorMsg && (
+                  <div style={{
+                    marginTop: 16, padding: "12px 14px", borderRadius: 10,
+                    background: "#fdecec", border: "1px solid #f4c4c4",
+                    fontSize: 13, color: "#b91c1c",
+                  }}>
+                    {errorMsg}{" "}
+                    <a href="/jobber/dashboard" style={{ color: "#b91c1c", textDecoration: "underline", fontWeight: 600 }}>
+                      Continue to dashboard
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              <p style={{
+                marginTop: 14, fontSize: 12, color: MUTED, textAlign: "center", lineHeight: 1.5,
+              }}>
+                Leave this page open or come back later. The sync runs on our servers and
+                won&apos;t stop if you close the tab.
+              </p>
+            </div>
+
+            {/* Right: features */}
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: MUTED, letterSpacing: 0.4, marginBottom: 18 }}>
+                WHAT YOU&apos;LL SEE WHEN IT&apos;S DONE
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {FEATURES.map((f) => (
+                  <div key={f.title} style={{
+                    padding: "16px 18px", borderRadius: 12,
+                    background: CARD, border: `1px solid ${BORDER}`,
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+                    animation: "ai-fade 0.4s ease",
+                  }}>
+                    <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4, color: FG }}>
+                      {f.title}
+                    </div>
+                    <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.55 }}>
+                      {f.body}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
