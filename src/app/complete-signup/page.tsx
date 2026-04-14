@@ -135,7 +135,7 @@ function CompleteSignupForm() {
           <label style={styles.label}>Business type</label>
           <select value={businessType} onChange={(e) => setBusinessType(e.target.value)}
             required style={styles.select}>
-            <option value="">Select your industry\u2026</option>
+            <option value="">Select your industry\…</option>
             {businessTypes.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
@@ -144,7 +144,7 @@ function CompleteSignupForm() {
           <label style={styles.label}>Team size</label>
           <select value={teamSize} onChange={(e) => setTeamSize(e.target.value)}
             required style={styles.select}>
-            <option value="">Select team size\u2026</option>
+            <option value="">Select team size\…</option>
             {teamSizes.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
@@ -153,7 +153,7 @@ function CompleteSignupForm() {
           <div style={styles.error}>
             {error}
             {isEmailExistsError && (
-              <a href="/login" style={styles.errorLink}>Go to login \u2192</a>
+              <a href="/login" style={styles.errorLink}>Go to login \→</a>
             )}
           </div>
         )}
@@ -175,7 +175,7 @@ function CompleteSignupForm() {
           opacity: agreed && !loading ? 1 : 0.6,
           cursor: agreed && !loading ? "pointer" : "not-allowed",
         }}>
-          {loading ? "Creating account\u2026" : "Create account & view dashboard"}
+          {loading ? "Creating account\…" : "Create account & view dashboard"}
         </button>
       </form>
 
@@ -185,9 +185,9 @@ function CompleteSignupForm() {
       </p>
 
       <div style={styles.features}>
-        <span style={styles.feature}><span style={styles.check}>\u2713</span> 14-day free trial</span>
-        <span style={styles.feature}><span style={styles.check}>\u2713</span> No credit card required</span>
-        <span style={styles.feature}><span style={styles.check}>\u2713</span> Cancel anytime</span>
+        <span style={styles.feature}><span style={styles.check}>\✓</span> 14-day free trial</span>
+        <span style={styles.feature}><span style={styles.check}>\✓</span> No credit card required</span>
+        <span style={styles.feature}><span style={styles.check}>\✓</span> Cancel anytime</span>
       </div>
     </div>
   );
@@ -197,7 +197,7 @@ export default function CompleteSignupPage() {
   return (
     <main style={styles.page}>
       <div style={styles.glow} />
-      <Suspense fallback={<div style={styles.card}>Loading\u2026</div>}>
+      <Suspense fallback={<div style={styles.card}>Loading\…</div>}>
         <CompleteSignupForm />
       </Suspense>
     </main>

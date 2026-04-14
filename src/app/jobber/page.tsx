@@ -41,7 +41,7 @@ function ConnectButton({ size = "lg" }: { size?: "lg" | "sm" }) {
         transition: "opacity 0.2s",
       }}
     >
-      {loading ? "Connecting\u2026" : "See it with your Jobber data"}
+      {loading ? "Connecting\…" : "See it with your Jobber data"}
     </a>
   );
 }
@@ -125,7 +125,7 @@ export default function JobberLanding() {
           <p style={{ fontSize: 13, color: MUTED, marginTop: 48 }}>
             Want the full tour?{" "}
             <a href="https://accuinsight.io" style={{ color: ACCENT, fontWeight: 600, textDecoration: "none" }}>
-              Visit accuinsight.io \u2192
+              Visit accuinsight.io \→
             </a>
           </p>
         </section>
@@ -171,7 +171,7 @@ export default function JobberLanding() {
         textAlign: "center", fontSize: 13, color: MUTED,
       }}>
         <div style={{ marginBottom: 8 }}>
-          \u00A9 {new Date().getFullYear()} AccuInsight. Built for Jobber users.
+          \© {new Date().getFullYear()} AccuInsight. Built for Jobber users.
         </div>
         <div>
           <a href="/privacy" style={{ color: MUTED, marginRight: 16 }}>Privacy</a>

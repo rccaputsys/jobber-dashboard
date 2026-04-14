@@ -342,7 +342,7 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
             fontSize: 28, color: "#fff",
             boxShadow: "0 4px 16px rgba(16,185,129,0.3)",
           }}>
-            {"\u2713"}
+            ✓
           </div>
           <div style={{ fontSize: 22, fontWeight: 800, color: primary, marginBottom: 8 }}>
             You&apos;re all set.
@@ -496,7 +496,7 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
                 transition: "all 0.3s ease",
                 boxShadow: i === tourStep ? "0 2px 8px rgba(90,166,255,0.35)" : "none",
               }}>
-                {i < tourStep ? "\u2713" : i + 1}
+                {i < tourStep ? "✓" : i + 1}
               </div>
             ))}
             <span style={{ fontSize: 11, fontWeight: 600, color: muted, marginLeft: 6 }}>

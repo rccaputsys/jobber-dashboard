@@ -237,7 +237,7 @@ export function OutstandingInvoices({
     { key: "7to30", label: "Getting Late (8\u201330 days)", range: "Send a reminder", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
     { key: "1to7", label: "Just Past Due (1\u20137 days)", range: "Just came due", color: "#5aa6ff", bg: "rgba(90,166,255,0.08)", items: [], totalCents: 0 },
     { key: "current", label: "Not Due Yet", range: "On time", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
-    { key: "stale", label: "Stale (180+ days)", range: "Likely write-off \u2014 archive if not collectible", color: "#6b7280", bg: "rgba(107,114,128,0.08)", items: [], totalCents: 0 },
+    { key: "stale", label: "Stale (180+ days)", range: "Likely write-off \— archive if not collectible", color: "#6b7280", bg: "rgba(107,114,128,0.08)", items: [], totalCents: 0 },
   ];
   for (const inv of invoices) {
     const b = inv.days_overdue >= STALE_OVERDUE_DAYS ? outstandingBuckets[4]
@@ -265,7 +265,7 @@ export function OutstandingInvoices({
 
   // Needs invoicing buckets — by days since work completed
   const needsBuckets: Bucket[] = [
-    { key: "30plus", label: "Way Overdue \u2014 Bill Now", range: "30+ days since work done", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
+    { key: "30plus", label: "Way Overdue \— Bill Now", range: "30+ days since work done", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
     { key: "7to30", label: "Send the Invoice Soon", range: "7\u201329 days since work done", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
     { key: "under7", label: "Recently Finished", range: "0\u20136 days since work done", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
   ];
@@ -292,7 +292,7 @@ export function OutstandingInvoices({
 
   // Draft buckets — by days sitting in draft
   const draftBuckets: Bucket[] = [
-    { key: "30plus", label: "Sitting Too Long \u2014 Send Now", range: "30+ days in draft", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
+    { key: "30plus", label: "Sitting Too Long \— Send Now", range: "30+ days in draft", color: "#ef4444", bg: "rgba(239,68,68,0.08)", items: [], totalCents: 0 },
     { key: "7to30", label: "Review and Send", range: "7\u201329 days in draft", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", items: [], totalCents: 0 },
     { key: "under7", label: "Just Created", range: "0\u20136 days in draft", color: "#10b981", bg: "rgba(16,185,129,0.08)", items: [], totalCents: 0 },
   ];

@@ -115,7 +115,7 @@ function LoginForm() {
         {error && <div style={styles.error}>{error}</div>}
 
         <button type="submit" disabled={loading} style={styles.button}>
-          {loading ? "Signing in\u2026" : "Sign in"}
+          {loading ? "Signing in\…" : "Sign in"}
         </button>
       </form>
 
@@ -132,7 +132,7 @@ function LoginForm() {
 
       <p style={styles.legal}>
         <a href="/terms" style={styles.legalLink}>Terms</a>
-        <span style={styles.divider}>\u00B7</span>
+        <span style={styles.divider}>\·</span>
         <a href="/privacy" style={styles.legalLink}>Privacy</a>
       </p>
     </div>
@@ -143,7 +143,7 @@ export default function LoginPage() {
   return (
     <main style={styles.page}>
       <div style={styles.glow} />
-      <Suspense fallback={<div style={styles.card}>Loading\u2026</div>}>
+      <Suspense fallback={<div style={styles.card}>Loading\…</div>}>
         <LoginForm />
       </Suspense>
     </main>

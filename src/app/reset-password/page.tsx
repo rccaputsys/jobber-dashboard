@@ -108,7 +108,7 @@ function ResetPasswordForm() {
         <a href="/forgot-password" style={styles.buttonLink}>Request new link</a>
         <p style={styles.legal}>
           <a href="/terms" style={styles.legalLink}>Terms</a>
-          <span style={styles.divider}>\u00B7</span>
+          <span style={styles.divider}>\·</span>
           <a href="/privacy" style={styles.legalLink}>Privacy</a>
         </p>
       </div>
@@ -119,7 +119,7 @@ function ResetPasswordForm() {
     return (
       <div style={styles.card}>
         <div style={styles.brandRow}><LogoMark /><span style={styles.brandName}>AccuInsight</span></div>
-        <h1 style={styles.title}>Verifying\u2026</h1>
+        <h1 style={styles.title}>Verifying\…</h1>
         <p style={styles.subtitle}>Please wait while we verify your reset link.</p>
       </div>
     );
@@ -160,13 +160,13 @@ function ResetPasswordForm() {
         {error && <div style={styles.error}>{error}</div>}
 
         <button type="submit" disabled={loading} style={styles.button}>
-          {loading ? "Updating\u2026" : "Update password"}
+          {loading ? "Updating\…" : "Update password"}
         </button>
       </form>
 
       <p style={styles.legal}>
         <a href="/terms" style={styles.legalLink}>Terms</a>
-        <span style={styles.divider}>\u00B7</span>
+        <span style={styles.divider}>\·</span>
         <a href="/privacy" style={styles.legalLink}>Privacy</a>
       </p>
     </div>
@@ -177,7 +177,7 @@ export default function ResetPasswordPage() {
   return (
     <main style={styles.page}>
       <div style={styles.glow} />
-      <Suspense fallback={<div style={styles.card}>Loading\u2026</div>}>
+      <Suspense fallback={<div style={styles.card}>Loading\…</div>}>
         <ResetPasswordForm />
       </Suspense>
     </main>

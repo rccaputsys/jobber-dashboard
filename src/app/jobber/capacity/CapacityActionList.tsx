@@ -236,7 +236,7 @@ export function CapacityActionList({
   const buckets: Bucket[] = [
     { key: "recent", label: "Recent", range: "< 30 days old", color: "#5aa6ff", bg: "rgba(90,166,255,0.08)", jobs: [], totalCents: 0 },
     { key: "aging", label: "Aging", range: "30\u201359 days old", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", jobs: [], totalCents: 0 },
-    { key: "stale", label: "Stale", range: "60+ days old \u2014 archive if not needed", color: "#6b7280", bg: "rgba(107,114,128,0.08)", jobs: [], totalCents: 0 },
+    { key: "stale", label: "Stale", range: "60+ days old \— archive if not needed", color: "#6b7280", bg: "rgba(107,114,128,0.08)", jobs: [], totalCents: 0 },
   ];
   for (const j of unscheduledJobs) {
     const days = ageDays(j.created_at);
@@ -251,8 +251,8 @@ export function CapacityActionList({
   // Late      = 1-6 days late (orange, getting late)
   const lateBuckets: Bucket[] = [
     { key: "late", label: "Late", range: "1\u20136 days late", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", jobs: [], totalCents: 0 },
-    { key: "very-late", label: "Very Late", range: "7\u201329 days late \u2014 needs a call", color: "#ef4444", bg: "rgba(239,68,68,0.08)", jobs: [], totalCents: 0 },
-    { key: "stale-late", label: "Stale", range: "30+ days late \u2014 archive if not needed", color: "#6b7280", bg: "rgba(107,114,128,0.08)", jobs: [], totalCents: 0 },
+    { key: "very-late", label: "Very Late", range: "7\u201329 days late \— needs a call", color: "#ef4444", bg: "rgba(239,68,68,0.08)", jobs: [], totalCents: 0 },
+    { key: "stale-late", label: "Stale", range: "30+ days late \— archive if not needed", color: "#6b7280", bg: "rgba(107,114,128,0.08)", jobs: [], totalCents: 0 },
   ];
   for (const v of lateVisits) {
     const bucket = v.days_late >= 30 ? lateBuckets[2] : v.days_late >= 7 ? lateBuckets[1] : lateBuckets[0];

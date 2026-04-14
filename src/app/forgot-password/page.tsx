@@ -71,7 +71,7 @@ export default function ForgotPasswordPage() {
           </p>
           <p style={styles.legal}>
             <a href="/terms" style={styles.legalLink}>Terms</a>
-            <span style={styles.divider}>\u00B7</span>
+            <span style={styles.divider}>\·</span>
             <a href="/privacy" style={styles.legalLink}>Privacy</a>
           </p>
         </div>
@@ -107,7 +107,7 @@ export default function ForgotPasswordPage() {
           {error && <div style={styles.error}>{error}</div>}
 
           <button type="submit" disabled={loading} style={styles.button}>
-            {loading ? "Sending\u2026" : "Send reset link"}
+            {loading ? "Sending\…" : "Send reset link"}
           </button>
         </form>
 
@@ -117,7 +117,7 @@ export default function ForgotPasswordPage() {
 
         <p style={styles.legal}>
           <a href="/terms" style={styles.legalLink}>Terms</a>
-          <span style={styles.divider}>\u00B7</span>
+          <span style={styles.divider}>\·</span>
           <a href="/privacy" style={styles.legalLink}>Privacy</a>
         </p>
       </div>

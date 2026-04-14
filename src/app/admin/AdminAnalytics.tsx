@@ -327,8 +327,8 @@ export function AdminAnalytics({ analytics, userSummaries, connections }: Props)
                       {u.tour_status === "not_started" ? "none" : u.tour_status}
                     </span>
                   </td>
-                  <td style={{ padding: "10px 10px", textAlign: "center", color: u.has_synced ? "#10b981" : "rgba(255,255,255,0.15)", fontSize: 14 }}>{u.has_synced ? "\u2713" : "\u2014"}</td>
-                  <td style={{ padding: "10px 10px", textAlign: "center", color: u.has_exported ? "#10b981" : "rgba(255,255,255,0.15)", fontSize: 14 }}>{u.has_exported ? "\u2713" : "\u2014"}</td>
+                  <td style={{ padding: "10px 10px", textAlign: "center", color: u.has_synced ? "#10b981" : "rgba(255,255,255,0.15)", fontSize: 14 }}>{u.has_synced ? "✓" : "—"}</td>
+                  <td style={{ padding: "10px 10px", textAlign: "center", color: u.has_exported ? "#10b981" : "rgba(255,255,255,0.15)", fontSize: 14 }}>{u.has_exported ? "✓" : "—"}</td>
                   <td style={{ padding: "10px 6px", textAlign: "center" }}>
                     <a href={`/jobber/dashboard?admin_connection_id=${u.connection_id}`} className="btn" style={{ padding: "4px 10px", fontSize: 10, textDecoration: "none" }}>View</a>
                   </td>

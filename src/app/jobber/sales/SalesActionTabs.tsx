@@ -304,7 +304,7 @@ function ChangesRequestedContent({ items, isLight }: { items: ChangeRequestedIte
                   </td>
                   <td>
                     <div className="cell-primary" style={{ fontWeight: 600 }}>
-                      {item.quote_number ? `#${item.quote_number} \u2014 ` : ""}{item.quote_title}
+                      {item.quote_number ? `#${item.quote_number} \— ` : ""}{item.quote_title}
                     </div>
                   </td>
                   <td className="cell-primary" style={{ textAlign: "center", fontWeight: 600 }}>{item.amount}</td>
@@ -352,7 +352,7 @@ function DraftQuotesByAge({ quotes, isLight }: { quotes: PipelineQuoteRow[]; isL
   const buckets: AgeBucket[] = [
     { key: "fresh", label: "Fresh", range: "0\u201314 days", color: "#10b981", bg: "rgba(16,185,129,0.08)", quotes: [], totalCents: 0 },
     { key: "aging", label: "Aging", range: "15\u201329 days", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", quotes: [], totalCents: 0 },
-    { key: "stale", label: "Stale", range: "30+ days untouched \u2014 archive if not needed", color: "#6b7280", bg: "rgba(107,114,128,0.08)", quotes: [], totalCents: 0 },
+    { key: "stale", label: "Stale", range: "30+ days untouched \— archive if not needed", color: "#6b7280", bg: "rgba(107,114,128,0.08)", quotes: [], totalCents: 0 },
   ];
   for (const q of quotes) {
     const b = q.days_quiet >= 30 ? buckets[2] : q.days_quiet >= 15 ? buckets[1] : buckets[0];
@@ -593,7 +593,7 @@ function PipelineQuoteList({ quotes, isLight }: { quotes: PipelineQuoteRow[]; is
                       <div className="cell-secondary" style={{ fontSize: 11, marginTop: 2 }}>{q.quote_title}</div>
                     </td>
                     <td className="cell-muted" style={{ whiteSpace: "nowrap", textAlign: "center" }}>
-                      {q.sent_at ? new Date(q.sent_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "\u2014"}
+                      {q.sent_at ? new Date(q.sent_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "\—"}
                     </td>
                     <td className="cell-primary" style={{ fontWeight: 600, whiteSpace: "nowrap", textAlign: "right" }}>
                       {fmt(q.amount_cents)}
