@@ -5,9 +5,10 @@ import { cookies } from "next/headers";
 import { rateLimit, getClientIp } from "@/lib/rateLimit";
 
 export async function POST(req: Request) {
-  // Rate limit: 3 attempts per 15 minutes per IP
+  // Rate limit: 20 attempts per 15 minutes per IP. Loose enough to not
+  // block a flailing user; tight enough to stop spam-bombing a mailbox.
   const ip = getClientIp(req);
-  const limit = await rateLimit(`forgot:${ip}`, { maxAttempts: 3, windowMs: 15 * 60 * 1000 });
+  const limit = await rateLimit(`forgot:${ip}`, { maxAttempts: 20, windowMs: 15 * 60 * 1000 });
   if (!limit.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },
