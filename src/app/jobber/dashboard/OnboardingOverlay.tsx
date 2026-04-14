@@ -348,7 +348,7 @@ export function OnboardingOverlay({ state, connectionId, adminConnectionId }: Pr
             You&apos;re all set.
           </div>
           <div style={{ fontSize: 14, color: muted, lineHeight: 1.7, marginBottom: 20 }}>
-            One last thing: set your <strong style={{ color: primary }}>weekly capacity target</strong> by clicking the gear icon on the Weekly Capacity card. That tells AccuInsight when you&apos;re fully booked vs. need more work.
+            One last thing: set your <strong style={{ color: primary }}>weekly capacity target</strong>{" "}by clicking the gear icon on the Weekly Capacity card. That tells AccuInsight when you&apos;re fully booked vs. need more work.
           </div>
 
           {/* Founder note */}
