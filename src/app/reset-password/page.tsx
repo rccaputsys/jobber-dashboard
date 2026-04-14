@@ -98,7 +98,7 @@ function ResetPasswordForm() {
     setError("");
 
     if (!email.trim()) return setError("Enter your email");
-    if (!/^\d{6}$/.test(otp.trim())) return setError("The code should be 6 digits");
+    if (!/^\d{4,10}$/.test(otp.trim())) return setError("Enter the numeric code from your email");
     if (password !== confirmPassword) return setError("Passwords don't match");
     if (password.length < 8) return setError("Password must be at least 8 characters");
 
@@ -204,7 +204,7 @@ function ResetPasswordForm() {
       <div style={styles.brandRow}><LogoMark /><span style={styles.brandName}>AccuInsight</span></div>
       <h1 style={styles.title}>Reset your password</h1>
       <p style={styles.subtitle}>
-        We emailed you a 6-digit code. Enter it below with your new password.
+        We emailed you a code. Enter it below with your new password.
       </p>
 
       <form onSubmit={handleOtpSubmit} style={styles.form}>
@@ -220,13 +220,13 @@ function ResetPasswordForm() {
         </div>
 
         <div>
-          <label style={styles.label}>6-digit code</label>
+          <label style={styles.label}>Code from email</label>
           <input
             type="text" value={otp}
-            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            required inputMode="numeric" pattern="\d{6}" maxLength={6}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 10))}
+            required inputMode="numeric" pattern="\d{4,10}" maxLength={10}
             style={{ ...styles.input, letterSpacing: 6, fontFamily: "ui-monospace,monospace" }}
-            placeholder="123456"
+            placeholder="12345678"
             autoComplete="one-time-code"
           />
         </div>
