@@ -44,10 +44,23 @@ export async function POST(req: Request) {
     }
   );
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  // Derive the base URL from the incoming request, not a build-time env
+  // var. Whichever domain the user submitted the form from is where we
+  // send them back — no config, no Supabase allow-list truncation to
+  // fight with. Falls back to NEXT_PUBLIC_APP_URL, then localhost.
+  const forwardedHost = req.headers.get("x-forwarded-host");
+  const forwardedProto = req.headers.get("x-forwarded-proto") || "https";
+  const reqUrl = new URL(req.url);
+  const host = forwardedHost || reqUrl.host;
+  const proto = forwardedHost ? forwardedProto : reqUrl.protocol.replace(":", "");
+  const derivedAppUrl = host ? `${proto}://${host}` : null;
+  const appUrl = derivedAppUrl || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  const redirectTo = `${appUrl}/reset-password`;
+  console.log("Password reset redirectTo:", redirectTo);
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${appUrl}/reset-password`,
+    redirectTo,
   });
 
   if (error) {
