@@ -75,13 +75,64 @@ function EntityRow({ entity }: { entity: Entity }) {
   const isSyncing = entity.status === "syncing";
   const isError = entity.status === "error";
 
-  const barColor = isError ? "#b91c1c" : isDone ? SUCCESS : ACCENT;
-  const widthPct = isDone ? 100 : isSyncing ? 70 : isError ? 100 : 0;
+  const trackBg = "#f0ece5";
+
+  let bar: React.ReactNode = null;
+  if (isDone) {
+    bar = (
+      <div style={{
+        height: "100%", width: "100%",
+        background: SUCCESS,
+        transition: "width 0.6s ease",
+      }} />
+    );
+  } else if (isError) {
+    bar = (
+      <div style={{
+        height: "100%", width: "100%",
+        background: "#b91c1c",
+      }} />
+    );
+  } else if (isSyncing) {
+    // Indeterminate progress: a highlight stripe sweeps across an orange
+    // base. Tells the user "this is actively working" without pretending
+    // to know how much is done.
+    bar = (
+      <div style={{
+        position: "relative", width: "100%", height: "100%",
+        background: ACCENT, overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute", top: 0, left: 0, height: "100%",
+          width: "40%",
+          background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent)",
+          animation: "ai-sweep 1.4s linear infinite",
+        }} />
+      </div>
+    );
+  } else {
+    // Pending: skeleton shimmer on a flat track so a user waiting on
+    // earlier entities sees motion across the whole queue.
+    bar = (
+      <div style={{
+        position: "relative", width: "100%", height: "100%",
+        background: "#e8e2d6", overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute", top: 0, left: 0, height: "100%",
+          width: "30%",
+          background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)",
+          animation: "ai-sweep 2.4s linear infinite",
+        }} />
+      </div>
+    );
+  }
 
   return (
     <div style={{
       padding: "14px 16px", borderRadius: 10,
       background: CARD, border: `1px solid ${BORDER}`,
+      animation: isSyncing ? "ai-breathe 2.4s ease-in-out infinite" : "none",
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -95,17 +146,10 @@ function EntityRow({ entity }: { entity: Entity }) {
         <StatusPill status={entity.status} />
       </div>
       <div style={{
-        height: 5, borderRadius: 999, overflow: "hidden",
-        background: "#f0ece5",
+        height: 6, borderRadius: 999, overflow: "hidden",
+        background: trackBg,
       }}>
-        <div style={{
-          height: "100%",
-          width: `${widthPct}%`,
-          background: barColor,
-          transition: "width 0.6s ease",
-          opacity: isSyncing ? 0.85 : 1,
-          animation: isSyncing ? "ai-pulse 1.6s ease-in-out infinite" : "none",
-        }} />
+        {bar}
       </div>
     </div>
   );
@@ -173,6 +217,11 @@ export function SyncingClient({ connectionId }: { connectionId: string }) {
       <style>{`
         @keyframes ai-pulse { 0%, 100% { opacity: 0.85; } 50% { opacity: 0.55; } }
         @keyframes ai-fade  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        @keyframes ai-sweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
+        @keyframes ai-breathe {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(194,65,12,0); }
+          50%      { box-shadow: 0 0 0 3px rgba(194,65,12,0.08); }
+        }
       `}</style>
 
       {/* Nav */}
