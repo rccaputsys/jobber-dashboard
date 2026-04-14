@@ -62,10 +62,11 @@ export async function POST() {
   await supabaseAdmin.from("fact_requests").delete().eq("connection_id", connection.id);
   await supabaseAdmin.from("jobber_tokens").delete().eq("connection_id", connection.id);
 
-  // Mark as disconnected instead of deleting
+  // Mark as disconnected instead of deleting. Keep jobber_account_id so a
+  // reconnect from the same account links back to this row (preserving trial
+  // dates + Stripe customer ID — prevents disconnect/reconnect trial abuse).
   await supabaseAdmin.from("jobber_connections")
     .update({
-      jobber_account_id: null,
       last_sync_at: null,
       sync_status: "disconnected",
       disconnected_at: new Date().toISOString(),

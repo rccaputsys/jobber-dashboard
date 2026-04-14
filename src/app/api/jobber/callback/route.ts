@@ -178,7 +178,7 @@ export async function GET(req: Request) {
     .eq("jobber_account_id", acct.id)
     .maybeSingle();
 
-  let connectionId: string;
+  let connectionId: string = "";
 
   if (existingConn) {
     // Update existing connection
@@ -222,37 +222,68 @@ export async function GET(req: Request) {
       return NextResponse.redirect(new URL("/jobber/dashboard", req.url));
     }
   } else {
-    // Create new connection
-    const now = new Date();
-    const trialEnds = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
-
-    // If user is logged in, link the connection to them immediately
-    const insertData: any = {
-      jobber_account_id: acct.id,
-      jobber_account_name: acct.name,
-      billing_status: 'trialing',
-      trial_started_at: now.toISOString(),
-      trial_ends_at: trialEnds.toISOString(),
-    };
-    
+    // No connection found by jobber_account_id. Before creating a fresh row
+    // (which would start a brand-new 14-day trial), check if the logged-in
+    // user already has a connection — they may be reconnecting after a prior
+    // disconnect that nulled the account ID. Reactivate that row instead so
+    // trial dates and Stripe state are preserved (no infinite-trial abuse).
+    let reactivated = false;
     if (loggedInUser) {
-      insertData.user_id = loggedInUser.id;
+      const { data: priorConn } = await supabaseAdmin
+        .from("jobber_connections")
+        .select("id")
+        .eq("user_id", loggedInUser.id)
+        .maybeSingle();
+
+      if (priorConn) {
+        connectionId = priorConn.id;
+        await supabaseAdmin
+          .from("jobber_connections")
+          .update({
+            jobber_account_id: acct.id,
+            jobber_account_name: acct.name,
+            sync_status: null,
+            disconnected_at: null,
+            sync_error: null,
+            last_sync_at: null,
+          })
+          .eq("id", connectionId);
+        await saveToken(connectionId, token.access_token, token.refresh_token, expiresAt);
+        reactivated = true;
+      }
     }
 
-    const { data: conn, error: connErr } = await supabaseAdmin
-      .from("jobber_connections")
-      .insert(insertData)
-      .select("id")
-      .single();
+    if (!reactivated) {
+      // Create a fresh connection (truly new customer, no prior row).
+      const now = new Date();
+      const trialEnds = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
 
-    if (connErr || !conn?.id) {
-      throw new Error(connErr?.message || "Failed to create connection");
+      const insertData: any = {
+        jobber_account_id: acct.id,
+        jobber_account_name: acct.name,
+        billing_status: 'trialing',
+        trial_started_at: now.toISOString(),
+        trial_ends_at: trialEnds.toISOString(),
+      };
+
+      if (loggedInUser) {
+        insertData.user_id = loggedInUser.id;
+      }
+
+      const { data: conn, error: connErr } = await supabaseAdmin
+        .from("jobber_connections")
+        .insert(insertData)
+        .select("id")
+        .single();
+
+      if (connErr || !conn?.id) {
+        throw new Error(connErr?.message || "Failed to create connection");
+      }
+      connectionId = conn.id;
+
+      await saveToken(connectionId, token.access_token, token.refresh_token, expiresAt);
     }
-    connectionId = conn.id;
 
-    // Save token
-    await saveToken(connectionId, token.access_token, token.refresh_token, expiresAt);
-    
     // If user was logged in, go straight to dashboard
     if (loggedInUser) {
       return NextResponse.redirect(new URL("/jobber/dashboard", req.url));
