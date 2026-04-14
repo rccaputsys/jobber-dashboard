@@ -23,6 +23,10 @@ const SUCCESS = "#15803d";
 
 const FEATURES = [
   {
+    title: "Today — your top three",
+    body: "Every morning, AccuInsight surfaces the three things that move money or fill the schedule. No digging required.",
+  },
+  {
     title: "Sell — close more quotes",
     body: "Cooling quotes that need a follow-up, drafts to send, and approved quotes ready to book. Sorted by urgency.",
   },
@@ -33,10 +37,6 @@ const FEATURES = [
   {
     title: "Collect — get paid faster",
     body: "Past-due invoices to chase, completed work that hasn't been billed, and drafts ready to send.",
-  },
-  {
-    title: "Today — your top three",
-    body: "Every morning, AccuInsight surfaces the three things that move money or fill the schedule. No digging required.",
   },
 ];
 
@@ -114,7 +114,6 @@ function EntityRow({ entity }: { entity: Entity }) {
 export function SyncingClient({ connectionId }: { connectionId: string }) {
   const router = useRouter();
   const [data, setData] = useState<StatusResp | null>(null);
-  const [redirecting, setRedirecting] = useState(false);
   const triggered = useRef(false);
 
   useEffect(() => {
@@ -139,19 +138,6 @@ export function SyncingClient({ connectionId }: { connectionId: string }) {
     return () => { cancelled = true; clearInterval(id); };
   }, [connectionId]);
 
-  // Only redirect once the heartbeat writes sync_status='complete' (and
-  // last_sync_at). That guarantees data is actually in the fact tables —
-  // per-entity "done" fires earlier, before the final upsert pass finishes.
-  useEffect(() => {
-    if (!data || redirecting) return;
-    const isComplete = data.status === "complete" && !!data.last_sync_at;
-    if (isComplete) {
-      setRedirecting(true);
-      const t = setTimeout(() => router.push("/jobber/dashboard"), 1400);
-      return () => clearTimeout(t);
-    }
-  }, [data, redirecting, router]);
-
   const entities: Entity[] = data?.entities || [
     { key: "jobs", label: "Jobs", status: "pending", count: 0 },
     { key: "visits", label: "Visits", status: "pending", count: 0 },
@@ -162,8 +148,7 @@ export function SyncingClient({ connectionId }: { connectionId: string }) {
 
   const doneCount = entities.filter((e) => e.status === "done").length;
   const totalProgress = Math.round((doneCount / entities.length) * 100);
-  const allFetched = doneCount === entities.length;
-  const finalizing = allFetched && data?.status !== "complete";
+  const isComplete = data?.status === "complete" && !!data?.last_sync_at;
   const errorMsg = data?.error || (entities.some((e) => e.status === "error") ? "One or more entities failed to sync." : null);
 
   return (
@@ -201,33 +186,32 @@ export function SyncingClient({ connectionId }: { connectionId: string }) {
         <div style={{ position: "relative", zIndex: 1, maxWidth: 1100, margin: "0 auto", padding: "56px 24px 80px" }}>
           {/* Header */}
           <div style={{ textAlign: "center", marginBottom: 40 }}>
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              padding: "4px 12px", borderRadius: 999,
-              background: ACCENT_SOFT, border: `1px solid #fcd6b4`,
-              marginBottom: 18,
-            }}>
-              <span style={{
-                width: 7, height: 7, borderRadius: "50%", background: ACCENT,
-                animation: redirecting ? "none" : "ai-pulse 1.4s infinite",
-              }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: ACCENT, letterSpacing: 0.3 }}>
-                {redirecting ? "ALL DONE" : finalizing ? "FINALIZING" : "PULLING IN YOUR DATA"}
-              </span>
-            </div>
             <h1 style={{
               fontSize: "clamp(30px, 5vw, 44px)",
               fontWeight: 600, letterSpacing: "-0.02em", margin: "0 0 12px",
             }}>
-              {redirecting ? "Welcome to AccuInsight." : "Connecting to Jobber"}
+              {isComplete ? "Your dashboard is ready." : "Connecting to Jobber"}
             </h1>
             <p style={{
-              fontSize: 16, color: MUTED, maxWidth: 640, margin: "0 auto", lineHeight: 1.6,
+              fontSize: 16, color: MUTED, maxWidth: 640, margin: "0 auto 24px", lineHeight: 1.6,
             }}>
-              {redirecting
-                ? "Your dashboard is ready. Redirecting now."
+              {isComplete
+                ? "We've pulled in your Jobber data. Jump in when you're ready."
                 : "Most businesses take a couple of minutes. For larger businesses with years of Jobber history, pulling all your data can take a while. The good news: you only do this once."}
             </p>
+
+            {isComplete && (
+              <button
+                onClick={() => router.push("/jobber/dashboard")}
+                style={{
+                  padding: "14px 32px", fontSize: 15, fontWeight: 600, color: "#fff",
+                  background: ACCENT, border: "none", borderRadius: 8, cursor: "pointer",
+                  boxShadow: "0 4px 14px rgba(194,65,12,0.25)",
+                }}
+              >
+                See my dashboard
+              </button>
+            )}
           </div>
 
           {/* Two-column grid */}
