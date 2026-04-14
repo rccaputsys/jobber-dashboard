@@ -31,7 +31,7 @@ export default function TermsOfService() {
               <li>You must be at least 18 years old and legally able to enter binding contracts in your jurisdiction.</li>
               <li>You must provide accurate information when creating your account and keep it up to date.</li>
               <li>You are responsible for all activity under your account and for keeping your credentials secure.</li>
-              <li>Notify us immediately at <a href="mailto:support@ownerview.io">support@ownerview.io</a> if you suspect unauthorized access.</li>
+              <li>Notify us immediately at <a href="mailto:ryan@ownerview.io">ryan@ownerview.io</a> if you suspect unauthorized access.</li>
             </ul>
           </section>
 
@@ -60,7 +60,7 @@ export default function TermsOfService() {
             <ul>
               <li>AccuInsight offers a free trial followed by a paid subscription. Current pricing is shown at signup and on the marketing site.</li>
               <li>Subscriptions renew automatically on a monthly (or other) cycle until you cancel.</li>
-              <li>You may cancel anytime from the dashboard or by emailing <a href="mailto:support@ownerview.io">support@ownerview.io</a>. Cancellation takes effect at the end of the current billing period; no partial refunds except where required by law.</li>
+              <li>You may cancel anytime from the dashboard or by emailing <a href="mailto:ryan@ownerview.io">ryan@ownerview.io</a>. Cancellation takes effect at the end of the current billing period; no partial refunds except where required by law.</li>
               <li>If a payment fails, we may suspend your access until it succeeds.</li>
               <li>We may change prices with at least 30 days&apos; notice. Price changes do not apply mid-billing-period.</li>
               <li>You are responsible for any applicable taxes.</li>
@@ -132,7 +132,7 @@ export default function TermsOfService() {
           <section>
             <h2>14. Termination</h2>
             <p>
-              We may suspend or terminate your access if you violate these Terms, fail to pay, or use the Service in a way that harms others or us. You may terminate by cancelling your subscription and/or emailing <a href="mailto:support@ownerview.io">support@ownerview.io</a>. Sections that by their nature should survive termination (IP, disclaimers, liability, indemnification, dispute resolution, governing law) will do so.
+              We may suspend or terminate your access if you violate these Terms, fail to pay, or use the Service in a way that harms others or us. You may terminate by cancelling your subscription and/or emailing <a href="mailto:ryan@ownerview.io">ryan@ownerview.io</a>. Sections that by their nature should survive termination (IP, disclaimers, liability, indemnification, dispute resolution, governing law) will do so.
             </p>
           </section>
 
@@ -149,7 +149,7 @@ export default function TermsOfService() {
                 <strong>Class-action waiver:</strong> You and Corel Holdings LLC each waive any right to bring or participate in a class, collective, or representative action. Claims may be brought only in an individual capacity.
               </p>
               <p>
-                <strong>Opt-out:</strong> You may opt out of this arbitration clause by emailing <a href="mailto:support@ownerview.io">support@ownerview.io</a> within 30 days of first accepting these Terms, stating your name and that you opt out of arbitration. Opting out will not affect any other part of these Terms.
+                <strong>Opt-out:</strong> You may opt out of this arbitration clause by emailing <a href="mailto:ryan@ownerview.io">ryan@ownerview.io</a> within 30 days of first accepting these Terms, stating your name and that you opt out of arbitration. Opting out will not affect any other part of these Terms.
               </p>
             </div>
           </section>
@@ -185,7 +185,7 @@ export default function TermsOfService() {
               Corel Holdings LLC<br />
               3001 S Hardin Blvd, Ste 110 PMB 1106<br />
               McKinney, TX 75070<br />
-              <a href="mailto:support@ownerview.io">support@ownerview.io</a>
+              <a href="mailto:ryan@ownerview.io">ryan@ownerview.io</a>
             </p>
           </section>
         </div>

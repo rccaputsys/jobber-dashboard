@@ -22,7 +22,7 @@ export default function PrivacyPolicy() {
               United States
             </p>
             <p>
-              For privacy questions, data-subject requests, or any other inquiry: <a href="mailto:support@ownerview.io">support@ownerview.io</a>.
+              For privacy questions, data-subject requests, or any other inquiry: <a href="mailto:ryan@ownerview.io">ryan@ownerview.io</a>.
             </p>
           </section>
 
@@ -125,7 +125,7 @@ export default function PrivacyPolicy() {
               <li>After 30 days, your account is deleted, except for records we must retain by law (tax, anti-fraud).</li>
               <li>Anonymized, aggregated data that does not identify you may be retained indefinitely.</li>
             </ul>
-            <p>You can request immediate deletion at any time: <a href="mailto:support@ownerview.io">support@ownerview.io</a>.</p>
+            <p>You can request immediate deletion at any time: <a href="mailto:ryan@ownerview.io">ryan@ownerview.io</a>.</p>
           </section>
 
           <section>
@@ -153,7 +153,7 @@ export default function PrivacyPolicy() {
             </ul>
 
             <h3>California residents (CCPA / CPRA)</h3>
-            <p>You have the right to know what personal information we collect, to have it deleted, to correct inaccuracies, to opt out of the sale or sharing of personal information (we do neither), and to not be discriminated against for exercising these rights. To exercise any right, email <a href="mailto:support@ownerview.io">support@ownerview.io</a>. We will verify your identity before fulfilling the request.</p>
+            <p>You have the right to know what personal information we collect, to have it deleted, to correct inaccuracies, to opt out of the sale or sharing of personal information (we do neither), and to not be discriminated against for exercising these rights. To exercise any right, email <a href="mailto:ryan@ownerview.io">ryan@ownerview.io</a>. We will verify your identity before fulfilling the request.</p>
 
             <h3>EU / UK / EEA (GDPR)</h3>
             <p>In addition to the rights listed above, you have the rights of rectification, erasure, portability (machine-readable export), restriction of processing, and objection to processing based on legitimate interests. You may withdraw consent for marketing at any time. You also have the right to lodge a complaint with your local data protection authority.</p>
@@ -164,20 +164,20 @@ export default function PrivacyPolicy() {
             <h3>Australian residents (Privacy Act 1988 / APPs)</h3>
             <p>You may access and correct your personal information and complain about our handling of it. If unresolved with us, you may contact the Office of the Australian Information Commissioner.</p>
 
-            <p>To exercise any right, email <a href="mailto:support@ownerview.io">support@ownerview.io</a>. We respond within 30 days.</p>
+            <p>To exercise any right, email <a href="mailto:ryan@ownerview.io">ryan@ownerview.io</a>. We respond within 30 days.</p>
           </section>
 
           <section>
             <h2>11. Marketing communications</h2>
             <p>
-              With your consent we may send product updates, tips, and announcements. You can opt out anytime by clicking &quot;unsubscribe&quot; in any marketing email or emailing <a href="mailto:support@ownerview.io">support@ownerview.io</a>. We will continue to send transactional emails (billing receipts, security alerts, service updates) regardless of marketing preferences — these are necessary to operate your account.
+              With your consent we may send product updates, tips, and announcements. You can opt out anytime by clicking &quot;unsubscribe&quot; in any marketing email or emailing <a href="mailto:ryan@ownerview.io">ryan@ownerview.io</a>. We will continue to send transactional emails (billing receipts, security alerts, service updates) regardless of marketing preferences — these are necessary to operate your account.
             </p>
           </section>
 
           <section>
             <h2>12. Children</h2>
             <p>
-              AccuInsight is a tool for business owners and is not intended for anyone under 18. We do not knowingly collect personal information from anyone under 18. If you believe a child has provided information to us, please contact <a href="mailto:support@ownerview.io">support@ownerview.io</a> and we will delete it.
+              AccuInsight is a tool for business owners and is not intended for anyone under 18. We do not knowingly collect personal information from anyone under 18. If you believe a child has provided information to us, please contact <a href="mailto:ryan@ownerview.io">ryan@ownerview.io</a> and we will delete it.
             </p>
           </section>
 
@@ -191,7 +191,7 @@ export default function PrivacyPolicy() {
           <section>
             <h2>14. Contact</h2>
             <p>
-              Questions, requests, or concerns: <a href="mailto:support@ownerview.io">support@ownerview.io</a>.
+              Questions, requests, or concerns: <a href="mailto:ryan@ownerview.io">ryan@ownerview.io</a>.
             </p>
             <p>
               Corel Holdings LLC<br />

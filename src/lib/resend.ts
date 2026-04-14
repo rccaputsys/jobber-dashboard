@@ -39,7 +39,7 @@ export async function sendWelcomeEmail(email: string, firstName?: string) {
   await resend.emails.send({
     from: "Ryan <ryan@ownerview.io>",
     to: email,
-    replyTo: "support@ownerview.io",
+    replyTo: "ryan@ownerview.io",
     subject: "Welcome to AccuInsight - and a quick backstory",
     html: `
       <p>Hey ${name},</p>
