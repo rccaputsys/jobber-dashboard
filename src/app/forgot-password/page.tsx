@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 const BG = "#fbfaf7";
 const FG = "#1a1a1a";
@@ -25,8 +26,8 @@ function LogoMark() {
 }
 
 export default function ForgotPasswordPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -46,37 +47,14 @@ export default function ForgotPasswordPage() {
         setLoading(false);
         return;
       }
-      setSent(true);
+      // Forward to the reset form pre-filled with the email. The form has a
+      // 6-digit code input — codes aren't clickable, so email security
+      // scanners can't prefetch them the way they do with reset links.
+      router.push(`/reset-password?email=${encodeURIComponent(email)}`);
     } catch {
       setError("Something went wrong");
       setLoading(false);
     }
-  }
-
-  if (sent) {
-    return (
-      <main style={styles.page}>
-        <div style={styles.glow} />
-        <div style={styles.card}>
-          <div style={styles.brandRow}>
-            <LogoMark />
-            <span style={styles.brandName}>AccuInsight</span>
-          </div>
-          <h1 style={styles.title}>Check your email</h1>
-          <p style={styles.subtitle}>
-            We sent a password reset link to <strong style={{ color: FG }}>{email}</strong>.
-          </p>
-          <p style={{ ...styles.footer, marginTop: 20 }}>
-            <a href="/login" style={styles.linkStrong}>Back to login</a>
-          </p>
-          <p style={styles.legal}>
-            <a href="/terms" style={styles.legalLink}>Terms</a>
-            <span style={styles.divider}>\·</span>
-            <a href="/privacy" style={styles.legalLink}>Privacy</a>
-          </p>
-        </div>
-      </main>
-    );
   }
 
   return (
@@ -88,7 +66,9 @@ export default function ForgotPasswordPage() {
           <span style={styles.brandName}>AccuInsight</span>
         </div>
         <h1 style={styles.title}>Reset your password</h1>
-        <p style={styles.subtitle}>Enter your email and we&apos;ll send you a reset link.</p>
+        <p style={styles.subtitle}>
+          Enter your email and we&apos;ll send you a 6-digit code.
+        </p>
 
         <form onSubmit={handleSubmit} style={styles.form}>
           <div>
@@ -107,7 +87,7 @@ export default function ForgotPasswordPage() {
           {error && <div style={styles.error}>{error}</div>}
 
           <button type="submit" disabled={loading} style={styles.button}>
-            {loading ? "Sending\…" : "Send reset link"}
+            {loading ? "Sending…" : "Send code"}
           </button>
         </form>
 
@@ -117,7 +97,7 @@ export default function ForgotPasswordPage() {
 
         <p style={styles.legal}>
           <a href="/terms" style={styles.legalLink}>Terms</a>
-          <span style={styles.divider}>\·</span>
+          <span style={styles.divider}>·</span>
           <a href="/privacy" style={styles.legalLink}>Privacy</a>
         </p>
       </div>

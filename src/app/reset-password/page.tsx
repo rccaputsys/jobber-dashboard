@@ -26,68 +26,112 @@ function LogoMark() {
   );
 }
 
+/**
+ * Password reset — OTP-first flow.
+ *
+ * Primary path (safe against email scanner prefetching): user enters
+ * email + 6-digit code + new password. No clickable link for scanners
+ * to consume. Calls supabase.auth.verifyOtp(type='recovery') to
+ * establish a session, then updateUser({ password }).
+ *
+ * Fallback: if the user arrived with a magic-link style token
+ * (?code=<uuid> or #access_token=…), we exchange it automatically and
+ * skip the OTP step.
+ */
 function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [ready, setReady] = useState(false);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
+  const [phase, setPhase] = useState<"otp" | "ready" | "verifying">("otp");
+  const [email, setEmail] = useState(searchParams.get("email") || "");
+  const [otp, setOtp] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
   useEffect(() => {
-    // Supabase has two password-reset flows depending on project settings:
-    //   1. PKCE flow:   ?code=<...>  as a query param
-    //   2. Legacy flow: #access_token=…&refresh_token=…&type=recovery as a hash
-    // We handle both so either configuration works.
-
-    const fail = () => setError("Invalid or expired reset link. Please request a new one.");
-
     const codeParam = searchParams.get("code");
     if (codeParam) {
+      setPhase("verifying");
       supabase.auth.exchangeCodeForSession(codeParam).then(({ error }) => {
-        if (error) fail();
-        else setReady(true);
+        if (error) {
+          setError("That reset link is invalid or expired. Use the 6-digit code from your email below.");
+          setPhase("otp");
+        } else {
+          setPhase("ready");
+        }
       });
       return;
     }
 
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const hashParams = new URLSearchParams(
+      typeof window !== "undefined" ? window.location.hash.substring(1) : ""
+    );
     const accessToken = hashParams.get("access_token");
     const refreshToken = hashParams.get("refresh_token");
     const type = hashParams.get("type");
-
     if (accessToken && refreshToken && type === "recovery") {
+      setPhase("verifying");
       supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,
       }).then(({ error }) => {
-        if (error) fail();
-        else setReady(true);
+        if (error) {
+          setError("That reset link is invalid or expired. Use the 6-digit code from your email below.");
+          setPhase("otp");
+        } else {
+          setPhase("ready");
+        }
       });
-      return;
     }
-
-    // No token in URL — maybe the user already has a session from clicking
-    // the link in the same browser tab.
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) setReady(true);
-      else fail();
-    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleOtpSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+
+    if (!email.trim()) return setError("Enter your email");
+    if (!/^\d{6}$/.test(otp.trim())) return setError("The code should be 6 digits");
+    if (password !== confirmPassword) return setError("Passwords don't match");
+    if (password.length < 8) return setError("Password must be at least 8 characters");
+
+    setLoading(true);
+
+    const { error: verifyErr } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: otp.trim(),
+      type: "recovery",
+    });
+    if (verifyErr) {
+      setError("That code is invalid or expired. Request a new one.");
+      setLoading(false);
+      return;
+    }
+
+    const { error: updErr } = await supabase.auth.updateUser({ password });
+    if (updErr) {
+      setError(updErr.message);
+      setLoading(false);
+      return;
+    }
+
+    await supabase.auth.signOut();
+    router.push("/login?message=password_reset");
+  }
+
+  async function handleReadySubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     if (password !== confirmPassword) return setError("Passwords don't match");
     if (password.length < 8) return setError("Password must be at least 8 characters");
+
     setLoading(true);
     const { error: updErr } = await supabase.auth.updateUser({ password });
     if (updErr) {
@@ -99,59 +143,111 @@ function ResetPasswordForm() {
     router.push("/login?message=password_reset");
   }
 
-  if (error && !ready) {
+  if (phase === "verifying") {
     return (
       <div style={styles.card}>
         <div style={styles.brandRow}><LogoMark /><span style={styles.brandName}>AccuInsight</span></div>
-        <h1 style={styles.title}>Link expired</h1>
-        <p style={styles.subtitle}>{error}</p>
-        <a href="/forgot-password" style={styles.buttonLink}>Request new link</a>
+        <h1 style={styles.title}>Verifying…</h1>
+        <p style={styles.subtitle}>Please wait while we verify your reset link.</p>
+      </div>
+    );
+  }
+
+  if (phase === "ready") {
+    return (
+      <div style={styles.card}>
+        <div style={styles.brandRow}><LogoMark /><span style={styles.brandName}>AccuInsight</span></div>
+        <h1 style={styles.title}>Set new password</h1>
+        <p style={styles.subtitle}>Choose a new password below.</p>
+
+        <form onSubmit={handleReadySubmit} style={styles.form}>
+          <div>
+            <label style={styles.label}>New password</label>
+            <input
+              type="password" value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required minLength={8} style={styles.input}
+              placeholder="At least 8 characters"
+              autoComplete="new-password"
+            />
+          </div>
+          <div>
+            <label style={styles.label}>Confirm password</label>
+            <input
+              type="password" value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required minLength={8} style={styles.input}
+              placeholder="Confirm your password"
+              autoComplete="new-password"
+            />
+          </div>
+
+          {error && <div style={styles.error}>{error}</div>}
+
+          <button type="submit" disabled={loading} style={styles.button}>
+            {loading ? "Updating…" : "Update password"}
+          </button>
+        </form>
+
         <p style={styles.legal}>
           <a href="/terms" style={styles.legalLink}>Terms</a>
-          <span style={styles.divider}>\·</span>
+          <span style={styles.divider}>·</span>
           <a href="/privacy" style={styles.legalLink}>Privacy</a>
         </p>
       </div>
     );
   }
 
-  if (!ready) {
-    return (
-      <div style={styles.card}>
-        <div style={styles.brandRow}><LogoMark /><span style={styles.brandName}>AccuInsight</span></div>
-        <h1 style={styles.title}>Verifying\…</h1>
-        <p style={styles.subtitle}>Please wait while we verify your reset link.</p>
-      </div>
-    );
-  }
-
+  // phase === "otp"
   return (
     <div style={styles.card}>
       <div style={styles.brandRow}><LogoMark /><span style={styles.brandName}>AccuInsight</span></div>
-      <h1 style={styles.title}>Set new password</h1>
-      <p style={styles.subtitle}>Enter your new password below.</p>
+      <h1 style={styles.title}>Reset your password</h1>
+      <p style={styles.subtitle}>
+        We emailed you a 6-digit code. Enter it below with your new password.
+      </p>
 
-      <form onSubmit={handleSubmit} style={styles.form}>
+      <form onSubmit={handleOtpSubmit} style={styles.form}>
+        <div>
+          <label style={styles.label}>Email</label>
+          <input
+            type="email" value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required style={styles.input}
+            placeholder="you@company.com"
+            autoComplete="email"
+          />
+        </div>
+
+        <div>
+          <label style={styles.label}>6-digit code</label>
+          <input
+            type="text" value={otp}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            required inputMode="numeric" pattern="\d{6}" maxLength={6}
+            style={{ ...styles.input, letterSpacing: 6, fontFamily: "ui-monospace,monospace" }}
+            placeholder="123456"
+            autoComplete="one-time-code"
+          />
+        </div>
+
         <div>
           <label style={styles.label}>New password</label>
           <input
-            type="password"
-            value={password}
+            type="password" value={password}
             onChange={(e) => setPassword(e.target.value)}
-            required minLength={8}
-            style={styles.input}
+            required minLength={8} style={styles.input}
             placeholder="At least 8 characters"
             autoComplete="new-password"
           />
         </div>
+
         <div>
           <label style={styles.label}>Confirm password</label>
           <input
-            type="password"
-            value={confirmPassword}
+            type="password" value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            required minLength={8}
-            style={styles.input}
+            required minLength={8} style={styles.input}
             placeholder="Confirm your password"
             autoComplete="new-password"
           />
@@ -160,13 +256,18 @@ function ResetPasswordForm() {
         {error && <div style={styles.error}>{error}</div>}
 
         <button type="submit" disabled={loading} style={styles.button}>
-          {loading ? "Updating\…" : "Update password"}
+          {loading ? "Updating…" : "Update password"}
         </button>
       </form>
 
+      <p style={styles.resendPrompt}>
+        Didn&apos;t get a code?{" "}
+        <a href="/forgot-password" style={styles.linkStrong}>Resend</a>
+      </p>
+
       <p style={styles.legal}>
         <a href="/terms" style={styles.legalLink}>Terms</a>
-        <span style={styles.divider}>\·</span>
+        <span style={styles.divider}>·</span>
         <a href="/privacy" style={styles.legalLink}>Privacy</a>
       </p>
     </div>
@@ -177,7 +278,7 @@ export default function ResetPasswordPage() {
   return (
     <main style={styles.page}>
       <div style={styles.glow} />
-      <Suspense fallback={<div style={styles.card}>Loading\…</div>}>
+      <Suspense fallback={<div style={styles.card}>Loading…</div>}>
         <ResetPasswordForm />
       </Suspense>
     </main>
@@ -210,12 +311,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: 20,
   },
   brandName: { fontSize: 15, fontWeight: 600, color: FG, letterSpacing: -0.2 },
-  title: {
-    fontSize: 24, fontWeight: 600, color: FG, marginBottom: 6,
-    letterSpacing: -0.4,
-  },
+  title: { fontSize: 24, fontWeight: 600, color: FG, marginBottom: 6, letterSpacing: -0.4 },
   subtitle: { fontSize: 14, color: MUTED, marginBottom: 24, lineHeight: 1.5 },
-  form: { display: "flex", flexDirection: "column", gap: 16, textAlign: "left" },
+  form: { display: "flex", flexDirection: "column", gap: 14, textAlign: "left" },
   label: { display: "block", fontSize: 13, fontWeight: 500, color: FG, marginBottom: 6 },
   input: {
     width: "100%", padding: "11px 14px", fontSize: 14, borderRadius: 8,
@@ -227,17 +325,14 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: 8, border: "none", background: ACCENT, color: "#fff",
     cursor: "pointer", boxShadow: "0 4px 12px rgba(194,65,12,0.2)",
   },
-  buttonLink: {
-    display: "inline-block", padding: "12px 24px", fontSize: 14, fontWeight: 600,
-    borderRadius: 8, background: ACCENT, color: "#fff", textDecoration: "none",
-    boxShadow: "0 4px 12px rgba(194,65,12,0.2)",
-  },
   error: {
     padding: "10px 14px", borderRadius: 8,
     background: "#fdecec", border: "1px solid #f4c4c4",
     color: "#b91c1c", fontSize: 13, textAlign: "center",
   },
-  legal: { marginTop: 24, fontSize: 12, color: MUTED },
+  resendPrompt: { marginTop: 20, fontSize: 13, color: MUTED, textAlign: "center" },
+  linkStrong: { color: ACCENT, textDecoration: "none", fontWeight: 600 },
+  legal: { marginTop: 20, fontSize: 12, color: MUTED },
   legalLink: { color: MUTED, textDecoration: "none" },
   divider: { margin: "0 8px" },
 };
