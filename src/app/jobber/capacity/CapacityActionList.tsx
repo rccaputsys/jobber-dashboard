@@ -269,11 +269,11 @@ export function CapacityActionList({
 
   const lateTotalCents = lateBuckets.reduce((s, b) => s + b.totalCents, 0);
 
-  type ToggleCard = { key: TabKey; label: string; count: number; dollars: string; color: string };
+  type ToggleCard = { key: TabKey; label: string; count: number; color: string };
   const toggleCards: ToggleCard[] = [
-    { key: "unscheduled", label: "Needs Scheduling", count: unscheduledJobs.length, dollars: money(totalCents), color: "#5aa6ff" },
-    { key: "late", label: "Running Late", count: lateVisits.length, dollars: money(lateTotalCents), color: "#ef4444" },
-    { key: "approved", label: "Ready to Book", count: approvedQuotes.length, dollars: money(approvedTotalCents), color: "#10b981" },
+    { key: "unscheduled", label: "Needs Scheduling", count: unscheduledJobs.length, color: "#5aa6ff" },
+    { key: "late", label: "Running Late", count: lateVisits.length, color: "#ef4444" },
+    { key: "approved", label: "Ready to Book", count: approvedQuotes.length, color: "#10b981" },
   ];
 
   return (
@@ -315,8 +315,8 @@ export function CapacityActionList({
                   {card.count.toLocaleString()}
                 </span>
                 {card.count > 0 && (
-                  <span style={{ fontSize: 13, fontWeight: 700, color: card.color }}>
-                    {card.dollars}
+                  <span style={{ fontSize: 12, fontWeight: 600, color: isLight ? "#64748b" : "rgba(255,255,255,0.5)" }}>
+                    {card.count === 1 ? "job" : "jobs"}
                   </span>
                 )}
               </button>

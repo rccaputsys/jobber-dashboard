@@ -407,38 +407,7 @@ export function CapacityTargetDisplay({ weeklyTargetCents, weeks, defaultWeek = 
             </div>
           ))}
         </div>
-        {/* Quick measure toggle ($ / #) — sized for reliable touch/click */}
-        <div style={{
-          display: "flex", flexShrink: 0, borderRadius: 8, position: "relative", zIndex: 2,
-          border: `1.5px solid ${isLight ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.12)"}`,
-          overflow: "hidden",
-        }}>
-          {(["dollars", "jobs"] as const).map((m) => {
-            const active = measure === m;
-            return (
-              <button
-                key={m}
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setMeasure(m); }}
-                aria-label={m === "dollars" ? "Show as dollars" : "Show as job count"}
-                title={m === "dollars" ? "Show as dollars" : "Show as job count"}
-                style={{
-                  padding: "6px 14px",
-                  minWidth: 36, minHeight: 28,
-                  background: active
-                    ? (isLight ? "rgba(90,166,255,0.15)" : "rgba(90,166,255,0.22)")
-                    : "transparent",
-                  color: active ? "#5aa6ff" : (isLight ? "#64748b" : "rgba(255,255,255,0.6)"),
-                  border: "none", cursor: "pointer",
-                  fontSize: 14, fontWeight: 800, lineHeight: 1,
-                  transition: "all 0.15s ease",
-                }}
-              >
-                {m === "dollars" ? "$" : "#"}
-              </button>
-            );
-          })}
-        </div>
+        {/* Capacity is always measured by job count */}
       </div>
       <div style={{
         flex: 1, width: "100%", display: "flex", flexDirection: "column", alignItems: "center",

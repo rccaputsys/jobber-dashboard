@@ -1529,10 +1529,9 @@ const quoteWonPct = quotesInLast30Days.length > 0
                 // P1 — Cooling quotes
                 if (goingColdQuotes.length > 0) todayActions.push({ text: `Follow up on ${goingColdQuotes.length} cooling quote${goingColdQuotes.length !== 1 ? "s" : ""} (${money(sumCents(goingColdQuotes))})`, why: "30+ days quiet — one call could save the deal", href: `/jobber/sales${adminQs}`, color: "#ef4444", priority: 1 });
 
-                // P2 — Capacity gap
-                if (effectiveWeeklyTarget > 0 && thisWeekSnap.scheduledRevenue < effectiveWeeklyTarget * 0.7) {
-                  const gap = effectiveWeeklyTarget - thisWeekSnap.scheduledRevenue;
-                  todayActions.push({ text: `Fill ${money(gap)} in open capacity this week`, why: "Open slots mean lost revenue — pull from approved quotes or reach out to leads", href: `/jobber/capacity${adminQs}`, color: "#f59e0b", priority: 2 });
+                // P2 — Capacity gap (job count based)
+                if (unscheduledCount > 0) {
+                  todayActions.push({ text: `Schedule ${unscheduledCount} unscheduled job${unscheduledCount !== 1 ? "s" : ""}`, why: "Open slots mean lost revenue — pull from approved quotes or reach out to leads", href: `/jobber/capacity${adminQs}`, color: "#f59e0b", priority: 2 });
                 }
 
                 // P2 — Approved quotes ready to book
@@ -1944,10 +1943,8 @@ const quoteWonPct = quotesInLast30Days.length > 0
                         </h2>
                       </a>
                       <InlineCapacityEditor
-                        currentTargetCents={effectiveWeeklyTarget || 0}
                         currentWorkDays={workDaysList}
                         adminConnectionId={adminConnectionId}
-                        currencyCode={currencyCode}
                       />
                       <a href={`/jobber/capacity${adminQs}`} className="btn" style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", textDecoration: "none" }}>Book Work &#8594;</a>
                     </div>

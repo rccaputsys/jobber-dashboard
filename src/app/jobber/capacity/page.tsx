@@ -387,28 +387,25 @@ export default async function CapacityPage({
 
   // P1 — Fresh late visits (catch up — still actionable)
   if (freshLateVisits.length > 0) {
-    const lateCents = freshLateVisits.reduce((s: number, v: any) => s + visitRevCents(v), 0);
     capacityActions.push({
-      text: `Catch up on ${freshLateVisits.length} late visit${freshLateVisits.length !== 1 ? "s" : ""}${lateCents > 0 ? ` — ${money(lateCents)}` : ""}`,
+      text: `Catch up on ${freshLateVisits.length} late visit${freshLateVisits.length !== 1 ? "s" : ""}`,
       why: "These were scheduled but never completed. Reschedule or close them out before they get any older.",
       color: "#ef4444",
       priority: 1,
     });
   }
 
-  // P1 — This week severely under-booked
+  // P1 — This week severely under-booked (by job count)
   const thisWeekHmap = heatmapWeeks[0];
-  if (thisWeekHmap && effectiveWeeklyTarget > 0) {
-    const thisWeekBooked = workDaysList.reduce(
-      (s: number, d: string) => s + (thisWeekHmap.days[d]?.revenueCents || 0),
+  if (thisWeekHmap) {
+    const thisWeekJobCount = workDaysList.reduce(
+      (s: number, d: string) => s + (thisWeekHmap.days[d]?.jobCount || 0),
       0,
     );
-    const thisWeekPct = thisWeekBooked / effectiveWeeklyTarget;
-    if (thisWeekPct < 0.5) {
-      const gap = effectiveWeeklyTarget - thisWeekBooked;
+    if (thisWeekJobCount === 0) {
       capacityActions.push({
-        text: `This week is only ${Math.round(thisWeekPct * 100)}% booked — fill ${money(gap)}`,
-        why: "Open slots = lost revenue. Pull from approved quotes or reach out to recent leads.",
+        text: "No jobs scheduled this week",
+        why: "Your schedule is empty. Pull from approved quotes or reach out to recent leads.",
         color: "#ef4444",
         priority: 1,
       });
@@ -417,9 +414,8 @@ export default async function CapacityPage({
 
   // P2 — Approved quotes that haven't been turned into jobs
   if (approvedQuotes.length > 0) {
-    const approvedCents = approvedQuotes.reduce((s: number, q: any) => s + Number(q.quote_total_cents ?? 0), 0);
     capacityActions.push({
-      text: `Book ${approvedQuotes.length} approved quote${approvedQuotes.length !== 1 ? "s" : ""} — ${money(approvedCents)}`,
+      text: `Book ${approvedQuotes.length} approved quote${approvedQuotes.length !== 1 ? "s" : ""}`,
       why: "Customers said yes. Put them on the schedule before they reconsider.",
       color: "#10b981",
       priority: 2,
@@ -442,27 +438,24 @@ export default async function CapacityPage({
 
   // P2 — Fresh unscheduled jobs needing a date
   if (freshUnscheduledJobs.length > 0) {
-    const unschedCents = freshUnscheduledJobs.reduce((s: number, j: any) => s + Number(j.total_amount_cents ?? 0), 0);
     capacityActions.push({
-      text: `Schedule ${freshUnscheduledJobs.length} unscheduled job${freshUnscheduledJobs.length !== 1 ? "s" : ""}${unschedCents > 0 ? ` — ${money(unschedCents)}` : ""}`,
+      text: `Schedule ${freshUnscheduledJobs.length} unscheduled job${freshUnscheduledJobs.length !== 1 ? "s" : ""}`,
       why: "These jobs are sitting in your queue without a date. Pick a day so the work gets done.",
       color: "#f59e0b",
       priority: 2,
     });
   }
 
-  // P3 — Next week under-booked
+  // P3 — Next week under-booked (by job count)
   const nextWeekHmap = heatmapWeeks[1];
-  if (nextWeekHmap && effectiveWeeklyTarget > 0) {
-    const nextWeekBooked = workDaysList.reduce(
-      (s: number, d: string) => s + (nextWeekHmap.days[d]?.revenueCents || 0),
+  if (nextWeekHmap) {
+    const nextWeekJobCount = workDaysList.reduce(
+      (s: number, d: string) => s + (nextWeekHmap.days[d]?.jobCount || 0),
       0,
     );
-    const nextWeekPct = nextWeekBooked / effectiveWeeklyTarget;
-    if (nextWeekPct < 0.7) {
-      const gap = effectiveWeeklyTarget - nextWeekBooked;
+    if (nextWeekJobCount === 0) {
       capacityActions.push({
-        text: `Next week is ${Math.round(nextWeekPct * 100)}% booked — ${money(gap)} of open capacity`,
+        text: "No jobs scheduled next week",
         why: "Plan ahead: this is the easiest week to fill since you still have time to schedule customers.",
         color: "#5aa6ff",
         priority: 3,
@@ -495,19 +488,17 @@ export default async function CapacityPage({
     });
   }
 
-  // P4 — Open capacity over the next 6 weeks (informational)
-  if (effectiveWeeklyTarget > 0) {
-    const sixWeekTarget = effectiveWeeklyTarget * 6;
-    let sixWeekBooked = 0;
+  // P4 — Open capacity over the next 6 weeks (informational, job-count based)
+  {
+    let sixWeekJobCount = 0;
     for (const w of heatmapWeeks) {
       for (const d of workDaysList) {
-        sixWeekBooked += w.days[d]?.revenueCents || 0;
+        sixWeekJobCount += w.days[d]?.jobCount || 0;
       }
     }
-    const openCents = Math.max(0, sixWeekTarget - sixWeekBooked);
-    if (openCents > effectiveWeeklyTarget * 0.5) {
+    if (sixWeekJobCount === 0 && unscheduledJobs.length > 0) {
       capacityActions.push({
-        text: `${money(openCents)} in open slots over the next 6 weeks`,
+        text: `${unscheduledJobs.length} unscheduled job${unscheduledJobs.length !== 1 ? "s" : ""} waiting to be booked`,
         why: "Plenty of room to fill. Use the action list below to see exactly which jobs need scheduling.",
         color: "#94a3b8",
         priority: 4,

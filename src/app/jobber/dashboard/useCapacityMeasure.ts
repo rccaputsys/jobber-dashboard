@@ -2,21 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 
-export type CapacityMeasure = "dollars" | "jobs";
+export type CapacityMeasure = "jobs";
 
-const MEASURE_KEY = "accuinsight_capacity_measure";
 const JOBS_TARGET_KEY = "accuinsight_capacity_weekly_jobs_target";
 const CHANGE_EVENT = "accuinsight:capacity-measure-changed";
-
-function readMeasure(): CapacityMeasure {
-  if (typeof window === "undefined") return "dollars";
-  try {
-    const v = localStorage.getItem(MEASURE_KEY);
-    return v === "jobs" ? "jobs" : "dollars";
-  } catch {
-    return "dollars";
-  }
-}
 
 function readJobsTarget(): number {
   if (typeof window === "undefined") return 0;
@@ -30,31 +19,16 @@ function readJobsTarget(): number {
   }
 }
 
-/**
- * Capacity measure preference (dollars vs job count) plus the weekly job
- * target, persisted to localStorage. When either changes, fires a custom
- * window event so any other component using this hook re-reads in sync.
- *
- * Why localStorage instead of a DB column: zero migration risk and the
- * setting is naturally per-device. Easy to promote to a Supabase column
- * later if cross-device sync becomes a need.
- */
 export function useCapacityMeasure() {
-  const [measure, setMeasureState] = useState<CapacityMeasure>("dollars");
+  const measure: CapacityMeasure = "jobs";
   const [weeklyJobsTarget, setWeeklyJobsTargetState] = useState<number>(0);
 
-  // Initial read on mount
   useEffect(() => {
-    setMeasureState(readMeasure());
     setWeeklyJobsTargetState(readJobsTarget());
   }, []);
 
-  // Subscribe to cross-component changes
   useEffect(() => {
-    const refresh = () => {
-      setMeasureState(readMeasure());
-      setWeeklyJobsTargetState(readJobsTarget());
-    };
+    const refresh = () => setWeeklyJobsTargetState(readJobsTarget());
     window.addEventListener(CHANGE_EVENT, refresh);
     window.addEventListener("storage", refresh);
     return () => {
@@ -63,11 +37,7 @@ export function useCapacityMeasure() {
     };
   }, []);
 
-  const setMeasure = useCallback((next: CapacityMeasure) => {
-    try { localStorage.setItem(MEASURE_KEY, next); } catch {}
-    setMeasureState(next);
-    try { window.dispatchEvent(new CustomEvent(CHANGE_EVENT)); } catch {}
-  }, []);
+  const setMeasure = useCallback((_next: CapacityMeasure) => {}, []);
 
   const setWeeklyJobsTarget = useCallback((next: number) => {
     const clean = Number.isFinite(next) && next > 0 ? Math.round(next) : 0;
