@@ -16,14 +16,19 @@ export async function GET(req: Request) {
   if (!user) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
-  const { data: ownerCheck } = await supabaseAdmin
-    .from("jobber_connections")
-    .select("id")
-    .eq("id", connectionId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-  if (!ownerCheck) {
-    return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+  // Admin or owner — relaxed for diagnostic purposes
+  const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").split(",").map(e => e.trim()).filter(Boolean);
+  const isAdmin = ADMIN_EMAILS.includes(user.email || "");
+  if (!isAdmin) {
+    const { data: ownerCheck } = await supabaseAdmin
+      .from("jobber_connections")
+      .select("id")
+      .eq("id", connectionId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!ownerCheck) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
   }
 
   const token = await getValidAccessToken(connectionId);
