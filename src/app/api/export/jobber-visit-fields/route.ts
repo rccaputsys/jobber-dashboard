@@ -77,7 +77,7 @@ export async function GET(req: Request) {
       f.toLowerCase().includes("visit") || f.toLowerCase().includes("recur") || f.toLowerCase().includes("schedule")
     );
 
-    // 3. Fetch sample jobs with visits
+    // 3. Fetch sample jobs with visits (nested under job)
     let sampleVisit: any = null;
     try {
       const jobVisitData = await jobberGraphQL<any>(token, `
@@ -111,6 +111,38 @@ export async function GET(req: Request) {
       sampleVisit = { error: String(e?.message ?? e) };
     }
 
+    // 4. Fetch top-level visits WITH lineItems — this is the path the sync uses.
+    // Diagnostic: see what Jobber actually returns for lineItems.
+    let sampleTopLevelVisits: any = null;
+    try {
+      const topLevel = await jobberGraphQL<any>(token, `
+        query {
+          visits(first: 3) {
+            nodes {
+              id
+              title
+              visitStatus
+              isComplete
+              startAt
+              completedAt
+              lineItems(first: 10) {
+                nodes {
+                  name
+                  description
+                  quantity
+                  unitPrice
+                  totalPrice
+                }
+              }
+            }
+          }
+        }
+      `);
+      sampleTopLevelVisits = topLevel?.visits?.nodes ?? null;
+    } catch (e: any) {
+      sampleTopLevelVisits = { error: String(e?.message ?? e) };
+    }
+
     return NextResponse.json({
       ok: true,
       visitType: {
@@ -120,6 +152,7 @@ export async function GET(req: Request) {
       visitsInfoType: visitsInfoFields,
       jobVisitRelatedFields: visitRelatedFields,
       sampleVisit,
+      sampleTopLevelVisits,
     });
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: String(e?.message ?? e) }, { status: 500 });
