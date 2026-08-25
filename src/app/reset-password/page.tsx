@@ -20,8 +20,25 @@ function ResetPasswordForm() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  // Handle the token from the URL (Supabase adds it as a hash fragment)
+  // Handle the token from the URL. Supabase can deliver it three ways:
+  //   1. ?token_hash=…&type=recovery — the recommended flow, works
+  //      cross-browser/device because it doesn't need a PKCE cookie.
+  //   2. #access_token=…&refresh_token=…&type=recovery — legacy hash flow.
+  //   3. Already-logged-in session — pass through.
   useEffect(() => {
+    const tokenHash = searchParams.get("token_hash");
+    const queryType = searchParams.get("type");
+    if (tokenHash && queryType === "recovery") {
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" }).then(({ error }) => {
+        if (error) {
+          setError("Invalid or expired reset link. Please request a new one.");
+        } else {
+          setReady(true);
+        }
+      });
+      return;
+    }
+
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const accessToken = hashParams.get("access_token");
     const refreshToken = hashParams.get("refresh_token");
